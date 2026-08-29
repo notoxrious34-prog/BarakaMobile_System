@@ -33,15 +33,17 @@ model Contact {
 }
 
 model Account {
-  id              String      @id @default(cuid())
+  id              String        @id @default(cuid())
   contactId       String
   role            AccountRole
-  openingBalance  String      @default("0.00")
-  currentBalance  String      @default("0.00")
+  openingBalance  String        @default("0.00")
+  currentBalance  String        @default("0.00")
   notes           String?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  contact         Contact     @relation(fields: [contactId], references: [id])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  contact         Contact       @relation(fields: [contactId], references: [id])
+  transactions    Transaction[]
+  ledgerEntries   LedgerEntry[]
 
   @@unique([contactId, role])
 }
@@ -53,18 +55,19 @@ enum MovementType {
 }
 
 model Item {
-  id            String          @id @default(cuid())
-  name          String
-  description   String?
-  sku           String?         @unique
-  unit          String          @default("piece")
-  costPrice     String          @default("0.00")
-  sellingPrice  String          @default("0.00")
-  minStock      Int             @default(0)
-  isActive      Boolean         @default(true)
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-  movements     StockMovement[]
+  id               String            @id @default(cuid())
+  name             String
+  description      String?
+  sku              String?           @unique
+  unit             String            @default("piece")
+  costPrice        String            @default("0.00")
+  sellingPrice     String            @default("0.00")
+  minStock         Int               @default(0)
+  isActive         Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  movements        StockMovement[]
+  transactionLines TransactionItem[]
 }
 
 model StockMovement {
@@ -84,15 +87,81 @@ enum PricingType {
 }
 
 model Service {
+  id               String               @id @default(cuid())
+  name             String
+  description      String?
+  supplierId       String
+  pricingType      PricingType
+  fixedProfit      String?
+  commissionPct    String?
+  isActive         Boolean              @default(true)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  supplier         Contact              @relation(fields: [supplierId], references: [id])
+  transactionLines TransactionService[]
+}
+
+enum TransactionType {
+  SALE
+  PURCHASE
+  PAYMENT_IN
+  PAYMENT_OUT
+  OFFSET
+}
+
+enum LedgerEntryType {
+  DEBIT
+  CREDIT
+}
+
+model Transaction {
+  id             String               @id @default(cuid())
+  type           TransactionType
+  accountId      String
+  amount         String
+  note           String?
+  reference      String?
+  reversalOf     String?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  account        Account              @relation(fields: [accountId], references: [id])
+  ledgerEntries  LedgerEntry[]
+  reversal       Transaction?         @relation("ReversalOf", fields: [reversalOf], references: [id])
+  reversedBy     Transaction[]        @relation("ReversalOf")
+  itemLines      TransactionItem[]
+  serviceLines   TransactionService[]
+}
+
+model LedgerEntry {
+  id            String          @id @default(cuid())
+  transactionId String
+  accountId     String
+  entryType     LedgerEntryType
+  amount        String
+  balanceBefore String
+  balanceAfter  String
+  createdAt     DateTime        @default(now())
+  transaction   Transaction     @relation(fields: [transactionId], references: [id])
+  account       Account         @relation(fields: [accountId], references: [id])
+}
+
+model TransactionItem {
   id            String      @id @default(cuid())
-  name          String
-  description   String?
-  supplierId    String
-  pricingType   PricingType
-  fixedProfit   String?
-  commissionPct String?
-  isActive      Boolean     @default(true)
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  supplier      Contact     @relation(fields: [supplierId], references: [id])
+  transactionId String
+  itemId        String
+  quantity      Int
+  unitPrice     String
+  totalPrice    String
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+  item          Item        @relation(fields: [itemId], references: [id])
+}
+
+model TransactionService {
+  id            String      @id @default(cuid())
+  transactionId String
+  serviceId     String
+  amount        String
+  profit        String
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+  service       Service     @relation(fields: [serviceId], references: [id])
 }
