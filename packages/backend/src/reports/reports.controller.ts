@@ -20,6 +20,11 @@ export class ReportsController {
     return this.reportsService.getDebtSummary();
   }
 
+  @Get('summary')
+  getSummary() {
+    return this.reportsService.getSummary();
+  }
+
   @Get('contacts/:contactId/position')
   getContactPosition(@Param('contactId') contactId: string) {
     return this.reportsService.getContactPosition(contactId);
