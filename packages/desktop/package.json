@@ -1,29 +1,37 @@
 {
   "name": "@barakamobile/desktop",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "main": "dist/main.js",
   "scripts": {
-    "dev": "tsc -p tsconfig.json && electron dist/main.js",
+    "dev": "tsx src/main.ts",
     "build": "tsc -p tsconfig.json",
-    "dist": "electron-builder --win"
+    "start": "electron dist/main.js"
   },
-  "dependencies": {},
+  "dependencies": {
+    "electron": "^33.2.0"
+  },
   "devDependencies": {
     "@types/node": "^20.11.0",
-    "electron": "^33.2.0",
-    "electron-builder": "^24.13.3",
+    "@types/electron": "^1.6.10",
+    "tsx": "^4.7.0",
     "typescript": "^5.6.3"
   },
   "build": {
-    "appId": "com.barakamobile.desktop",
+    "appId": "com.barakamobile.app",
     "productName": "BarakaMobile",
+    "target": "nsis",
+    "directories": {
+      "output": "../../dist-electron"
+    },
+    "files": [
+      "dist/**",
+      "../../packages/backend/dist/**",
+      "../../packages/frontend/dist/**",
+      "node_modules/**"
+    ],
     "win": {
       "target": "nsis"
-    },
-    "directories": {
-      "buildResources": "assets"
-    },
-    "files": ["dist/**/*", "package.json"]
+    }
   }
 }

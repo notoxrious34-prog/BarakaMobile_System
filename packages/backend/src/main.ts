@@ -20,7 +20,7 @@ async function bootstrap() {
     }),
   );
 
-  const port = 3001;
+  const port = process.env.PORT ?? 3001;
   await app.listen(port);
   console.log(`BarakaMobile API listening on http://localhost:${port}/api`);
 }

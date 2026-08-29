@@ -2,5 +2,16 @@
   "name": "barakamobile",
   "version": "0.0.0",
   "private": true,
-  "scripts": {}
+  "scripts": {
+    "dev:backend": "pnpm --filter backend run start:dev",
+    "dev:frontend": "pnpm --filter frontend run dev",
+    "dev:desktop": "pnpm --filter desktop run dev",
+    "dev": "concurrently \"pnpm:dev:backend\" \"pnpm:dev:frontend\" \"pnpm:dev:desktop\"",
+    "build:all": "pnpm --filter backend run build && pnpm --filter frontend run build && pnpm --filter desktop run build",
+    "electron:pack": "pnpm --filter desktop run build && pnpm --filter desktop run start"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  },
+  "packageManager": "pnpm@9.12.0"
 }
