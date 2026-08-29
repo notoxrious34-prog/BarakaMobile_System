@@ -7,6 +7,40 @@ datasource db {
   url      = "file:./dev.db"
 }
 
-model Placeholder {
-  id Int @id @default(autoincrement())
+enum ContactRole {
+  SUPPLIER
+  CUSTOMER
+  BOTH
+}
+
+enum AccountRole {
+  SUPPLIER
+  CUSTOMER
+}
+
+model Contact {
+  id        String      @id @default(cuid())
+  name      String
+  phone     String?
+  address   String?
+  role      ContactRole
+  notes     String?
+  isActive  Boolean     @default(true)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  accounts  Account[]
+}
+
+model Account {
+  id              String      @id @default(cuid())
+  contactId       String
+  role            AccountRole
+  openingBalance  String      @default("0.00")
+  currentBalance  String      @default("0.00")
+  notes           String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  contact         Contact     @relation(fields: [contactId], references: [id])
+
+  @@unique([contactId, role])
 }
