@@ -196,12 +196,12 @@ export class ReportsService {
     });
 
     let itemProfit = new Decimal(0);
-    for (const ti of saleItems) {
-      const selling = new Decimal(ti.sellingPrice);
-      const cost = new Decimal(ti.item.costPrice);
-      const profitPerUnit = selling.minus(cost);
-      itemProfit = itemProfit.plus(profitPerUnit.times(ti.quantity));
-    }
+        for (const ti of saleItems) {
+          const selling = new Decimal(ti.sellingPrice);
+          const cost = new Decimal(ti.item.costPrice);
+          const profitPerUnit = selling.minus(cost);
+          itemProfit = itemProfit.plus(profitPerUnit.times(ti.quantity));
+        }
 
     const grossProfit = serviceProfit.plus(itemProfit);
     const netProfit = grossProfit; // same for now
