@@ -44,3 +44,35 @@ model Account {
 
   @@unique([contactId, role])
 }
+
+enum MovementType {
+  IN
+  OUT
+  ADJUSTMENT
+}
+
+model Item {
+  id            String          @id @default(cuid())
+  name          String
+  description   String?
+  sku           String?         @unique
+  unit          String          @default("piece")
+  costPrice     String          @default("0.00")
+  sellingPrice  String          @default("0.00")
+  minStock      Int             @default(0)
+  isActive      Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  movements     StockMovement[]
+}
+
+model StockMovement {
+  id        String       @id @default(cuid())
+  itemId    String
+  type      MovementType
+  quantity  Int
+  note      String?
+  reference String?
+  createdAt DateTime     @default(now())
+  item      Item         @relation(fields: [itemId], references: [id])
+}
