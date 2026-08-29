@@ -197,7 +197,7 @@ export class ReportsService {
 
     let itemProfit = new Decimal(0);
     for (const ti of saleItems) {
-      const selling = new Decimal(ti.item.sellingPrice);
+      const selling = new Decimal(ti.sellingPrice);
       const cost = new Decimal(ti.item.costPrice);
       const profitPerUnit = selling.minus(cost);
       itemProfit = itemProfit.plus(profitPerUnit.times(ti.quantity));
