@@ -1,6 +1,7 @@
 import { Eye, Printer } from 'lucide-react';
 import type { Transaction } from '../hooks/useTransactions';
 import { TransactionTypeBadge } from './TransactionTypeBadge';
+import { useInvoiceSettings } from '@/features/settings/hooks/useInvoiceSettings';
 
 type Props = {
   transactions: Transaction[];
@@ -36,6 +37,8 @@ function getContactName(tx: Transaction, map: Record<string, string>): string {
 }
 
 export function TransactionsList({ transactions, contactNameMap, onView, onPrint }: Props) {
+  const { data: settingsData } = useInvoiceSettings();
+  const currencySymbol = settingsData?.currency_symbol ?? 'د.ج';
   const sorted = [...transactions].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
@@ -65,7 +68,7 @@ export function TransactionsList({ transactions, contactNameMap, onView, onPrint
                 </td>
                 <td className="px-4 py-3 text-zinc-900">{getContactName(tx, contactNameMap)}</td>
                 <td className="px-4 py-3 text-zinc-700" dir="ltr">
-                  {Number(tx.amount).toFixed(2)} DZD
+                  {Number(tx.amount).toFixed(2)} {currencySymbol}
                 </td>
                 <td className="px-4 py-3 text-zinc-600">{tx.note ?? '—'}</td>
                 <td className="px-4 py-3 text-center">
