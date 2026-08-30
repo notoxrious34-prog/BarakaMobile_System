@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
 import { Loading } from '@/components/feedback/Loading';
 import { useLedgerQuery } from '../hooks/useReports';
+import { useInvoiceSettings } from '@/features/settings/hooks/useInvoiceSettings';
 
 type Props = {
   open: boolean;
@@ -37,6 +38,8 @@ const ENTRY_LABEL: Record<string, { label: string; className: string }> = {
 
 export function ContactLedgerModal({ open, onClose, accountId, contactName, role }: Props) {
   const { data: entries, isLoading, isError, error } = useLedgerQuery(accountId ?? '');
+  const { data: settingsData } = useInvoiceSettings();
+  const currencySymbol = settingsData?.currency_symbol ?? 'د.ج';
 
   if (!open) return null;
 
@@ -108,13 +111,13 @@ export function ContactLedgerModal({ open, onClose, accountId, contactName, role
                           </span>
                         </td>
                         <td className="px-3 py-2 text-zinc-700" dir="ltr">
-                          {Number(e.amount).toFixed(2)} DZD
+                          {Number(e.amount).toFixed(2)} {currencySymbol}
                         </td>
                         <td className="px-3 py-2 text-zinc-700" dir="ltr">
-                          {Number(e.balanceBefore).toFixed(2)} DZD
+                          {Number(e.balanceBefore).toFixed(2)} {currencySymbol}
                         </td>
                         <td className="px-3 py-2 text-zinc-700" dir="ltr">
-                          {Number(e.balanceAfter).toFixed(2)} DZD
+                          {Number(e.balanceAfter).toFixed(2)} {currencySymbol}
                         </td>
                       </tr>
                     );

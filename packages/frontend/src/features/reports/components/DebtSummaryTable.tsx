@@ -1,4 +1,5 @@
 import type { DebtSummaryResponse } from '../hooks/useReports';
+import { useInvoiceSettings } from '@/features/settings/hooks/useInvoiceSettings';
 
 type Props = {
   data: DebtSummaryResponse;
@@ -27,6 +28,8 @@ function getNetDebtTone(value: string): string {
 
 export function DebtSummaryTable({ data, onViewLedger }: Props) {
   const netDebtTone = getNetDebtTone(data.netDebtPosition);
+  const { data: settingsData } = useInvoiceSettings();
+  const currencySymbol = settingsData?.currency_symbol ?? 'د.ج';
 
   return (
     <div className="space-y-4">
@@ -34,19 +37,19 @@ export function DebtSummaryTable({ data, onViewLedger }: Props) {
         <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-medium text-zinc-500">إجمالي المستحقات</p>
           <p className="mt-1 text-lg font-bold text-zinc-900" dir="ltr">
-            {Number(data.totalReceivables).toFixed(2)} DZD
+            {Number(data.totalReceivables).toFixed(2)} {currencySymbol}
           </p>
         </div>
         <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-medium text-zinc-500">إجمالي الالتزامات</p>
           <p className="mt-1 text-lg font-bold text-zinc-900" dir="ltr">
-            {Number(data.totalPayables).toFixed(2)} DZD
+            {Number(data.totalPayables).toFixed(2)} {currencySymbol}
           </p>
         </div>
         <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-medium text-zinc-500">صافي المركز المالي</p>
           <p className={`mt-1 text-lg font-bold ${netDebtTone}`} dir="ltr">
-            {Number(data.netDebtPosition).toFixed(2)} DZD
+            {Number(data.netDebtPosition).toFixed(2)} {currencySymbol}
           </p>
         </div>
       </div>
@@ -70,13 +73,13 @@ export function DebtSummaryTable({ data, onViewLedger }: Props) {
                   <td className="px-4 py-3 font-medium text-zinc-900">{c.contactName}</td>
                   <td className="px-4 py-3 text-zinc-700">{ROLE_LABEL[c.contactRole] ?? c.contactRole}</td>
                   <td className="px-4 py-3 text-zinc-700" dir="ltr">
-                    {c.supplierAccount ? `${Number(c.supplierAccount.currentBalance).toFixed(2)} DZD` : '—'}
+                    {c.supplierAccount ? `${Number(c.supplierAccount.currentBalance).toFixed(2)} ${currencySymbol}` : '—'}
                   </td>
                   <td className="px-4 py-3 text-zinc-700" dir="ltr">
-                    {c.customerAccount ? `${Number(c.customerAccount.currentBalance).toFixed(2)} DZD` : '—'}
+                    {c.customerAccount ? `${Number(c.customerAccount.currentBalance).toFixed(2)} ${currencySymbol}` : '—'}
                   </td>
                   <td className={`px-4 py-3 font-medium ${getNetPositionTone(c.netPosition)}`} dir="ltr">
-                    {Number(c.netPosition).toFixed(2)} DZD
+                    {Number(c.netPosition).toFixed(2)} {currencySymbol}
                   </td>
                   <td className="px-4 py-3 text-center">
                     <div className="flex items-center justify-center gap-1">

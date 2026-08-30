@@ -1,3 +1,5 @@
+import { useInvoiceSettings } from '@/features/settings/hooks/useInvoiceSettings';
+
 type Props = {
   label: string;
   value: string;
@@ -12,7 +14,10 @@ const TONE_CLASSES: Record<string, string> = {
   warning: 'border-amber-200 bg-amber-50 text-amber-900',
 };
 
-export function StatCard({ label, value, suffix = 'DZD', tone = 'neutral' }: Props) {
+export function StatCard({ label, value, suffix, tone = 'neutral' }: Props) {
+  const { data: settingsData } = useInvoiceSettings();
+  const currencySymbol = settingsData?.currency_symbol ?? 'د.ج';
+  const resolvedSuffix = suffix ?? currencySymbol;
   const toneClass = TONE_CLASSES[tone] ?? TONE_CLASSES.neutral;
   const displayValue = (() => {
     const n = Number(value);
@@ -24,7 +29,7 @@ export function StatCard({ label, value, suffix = 'DZD', tone = 'neutral' }: Pro
     <div className={`rounded-lg border p-4 shadow-sm ${toneClass}`}>
       <p className="text-xs font-medium opacity-70">{label}</p>
       <p className="mt-1 text-lg font-bold" dir="ltr">
-        {displayValue} {suffix}
+        {displayValue} {resolvedSuffix}
       </p>
     </div>
   );

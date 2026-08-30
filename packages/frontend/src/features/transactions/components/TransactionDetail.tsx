@@ -2,6 +2,7 @@ import { X } from 'lucide-react';
 import { Loading } from '@/components/feedback/Loading';
 import { useTransactionDetailQuery } from '../hooks/useTransactions';
 import { TransactionTypeBadge } from './TransactionTypeBadge';
+import { useInvoiceSettings } from '@/features/settings/hooks/useInvoiceSettings';
 
 type Props = {
   open: boolean;
@@ -35,6 +36,8 @@ const TYPE_LABEL: Record<string, string> = {
 
 export function TransactionDetail({ open, transactionId, onClose, contactName }: Props) {
   const { data: tx, isLoading, isError, error } = useTransactionDetailQuery(transactionId ?? '');
+  const { data: settingsData } = useInvoiceSettings();
+  const currencySymbol = settingsData?.currency_symbol ?? 'د.ج';
 
   if (!open) return null;
 
@@ -105,7 +108,7 @@ export function TransactionDetail({ open, transactionId, onClose, contactName }:
               <div>
                 <span className="text-zinc-500">المبلغ:</span>{' '}
                 <span dir="ltr" className="font-medium">
-                  {Number(tx.amount).toFixed(2)} DZD
+                  {Number(tx.amount).toFixed(2)} {currencySymbol}
                 </span>
               </div>
               <div>
@@ -140,10 +143,10 @@ export function TransactionDetail({ open, transactionId, onClose, contactName }:
                             {l.quantity}
                           </td>
                           <td className="px-3 py-2" dir="ltr">
-                            {(l.unitPrice ?? l.costPrice ?? l.sellingPrice ?? '0.00')} DZD
+                            {(l.unitPrice ?? l.costPrice ?? l.sellingPrice ?? '0.00')} {currencySymbol}
                           </td>
                           <td className="px-3 py-2" dir="ltr">
-                            {(l.totalPrice ?? (Number(l.unitPrice ?? l.costPrice ?? '0') * l.quantity).toFixed(2))} DZD
+                            {(l.totalPrice ?? (Number(l.unitPrice ?? l.costPrice ?? '0') * l.quantity).toFixed(2))} {currencySymbol}
                           </td>
                         </tr>
                       ))}
@@ -170,10 +173,10 @@ export function TransactionDetail({ open, transactionId, onClose, contactName }:
                         <tr key={l.id} className="border-t border-zinc-100">
                           <td className="px-3 py-2">{l.service?.name ?? l.serviceId}</td>
                           <td className="px-3 py-2" dir="ltr">
-                            {Number(l.amount).toFixed(2)} DZD
+                            {Number(l.amount).toFixed(2)} {currencySymbol}
                           </td>
                           <td className="px-3 py-2" dir="ltr">
-                            {Number(l.profit).toFixed(2)} DZD
+                            {Number(l.profit).toFixed(2)} {currencySymbol}
                           </td>
                         </tr>
                       ))}

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { ApiError } from '@/lib/api';
 import { useCreateOffsetMutation, useAccountsByContactQuery } from '../hooks/useTransactions';
+import { useInvoiceSettings } from '@/features/settings/hooks/useInvoiceSettings';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 
@@ -18,6 +19,8 @@ function isPositiveNumeric(v: string): boolean {
 
 export function OffsetForm({ open, onClose }: Props) {
   const createMut = useCreateOffsetMutation();
+  const { data: settingsData } = useInvoiceSettings();
+  const currencySymbol = settingsData?.currency_symbol ?? 'د.ج';
 
   const { data: contacts } = useQuery<Contact[]>({
     queryKey: ['contacts'],
@@ -133,13 +136,13 @@ export function OffsetForm({ open, onClose }: Props) {
                   <div className="flex justify-between">
                     <span className="text-zinc-500">رصيد المورد:</span>
                     <span dir="ltr" className="font-medium">
-                      {supplierBalance !== null ? `${Number(supplierBalance).toFixed(2)} DZD` : '—'}
+                      {supplierBalance !== null ? `${Number(supplierBalance).toFixed(2)} ${currencySymbol}` : '—'}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-zinc-500">رصيد العميل:</span>
                     <span dir="ltr" className="font-medium">
-                      {customerBalance !== null ? `${Number(customerBalance).toFixed(2)} DZD` : '—'}
+                      {customerBalance !== null ? `${Number(customerBalance).toFixed(2)} ${currencySymbol}` : '—'}
                     </span>
                   </div>
                 </div>

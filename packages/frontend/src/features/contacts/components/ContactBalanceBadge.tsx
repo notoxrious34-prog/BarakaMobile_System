@@ -1,3 +1,5 @@
+import { useInvoiceSettings } from '@/features/settings/hooks/useInvoiceSettings';
+
 type Props = {
   balance: string;
   role: 'SUPPLIER' | 'CUSTOMER';
@@ -5,6 +7,8 @@ type Props = {
 };
 
 export function ContactBalanceBadge({ balance, role, label }: Props) {
+  const { data: settingsData } = useInvoiceSettings();
+  const currencySymbol = settingsData?.currency_symbol ?? 'د.ج';
   const isSupplier = role === 'SUPPLIER';
   const base =
     'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium';
@@ -15,7 +19,7 @@ export function ContactBalanceBadge({ balance, role, label }: Props) {
   return (
     <span className={`${base} ${tone}`} dir="ltr" title={label ?? role}>
       {label && <span className="ms-1 me-1">{label}</span>}
-      {balance} DZD
+      {balance} {currencySymbol}
     </span>
   );
 }

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Loader2 } from 'lucide-react';
 import { useSearch } from '@/features/search/hooks/useSearch';
+import { useInvoiceSettings } from '@/features/settings/hooks/useInvoiceSettings';
 
 const ROLE_LABEL: Record<string, string> = {
   SUPPLIER: 'مورد',
@@ -20,6 +21,8 @@ export function GlobalSearch() {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const { data: settingsData } = useInvoiceSettings();
+  const currencySymbol = settingsData?.currency_symbol ?? 'د.ج';
 
   const trimmedInput = inputValue.trim();
 
@@ -157,7 +160,7 @@ export function GlobalSearch() {
                             </>
                           )}
                           <span className="text-zinc-400">—</span>
-                          <span className="text-zinc-600">{item.sellingPrice} د.ج</span>
+                          <span className="text-zinc-600">{item.sellingPrice} {currencySymbol}</span>
                         </button>
                       </li>
                     ))}

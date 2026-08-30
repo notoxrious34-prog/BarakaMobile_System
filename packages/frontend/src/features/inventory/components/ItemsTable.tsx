@@ -1,6 +1,7 @@
 import { Pencil, Trash2, ArrowUpDown } from 'lucide-react';
 import type { Item } from '../hooks/useInventory';
 import { useItemStockQuery } from '../hooks/useInventory';
+import { useInvoiceSettings } from '@/features/settings/hooks/useInvoiceSettings';
 import { StockBadge } from './StockBadge';
 
 type Props = {
@@ -22,6 +23,8 @@ function ItemRow({
   onDeactivate: (id: string) => void;
 }) {
   const { data: stockData, isLoading } = useItemStockQuery(item.id);
+  const { data: settingsData } = useInvoiceSettings();
+  const currencySymbol = settingsData?.currency_symbol ?? 'د.ج';
   const stock = stockData?.currentStock ?? item.currentStock ?? 0;
   const isInactive = !item.isActive;
 
@@ -34,10 +37,10 @@ function ItemRow({
         {item.sku ?? '—'}
       </td>
       <td className="px-4 py-3 text-zinc-700" dir="ltr">
-        {Number(item.costPrice).toFixed(2)} DZD
+        {Number(item.costPrice).toFixed(2)} {currencySymbol}
       </td>
       <td className="px-4 py-3 text-zinc-700" dir="ltr">
-        {Number(item.sellingPrice).toFixed(2)} DZD
+        {Number(item.sellingPrice).toFixed(2)} {currencySymbol}
       </td>
       <td className="px-4 py-3">
         {isLoading ? (

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { RefreshCw } from 'lucide-react';
 import { useDashboard } from '@/features/reports/hooks/useDashboard';
+import { useInvoiceSettings } from '@/features/settings/hooks/useInvoiceSettings';
 import { ErrorState } from '@/components/feedback/ErrorState';
 
 const TX_TYPE_LABEL: Record<string, string> = {
@@ -12,11 +13,11 @@ const TX_TYPE_LABEL: Record<string, string> = {
   OFFSET: 'تسوية',
 };
 
-function formatMoney(value: string | number | undefined | null): string {
-  if (value === undefined || value === null || value === '') return '0.00 د.ج';
+function formatMoney(value: string | number | undefined | null, currencySymbol: string): string {
+  if (value === undefined || value === null || value === '') return `0.00 ${currencySymbol}`;
   const n = Number(value);
-  if (Number.isNaN(n)) return '0.00 د.ج';
-  return `${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} د.ج`;
+  if (Number.isNaN(n)) return `0.00 ${currencySymbol}`;
+  return `${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currencySymbol}`;
 }
 
 function SkeletonCard() {
@@ -90,6 +91,8 @@ function NetPositionTone(value: string): string {
 
 export function Dashboard() {
   const { data, isLoading, isError, refetch, dataUpdatedAt } = useDashboard();
+  const { data: settingsData } = useInvoiceSettings();
+  const currencySymbol = settingsData?.currency_symbol ?? 'د.ج';
   const [nowTick, setNowTick] = useState(() => Date.now());
 
   useEffect(() => {
@@ -147,15 +150,15 @@ export function Dashboard() {
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
             <p className="text-xs font-medium text-zinc-500">رأس المال الكلي</p>
-            <p className="mt-1 text-lg font-bold text-zinc-900" dir="ltr">{formatMoney(data.capital.totalCapital)}</p>
+            <p className="mt-1 text-lg font-bold text-zinc-900" dir="ltr">{formatMoney(data.capital.totalCapital, currencySymbol)}</p>
           </div>
           <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
             <p className="text-xs font-medium text-zinc-500">النقد والمديونيات</p>
-            <p className="mt-1 text-lg font-bold text-zinc-900" dir="ltr">{formatMoney(data.capital.cashAndReceivables)}</p>
+            <p className="mt-1 text-lg font-bold text-zinc-900" dir="ltr">{formatMoney(data.capital.cashAndReceivables, currencySymbol)}</p>
           </div>
           <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
             <p className="text-xs font-medium text-zinc-500">قيمة المخزون</p>
-            <p className="mt-1 text-lg font-bold text-zinc-900" dir="ltr">{formatMoney(data.capital.stockValue)}</p>
+            <p className="mt-1 text-lg font-bold text-zinc-900" dir="ltr">{formatMoney(data.capital.stockValue, currencySymbol)}</p>
           </div>
         </div>
       </section>
@@ -166,19 +169,19 @@ export function Dashboard() {
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
             <p className="text-xs font-medium text-zinc-500">أرباح اليوم — الإجمالي</p>
-            <p className="mt-1 text-lg font-bold text-zinc-900" dir="ltr">{formatMoney(data.todayProfit.totalProfit)}</p>
+            <p className="mt-1 text-lg font-bold text-zinc-900" dir="ltr">{formatMoney(data.todayProfit.totalProfit, currencySymbol)}</p>
           </div>
           <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
             <p className="text-xs font-medium text-zinc-500">أرباح اليوم — الخدمات</p>
-            <p className="mt-1 text-lg font-bold text-zinc-900" dir="ltr">{formatMoney(data.todayProfit.serviceProfit)}</p>
+            <p className="mt-1 text-lg font-bold text-zinc-900" dir="ltr">{formatMoney(data.todayProfit.serviceProfit, currencySymbol)}</p>
           </div>
           <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
             <p className="text-xs font-medium text-zinc-500">أرباح الشهر — الإجمالي</p>
-            <p className="mt-1 text-lg font-bold text-zinc-900" dir="ltr">{formatMoney(data.monthProfit.totalProfit)}</p>
+            <p className="mt-1 text-lg font-bold text-zinc-900" dir="ltr">{formatMoney(data.monthProfit.totalProfit, currencySymbol)}</p>
           </div>
           <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
             <p className="text-xs font-medium text-zinc-500">أرباح الشهر — الخدمات</p>
-            <p className="mt-1 text-lg font-bold text-zinc-900" dir="ltr">{formatMoney(data.monthProfit.serviceProfit)}</p>
+            <p className="mt-1 text-lg font-bold text-zinc-900" dir="ltr">{formatMoney(data.monthProfit.serviceProfit, currencySymbol)}</p>
           </div>
         </div>
       </section>
@@ -189,15 +192,15 @@ export function Dashboard() {
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
             <p className="text-xs font-medium text-zinc-500">ديون العملاء (ما يدينون لنا)</p>
-            <p className="mt-1 text-lg font-bold text-zinc-900" dir="ltr">{formatMoney(data.debts.totalCustomerDebt)}</p>
+            <p className="mt-1 text-lg font-bold text-zinc-900" dir="ltr">{formatMoney(data.debts.totalCustomerDebt, currencySymbol)}</p>
           </div>
           <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
             <p className="text-xs font-medium text-zinc-500">ديون الموردين (ما ندين لهم)</p>
-            <p className="mt-1 text-lg font-bold text-zinc-900" dir="ltr">{formatMoney(data.debts.totalSupplierDebt)}</p>
+            <p className="mt-1 text-lg font-bold text-zinc-900" dir="ltr">{formatMoney(data.debts.totalSupplierDebt, currencySymbol)}</p>
           </div>
           <div className={`rounded-lg border p-4 shadow-sm ${NetPositionTone(data.debts.netPosition)}`}>
             <p className="text-xs font-medium opacity-70">الوضع الصافي</p>
-            <p className="mt-1 text-lg font-bold" dir="ltr">{formatMoney(data.debts.netPosition)}</p>
+            <p className="mt-1 text-lg font-bold" dir="ltr">{formatMoney(data.debts.netPosition, currencySymbol)}</p>
           </div>
         </div>
       </section>
@@ -257,7 +260,7 @@ export function Dashboard() {
                 data.recentTransactions.map((tx) => (
                   <tr key={tx.id} className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50">
                     <td className="px-4 py-3 text-zinc-900">{TX_TYPE_LABEL[tx.type] ?? tx.type}</td>
-                    <td className="px-4 py-3 text-zinc-900" dir="ltr">{formatMoney(tx.totalAmount)}</td>
+                    <td className="px-4 py-3 text-zinc-900" dir="ltr">{formatMoney(tx.totalAmount, currencySymbol)}</td>
                     <td className="px-4 py-3 text-zinc-700">{tx.contactName}</td>
                     <td className="px-4 py-3 text-zinc-600" dir="ltr">{new Date(tx.createdAt).toLocaleString('ar-DZ')}</td>
                   </tr>

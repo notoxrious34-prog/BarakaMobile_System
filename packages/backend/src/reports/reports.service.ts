@@ -339,9 +339,19 @@ export class ReportsService {
     const totalItems = items.length;
     let lowStockItems = 0;
     let outOfStockItems = 0;
+    let lowStockThreshold = 5;
+    try {
+      const row = await (this.prisma as any).setting.findUnique({ where: { key: 'low_stock_threshold' } });
+      if (row?.value) {
+        const parsed = parseInt(row.value, 10);
+        if (!Number.isNaN(parsed) && parsed >= 0) lowStockThreshold = parsed;
+      }
+    } catch {
+      // fallback to default 5 on any error — never throw from summary
+    }
     for (const item of items) {
       const stock = await this.computeStock(item.id);
-      if (stock <= 5) lowStockItems++;
+      if (stock <= lowStockThreshold) lowStockItems++;
       if (stock === 0) outOfStockItems++;
     }
 
