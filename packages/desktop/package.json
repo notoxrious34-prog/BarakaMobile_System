@@ -1,6 +1,8 @@
 {
   "name": "@barakamobile/desktop",
   "version": "0.1.0",
+  "description": "BarakaMobile Desktop - Retail POS System",
+  "author": "BarakaMobile <dev@barakamobile.local>",
   "private": true,
   "main": "dist/main.js",
   "scripts": {
@@ -8,30 +10,11 @@
     "build": "tsc -p tsconfig.json",
     "start": "electron dist/main.js"
   },
-  "dependencies": {
-    "electron": "^33.2.0"
-  },
   "devDependencies": {
     "@types/node": "^20.11.0",
-    "@types/electron": "^1.6.10",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
     "tsx": "^4.7.0",
     "typescript": "^5.6.3"
-  },
-  "build": {
-    "appId": "com.barakamobile.app",
-    "productName": "BarakaMobile",
-    "target": "nsis",
-    "directories": {
-      "output": "../../dist-electron"
-    },
-    "files": [
-      "dist/**",
-      "../../packages/backend/dist/**",
-      "../../packages/frontend/dist/**",
-      "node_modules/**"
-    ],
-    "win": {
-      "target": "nsis"
-    }
   }
 }

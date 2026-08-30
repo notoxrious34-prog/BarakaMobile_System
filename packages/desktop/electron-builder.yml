@@ -2,16 +2,42 @@ appId: com.barakamobile.app
 productName: BarakaMobile
 directories:
   output: ../../dist-electron
+  buildResources: build
 files:
   - dist/**
-  - ../../packages/backend/dist/**
-  - ../../packages/frontend/dist/**
-  - node_modules/**
+  - "!**/*.ts"
+  - "!**/*.map"
+  - package.json
+extraResources:
+  - from: ../../packages/backend/bundle_out
+    to: backend
+    filter:
+      - "**/*"
+  - from: ../../packages/frontend/dist
+    to: frontend/dist
+    filter:
+      - "**/*"
+  - from: ../../packages/backend/node_modules/.prisma/client
+    to: backend/prisma-client
+    filter:
+      - "**/*"
+  - from: ../../packages/backend/prisma/dev.db
+    to: backend/prisma/dev.db
+  - from: ../../packages/backend/prisma/schema.prisma
+    to: backend/prisma/schema.prisma
+  - from: "__NODE_EXE_PATH__"
+    to: node/node.exe
+asar: true
+asarUnpack: []
 win:
   target: nsis
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: BarakaMobile
   installerLanguages:
     - ar
     - en
+  artifactName: BarakaMobile-Setup-${version}-${arch}.${ext}

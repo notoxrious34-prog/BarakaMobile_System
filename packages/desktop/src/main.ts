@@ -1,5 +1,6 @@
 import { app, BrowserWindow, shell, dialog, ipcMain } from 'electron';
 import * as path from 'path';
+import * as fs from 'fs';
 import { spawn, ChildProcess } from 'child_process';
 
 let backendProcess: ChildProcess | null = null;
@@ -7,24 +8,93 @@ let mainWindow: BrowserWindow | null = null;
 
 function resolveBackendPath(): string {
   if (app.isPackaged) {
-    // In production: resources/backend/dist/main.js relative to app.getAppPath()
-    return path.join(process.resourcesPath, 'backend', 'dist', 'main.js');
+    return path.join(process.resourcesPath, 'backend', 'index.js');
   } else {
-    // In development: packages/backend/dist/main.js relative to project root
-    return path.join(__dirname, '..', '..', 'packages', 'backend', 'dist', 'main.js');
+    return path.join(__dirname, '..', '..', 'packages', 'backend', 'bundle_out', 'index.js');
+  }
+}
+
+function resolveFrontendPath(): string {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, 'frontend', 'dist', 'index.html');
+  } else {
+    return 'http://localhost:5173';
+  }
+}
+
+function resolveNodeExecutable(): string {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, 'node', 'node.exe');
+  }
+  return 'node';
+}
+
+function getDatabaseUrl(): string {
+  if (app.isPackaged) {
+    const userDataPath = app.getPath('userData');
+    if (!fs.existsSync(userDataPath)) {
+      fs.mkdirSync(userDataPath, { recursive: true });
+    }
+    const dbPath = path.join(userDataPath, 'barakamobile.db');
+    if (!fs.existsSync(dbPath)) {
+      const bundledDb = path.join(process.resourcesPath, 'backend', 'prisma', 'dev.db');
+      try {
+        if (fs.existsSync(bundledDb)) {
+          fs.copyFileSync(bundledDb, dbPath);
+          console.log(`[Desktop] Seeded database to ${dbPath}`);
+        }
+      } catch (e) {
+        console.warn('[Desktop] Failed to seed database:', e);
+      }
+    }
+    const normalized = dbPath.replace(/\\/g, '/');
+    return `file:${normalized}`;
+  } else {
+    return 'file:./dev.db';
   }
 }
 
 function spawnBackend(): Promise<void> {
   return new Promise((resolve, reject) => {
     const backendPath = resolveBackendPath();
-    const env = { ...process.env, PORT: '3001' };
+    const databaseUrl = getDatabaseUrl();
+    const nodeExecutable = resolveNodeExecutable();
+    const prismaEnginePath = app.isPackaged
+      ? path.join(process.resourcesPath, 'backend', 'prisma-client', 'query_engine-windows.dll.node')
+      : '';
+    const env: NodeJS.ProcessEnv = {
+      ...process.env,
+      PORT: '3001',
+      DATABASE_URL: databaseUrl,
+      ...(prismaEnginePath ? { PRISMA_QUERY_ENGINE_LIBRARY: prismaEnginePath } : {}),
+    };
+    let logPath: string | null = null;
+    let stdioOption: any = app.isPackaged ? 'ignore' : 'inherit';
+
+    if (app.isPackaged) {
+      logPath = path.join(app.getPath('userData'), 'backend.log');
+      try {
+        // Overwrite on each launch for simplicity
+        fs.writeFileSync(logPath, `BarakaMobile backend log — ${new Date().toISOString()}\n`, 'utf8');
+      } catch {}
+      try {
+        const logFd = fs.openSync(logPath, 'a');
+        stdioOption = ['ignore', logFd, logFd];
+      } catch (e) {
+        console.warn('[Desktop] Failed to open backend log file:', e);
+        stdioOption = 'ignore';
+      }
+    }
 
     console.log(`[Desktop] Spawning backend from: ${backendPath}`);
+    console.log(`[Desktop] Using node: ${nodeExecutable}`);
+    console.log(`[Desktop] DATABASE_URL: ${databaseUrl}`);
+    if (prismaEnginePath) console.log(`[Desktop] PRISMA_QUERY_ENGINE_LIBRARY: ${prismaEnginePath}`);
+    if (logPath) console.log(`[Desktop] Backend log: ${logPath}`);
 
-    const child = spawn('node', [backendPath], {
+    const child = spawn(nodeExecutable, [backendPath], {
       env,
-      stdio: app.isPackaged ? 'ignore' : 'inherit',
+      stdio: stdioOption,
       detached: false,
     });
 
@@ -40,7 +110,6 @@ function spawnBackend(): Promise<void> {
       backendProcess = null;
     });
 
-    // Wait for backend health check
     const startTime = Date.now();
     const timeoutMs = 30000;
     const pollIntervalMs = 500;
@@ -58,7 +127,8 @@ function spawnBackend(): Promise<void> {
       }
 
       if (Date.now() - startTime > timeoutMs) {
-        reject(new Error('Backend failed to start within 30 seconds'));
+        const suffix = logPath ? `. Check the log file at: ${logPath} for details.` : '';
+        reject(new Error(`Backend failed to start within 30 seconds${suffix}`));
         return;
       }
 
@@ -72,11 +142,14 @@ function spawnBackend(): Promise<void> {
 function killBackend(): void {
   if (backendProcess) {
     console.log('[Desktop] Killing backend process...');
-    backendProcess.kill('SIGTERM');
-    // Force kill after 3 seconds
+    try {
+      backendProcess.kill('SIGTERM');
+    } catch {}
     setTimeout(() => {
       if (backendProcess && !backendProcess.killed) {
-        backendProcess.kill('SIGKILL');
+        try {
+          backendProcess.kill('SIGKILL');
+        } catch {}
       }
     }, 3000);
     backendProcess = null;
@@ -108,15 +181,12 @@ async function createWindow(): Promise<void> {
     mainWindow = null;
   });
 
-  // Handle external links
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
     return { action: 'deny' };
   });
 
-  const loadUrl = app.isPackaged
-    ? path.join(process.resourcesPath, 'frontend', 'dist', 'index.html')
-    : 'http://localhost:5173';
+  const loadUrl = resolveFrontendPath();
 
   console.log(`[Desktop] Loading frontend from: ${loadUrl}`);
 
@@ -129,13 +199,12 @@ async function createWindow(): Promise<void> {
 
 app.whenReady().then(async () => {
   try {
-    // Setup IPC for preload
     ipcMain.handle('get-version', () => app.getVersion());
 
-    // Start backend
-    await spawnBackend();
+    if (app.isPackaged) {
+      await spawnBackend();
+    }
 
-    // Create window after backend is ready
     await createWindow();
 
     app.on('activate', async () => {
@@ -154,7 +223,6 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => {
-  // On Windows, quit when all windows closed
   app.quit();
 });
 
@@ -162,7 +230,6 @@ app.on('will-quit', () => {
   killBackend();
 });
 
-// Ensure backend is killed on any exit
 process.on('exit', killBackend);
 process.on('SIGINT', () => {
   killBackend();
