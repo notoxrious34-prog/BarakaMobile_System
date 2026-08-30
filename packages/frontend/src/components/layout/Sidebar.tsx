@@ -6,6 +6,7 @@ import {
   Wrench,
   Receipt,
   BarChart3,
+  Settings,
   PanelRightClose,
   PanelRightOpen,
 } from 'lucide-react';
@@ -24,6 +25,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/services', label: 'الخدمات', icon: Wrench },
   { to: '/transactions', label: 'المعاملات', icon: Receipt },
   { to: '/reports', label: 'التقارير', icon: BarChart3 },
+  { to: '/settings', label: 'الإعدادات', icon: Settings },
 ];
 
 export function Sidebar() {

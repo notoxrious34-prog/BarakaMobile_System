@@ -6,6 +6,7 @@ import { InventoryPage } from '@/pages/InventoryPage';
 import { ServicesPage } from '@/pages/ServicesPage';
 import { TransactionsPage } from '@/pages/TransactionsPage';
 import { ReportsPage } from '@/pages/ReportsPage';
+import { SettingsPage } from '@/pages/SettingsPage';
 import { NotFound } from '@/pages/NotFound';
 
 export default function App() {
@@ -18,6 +19,7 @@ export default function App() {
         <Route path="services" element={<ServicesPage />} />
         <Route path="transactions" element={<TransactionsPage />} />
         <Route path="reports" element={<ReportsPage />} />
+        <Route path="settings" element={<SettingsPage />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
