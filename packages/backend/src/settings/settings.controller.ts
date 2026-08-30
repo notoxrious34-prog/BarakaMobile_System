@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Query } from '@nestjs/common';
 import { SettingsService } from './settings.service';
 import { UpdateSettingDto } from './dto/update-setting.dto';
 
@@ -9,6 +9,17 @@ export class SettingsController {
   @Get()
   getAll() {
     return this.settingsService.getAll();
+  }
+
+  @Get('bulk')
+  getBulk(@Query('keys') keys: string) {
+    const keyList = keys
+      ? keys
+          .split(',')
+          .map((k) => k.trim())
+          .filter((k) => k.length > 0)
+      : [];
+    return this.settingsService.getBulk(keyList);
   }
 
   @Patch()

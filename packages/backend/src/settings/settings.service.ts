@@ -22,6 +22,21 @@ export class SettingsService {
     return row.value;
   }
 
+  async getBulk(keys: string[]): Promise<Record<string, string>> {
+    const rows = await (this.prisma as any).setting.findMany({
+      where: { key: { in: keys } },
+    });
+    const map: Record<string, string> = {};
+    for (const row of rows) {
+      map[row.key] = row.value;
+    }
+    const result: Record<string, string> = {};
+    for (const key of keys) {
+      result[key] = map[key] ?? '';
+    }
+    return result;
+  }
+
   async update(key: string, value: string): Promise<{ key: string; value: string; updatedAt: Date }> {
     const row = await (this.prisma as any).setting.upsert({
       where: { key },

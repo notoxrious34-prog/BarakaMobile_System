@@ -5,6 +5,7 @@ import { EmptyState } from '@/components/feedback/EmptyState';
 import { useTransactionsQuery } from '@/features/transactions/hooks/useTransactions';
 import { TransactionsList } from '@/features/transactions/components/TransactionsList';
 import { TransactionDetail } from '@/features/transactions/components/TransactionDetail';
+import { InvoicePrintModal } from '@/features/transactions/components/InvoicePrintModal';
 import { SaleForm } from '@/features/transactions/components/SaleForm';
 import { PurchaseForm } from '@/features/transactions/components/PurchaseForm';
 import { PaymentForm } from '@/features/transactions/components/PaymentForm';
@@ -26,13 +27,13 @@ export function TransactionsPage() {
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [offsetOpen, setOffsetOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [printId, setPrintId] = useState<string | null>(null);
 
   const contactNameMap = useMemo(() => {
     const map: Record<string, string> = {};
     contacts?.forEach((c) => {
       map[c.id] = c.name;
     });
-    // Also map accountId -> contact name via transactions' account.contactId if needed, but we have contactId
     transactions?.forEach((tx) => {
       const cid = (tx as unknown as { account?: { contactId: string } }).account?.contactId;
       if (cid && contacts?.find((c) => c.id === cid)) {
@@ -103,7 +104,7 @@ export function TransactionsPage() {
       ) : !transactions || transactions.length === 0 ? (
         <EmptyState title="لا توجد معاملات" message="ابدأ بإنشاء عملية بيع أو شراء أو دفع." />
       ) : (
-        <TransactionsList transactions={transactions} contactNameMap={contactNameMap} onView={setDetailId} />
+        <TransactionsList transactions={transactions} contactNameMap={contactNameMap} onView={setDetailId} onPrint={setPrintId} />
       )}
 
       <SaleForm open={saleOpen} onClose={() => setSaleOpen(false)} />
@@ -116,6 +117,7 @@ export function TransactionsPage() {
         onClose={() => setDetailId(null)}
         contactName={detailContactName}
       />
+      <InvoicePrintModal transactionId={printId} onClose={() => setPrintId(null)} />
     </div>
   );
 }

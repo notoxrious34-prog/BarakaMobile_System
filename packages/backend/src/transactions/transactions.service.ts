@@ -433,7 +433,7 @@ export class TransactionsService {
         ledgerEntries: true,
         itemLines: { include: { item: true } },
         serviceLines: { include: { service: true } },
-        account: true,
+        account: { include: { contact: true } },
       },
     });
     if (!tx) {
