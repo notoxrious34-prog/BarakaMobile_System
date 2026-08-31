@@ -7,6 +7,7 @@ export type TransactionDetail = {
   amount: string;
   note: string | null;
   reference: string | null;
+  invoiceNumber: string | null;
   createdAt: string;
   account: {
     id: string;
