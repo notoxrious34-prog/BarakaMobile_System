@@ -82,15 +82,17 @@ export function TransactionsList({ transactions, contactNameMap, onView, onPrint
                     >
                       <Eye className="h-4 w-4" aria-hidden="true" />
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => onPrint?.(tx.id)}
-                      aria-label={`طباعة ${tx.id}`}
-                      title="طباعة الفاتورة"
-                      className="rounded-md p-2 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
-                    >
-                      <Printer className="h-4 w-4" aria-hidden="true" />
-                    </button>
+                    {tx.type === 'SALE' && tx.invoiceNumber ? (
+                      <button
+                        type="button"
+                        onClick={() => onPrint?.(tx.id)}
+                        aria-label={`طباعة ${tx.id}`}
+                        title="طباعة الفاتورة"
+                        className="rounded-md p-2 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
+                      >
+                        <Printer className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                    ) : null}
                   </div>
                 </td>
               </tr>

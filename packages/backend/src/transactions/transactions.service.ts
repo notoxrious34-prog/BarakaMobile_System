@@ -149,6 +149,23 @@ export class TransactionsService {
         }
       }
 
+      // Invoice numbering (SALE only, atomic inside this $transaction per AD-9/AD-25)
+      let computedInvoiceNumber: string | null = null;
+      if (dto.type === TransactionType.SALE) {
+        const seqSetting = await (tx as any).setting.findUnique({
+          where: { key: 'invoice_sequence_next' },
+        });
+        const currentSeqStr: string = seqSetting?.value ?? '1';
+        const currentSeq = Number.parseInt(currentSeqStr, 10);
+        const seq = Number.isNaN(currentSeq) || currentSeq < 1 ? 1 : currentSeq;
+        computedInvoiceNumber = `INV-${String(seq).padStart(6, '0')}`;
+        await (tx as any).setting.upsert({
+          where: { key: 'invoice_sequence_next' },
+          update: { value: String(seq + 1) },
+          create: { key: 'invoice_sequence_next', value: String(seq + 1) },
+        });
+      }
+
       // Create Transaction
       const transaction = await (tx as any).transaction.create({
         data: {
@@ -157,6 +174,7 @@ export class TransactionsService {
           amount: normalizedAmount,
           note: dto.note,
           reference: dto.reference,
+          ...(computedInvoiceNumber ? { invoiceNumber: computedInvoiceNumber } : {}),
         },
       });
 

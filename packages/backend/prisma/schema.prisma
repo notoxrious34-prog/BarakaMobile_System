@@ -122,6 +122,7 @@ model Transaction {
   note           String?
   reference      String?
   reversalOf     String?
+  invoiceNumber  String?              @unique
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
   account        Account              @relation(fields: [accountId], references: [id])

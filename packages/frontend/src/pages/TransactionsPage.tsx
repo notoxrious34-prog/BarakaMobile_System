@@ -5,7 +5,7 @@ import { EmptyState } from '@/components/feedback/EmptyState';
 import { useTransactionsQuery } from '@/features/transactions/hooks/useTransactions';
 import { TransactionsList } from '@/features/transactions/components/TransactionsList';
 import { TransactionDetail } from '@/features/transactions/components/TransactionDetail';
-import { InvoicePrintModal } from '@/features/transactions/components/InvoicePrintModal';
+import { InvoiceDocument } from '@/features/invoices/InvoiceDocument';
 import { SaleForm } from '@/features/transactions/components/SaleForm';
 import { PurchaseForm } from '@/features/transactions/components/PurchaseForm';
 import { PaymentForm } from '@/features/transactions/components/PaymentForm';
@@ -117,7 +117,7 @@ export function TransactionsPage() {
         onClose={() => setDetailId(null)}
         contactName={detailContactName}
       />
-      <InvoicePrintModal transactionId={printId} onClose={() => setPrintId(null)} />
+      <InvoiceDocument transactionId={printId} onClose={() => setPrintId(null)} />
     </div>
   );
 }

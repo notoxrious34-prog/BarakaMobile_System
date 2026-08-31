@@ -4,6 +4,7 @@ import { ApiError } from '@/lib/api';
 import { useCreateSaleMutation, useAccountsByContactQuery } from '../hooks/useTransactions';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { InvoiceDocument } from '@/features/invoices/InvoiceDocument';
 
 type Contact = { id: string; name: string; role: string };
 type Item = { id: string; name: string; sellingPrice: string };
@@ -46,6 +47,7 @@ export function SaleForm({ open, onClose }: Props) {
   const [serviceRows, setServiceRows] = useState<Array<{ serviceId: string; amount: string }>>([]);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [apiError, setApiError] = useState<string | null>(null);
+  const [invoiceId, setInvoiceId] = useState<string | null>(null);
 
   const { data: accounts } = useAccountsByContactQuery(contactId);
 
@@ -59,6 +61,11 @@ export function SaleForm({ open, onClose }: Props) {
       setApiError(null);
     }
   }, [open]);
+
+  // Show invoice document when a sale was just created
+  if (invoiceId) {
+    return <InvoiceDocument transactionId={invoiceId} onClose={() => { setInvoiceId(null); onClose(); }} />;
+  }
 
   if (!open) return null;
 
@@ -128,15 +135,20 @@ export function SaleForm({ open, onClose }: Props) {
     const amount = Number(totalAmount) > 0 ? totalAmount : '0.00';
 
     try {
-      await createMut.mutateAsync({
+      const result = await createMut.mutateAsync({
         contactId,
         accountId: customerAccount.id,
         amount,
         note: note.trim() || undefined,
         itemLines: itemLines.length > 0 ? itemLines : undefined,
         serviceLines: serviceLines.length > 0 ? serviceLines : undefined,
-      } as never);
-      onClose();
+      } as never) as unknown as { id: string };
+      const newId = (result as { id?: string })?.id;
+      if (newId) {
+        setInvoiceId(newId);
+      } else {
+        onClose();
+      }
     } catch (err) {
       const msg = err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'حدث خطأ غير متوقع';
       setApiError(msg);

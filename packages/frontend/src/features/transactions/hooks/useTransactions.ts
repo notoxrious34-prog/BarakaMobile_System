@@ -35,6 +35,7 @@ export type Transaction = {
   amount: string;
   note: string | null;
   reference?: string | null;
+  invoiceNumber?: string | null;
   isActive?: boolean;
   createdAt: string;
   updatedAt?: string;

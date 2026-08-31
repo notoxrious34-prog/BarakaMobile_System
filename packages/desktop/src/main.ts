@@ -202,6 +202,34 @@ app.whenReady().then(async () => {
   try {
     Menu.setApplicationMenu(null);
     ipcMain.handle('get-version', () => app.getVersion());
+    ipcMain.handle('export-invoice-pdf', async (_event, invoiceNumber?: string) => {
+      if (!mainWindow) {
+        return { success: false, error: 'no window' };
+      }
+      try {
+        const pdfBuffer = await mainWindow.webContents.printToPDF({
+          margins: { top: 0, bottom: 0, left: 0, right: 0 },
+          pageSize: 'A4' as unknown as Record<string, unknown> as any,
+          printBackground: true,
+          preferCSSPageSize: true,
+        } as unknown as Electron.PrintToPDFOptions);
+        const defaultName = invoiceNumber && typeof invoiceNumber === 'string' && invoiceNumber.trim().length > 0
+          ? `${invoiceNumber.trim()}.pdf`
+          : `BarakaMobile-${new Date().toISOString().slice(0, 10)}.pdf`;
+        const { canceled, filePath } = await dialog.showSaveDialog(mainWindow!, {
+          title: 'حفظ الفاتورة كـ PDF',
+          defaultPath: defaultName,
+          filters: [{ name: 'PDF', extensions: ['pdf'] }],
+        });
+        if (canceled || !filePath) {
+          return { success: false, error: 'cancelled' };
+        }
+        fs.writeFileSync(filePath, pdfBuffer);
+        return { success: true, filePath };
+      } catch (err) {
+        return { success: false, error: err instanceof Error ? err.message : String(err) };
+      }
+    });
 
     if (app.isPackaged) {
       await spawnBackend();
