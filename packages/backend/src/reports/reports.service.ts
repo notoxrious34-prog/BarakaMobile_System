@@ -2,10 +2,16 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { MovementType } from '@prisma/client';
 import Decimal from 'decimal.js';
+import { CashService } from '../cash/cash.service';
+import { ExpensesService } from '../expenses/expenses.service';
 
 @Injectable()
 export class ReportsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cashService: CashService,
+    private readonly expensesService: ExpensesService,
+  ) {}
 
   private to2dp(value: string | number | Decimal): string {
     return new Decimal(value).toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2);
@@ -240,12 +246,15 @@ export class ReportsService {
       inventoryValue = inventoryValue.plus(cost.times(stock));
     }
 
-    const netCapital = totalReceivables.minus(totalPayables).plus(inventoryValue);
+    const cash = await this.cashService.getCurrentBalance();
+    const cashInHand = new Decimal(cash.currentBalance);
+    const netCapital = inventoryValue.plus(totalReceivables).plus(cashInHand).minus(totalPayables);
 
     return {
       totalReceivables: this.to2dp(totalReceivables),
       totalPayables: this.to2dp(totalPayables),
       inventoryValue: this.to2dp(inventoryValue),
+      cashInHand: this.to2dp(cashInHand),
       netCapital: this.to2dp(netCapital),
     };
   }
@@ -331,6 +340,17 @@ export class ReportsService {
     const grossProfit = serviceProfit.plus(itemProfit);
     const netProfit = grossProfit;
 
+    // totalExpenses within same range, independent of owner draws
+    let expenseWhere: any = {};
+    if (start) expenseWhere.expenseDate = { ...(expenseWhere.expenseDate ?? {}), gte: start };
+    if (end) expenseWhere.expenseDate = { ...(expenseWhere.expenseDate ?? {}), lte: end };
+    const expenses = await (this.prisma as any).expense.findMany({ where: expenseWhere });
+    let totalExpenses = new Decimal(0);
+    for (const e of expenses) {
+      totalExpenses = totalExpenses.plus(new Decimal(e.amount));
+    }
+    const netProfitAfterExpenses = grossProfit.minus(totalExpenses);
+
     let grossMarginPct = '0.00';
     if (!totalRevenue.eq(0)) {
       grossMarginPct = grossProfit.div(totalRevenue).times(100).toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2);
@@ -343,6 +363,8 @@ export class ReportsService {
       itemProfit: this.to2dp(itemProfit),
       grossProfit: this.to2dp(grossProfit),
       netProfit: this.to2dp(netProfit),
+      totalExpenses: this.to2dp(totalExpenses),
+      netProfitAfterExpenses: this.to2dp(netProfitAfterExpenses),
       grossMarginPct,
     };
   }
@@ -467,7 +489,6 @@ export class ReportsService {
         if (!Number.isNaN(parsed) && parsed >= 0) lowStockThreshold = parsed;
       }
     } catch {}
-
     for (const item of items) {
       const stock = await this.computeStock(item.id);
       if (stock <= lowStockThreshold) lowStockItems++;
@@ -498,29 +519,45 @@ export class ReportsService {
         cashAndReceivables: this.to2dp(cashAndReceivables),
         stockValue: this.to2dp(stockValue),
       },
-      todayProfit: {
-        totalProfit: this.to2dp(todayProfitData.totalProfit),
-        serviceProfit: this.to2dp(todayProfitData.serviceProfit),
-        itemProfit: this.to2dp(todayProfitData.itemProfit),
+      profit: {
+        todayProfit: {
+          totalProfit: this.to2dp(todayProfitData.totalProfit),
+          serviceProfit: this.to2dp(todayProfitData.serviceProfit),
+          itemProfit: this.to2dp(todayProfitData.itemProfit),
+        },
+        monthProfit: {
+          totalProfit: this.to2dp(monthProfitData.totalProfit),
+          serviceProfit: this.to2dp(monthProfitData.serviceProfit),
+          itemProfit: this.to2dp(monthProfitData.itemProfit),
+        },
       },
-      monthProfit: {
-        totalProfit: this.to2dp(monthProfitData.totalProfit),
-        serviceProfit: this.to2dp(monthProfitData.serviceProfit),
-        itemProfit: this.to2dp(monthProfitData.itemProfit),
+      sales: {
+        salesCount,
+        salesVolume: this.to2dp(salesVolume),
       },
       debts: {
         totalCustomerDebt: this.to2dp(totalCustomerDebt),
         totalSupplierDebt: this.to2dp(totalSupplierDebt),
-        netPosition: this.to2dp(netPosition),
+        netPosition,
       },
       inventory: {
         totalItems,
         lowStockItems,
         outOfStockItems,
       },
-      salesCount,
-      salesVolume: this.to2dp(salesVolume),
       recentTransactions,
+    };
+  }
+
+  async getExpenseReport(startDate?: string, endDate?: string) {
+    const breakdown = await this.expensesService.getExpenseBreakdown(startDate, endDate);
+    let totalExpenses = new Decimal(0);
+    for (const b of breakdown) {
+      totalExpenses = totalExpenses.plus(new Decimal(b.totalAmount));
+    }
+    return {
+      breakdown,
+      totalExpenses: this.to2dp(totalExpenses),
     };
   }
 }

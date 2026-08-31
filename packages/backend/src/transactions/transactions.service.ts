@@ -6,12 +6,13 @@ import { CreateOffsetDto } from './dto/create-offset.dto';
 import { TransactionType, LedgerEntryType, MovementType } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import Decimal from 'decimal.js';
+import { CashService } from '../cash/cash.service';
 
 type PrismaTx = Prisma.TransactionClient;
 
 @Injectable()
 export class TransactionsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly cashService: CashService) {}
 
   private normalizeAmount(value: string): string {
     return new Decimal(value).toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2);
@@ -48,6 +49,12 @@ export class TransactionsService {
 
   async createTransaction(dto: CreateTransactionDto) {
     const normalizedAmount = this.normalizeAmount(dto.amount);
+    const normalizedPaidNow = this.normalizeAmount(dto.amountPaidNow ?? '0.00');
+    const amountDec = new Decimal(normalizedAmount);
+    const paidDec = new Decimal(normalizedPaidNow);
+    if (paidDec.lt(0) || paidDec.gt(amountDec)) {
+      throw new BadRequestException('المبلغ المدفوع الآن لا يمكن أن يتجاوز المبلغ الإجمالي');
+    }
 
     if (dto.type !== TransactionType.SALE && dto.type !== TransactionType.PURCHASE) {
       throw new BadRequestException('createTransaction only supports SALE and PURCHASE');
@@ -62,7 +69,6 @@ export class TransactionsService {
         throw new NotFoundException(`Account with id ${dto.accountId} not found`);
       }
 
-      // Role validation
       if (dto.type === TransactionType.SALE && account.role !== 'CUSTOMER') {
         throw new BadRequestException('SALE requires CUSTOMER account');
       }
@@ -74,7 +80,6 @@ export class TransactionsService {
         throw new BadRequestException('serviceLines not allowed for PURCHASE');
       }
 
-      // Pre-validate item lines and service lines and compute stock checks
       const itemLinesData: Array<{
         itemId: string;
         quantity: number;
@@ -132,10 +137,8 @@ export class TransactionsService {
           let profit: string;
           if (service.pricingType === 'FIXED') {
             profit = service.fixedProfit ?? '0.00';
-            // Ensure normalized 2dp
             profit = new Decimal(profit).toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2);
           } else {
-            // COMMISSION
             const pct = service.commissionPct ?? '0.0000';
             profit = new Decimal(amount)
               .times(new Decimal(pct))
@@ -151,7 +154,6 @@ export class TransactionsService {
         }
       }
 
-      // Invoice numbering (SALE only, atomic inside this $transaction per AD-9/AD-25)
       let computedInvoiceNumber: string | null = null;
       if (dto.type === TransactionType.SALE) {
         const seqSetting = await (tx as any).setting.findUnique({
@@ -168,19 +170,18 @@ export class TransactionsService {
         });
       }
 
-      // Create Transaction
       const transaction = await (tx as any).transaction.create({
         data: {
           type: dto.type,
           accountId: dto.accountId,
           amount: normalizedAmount,
+          amountPaidNow: normalizedPaidNow,
           note: dto.note,
           reference: dto.reference,
           ...(computedInvoiceNumber ? { invoiceNumber: computedInvoiceNumber } : {}),
         },
       });
 
-      // Ledger posting
       const currentBalanceStr: string = account.currentBalance;
       const currentBalance = new Decimal(currentBalanceStr);
       const txAmount = new Decimal(normalizedAmount);
@@ -191,7 +192,6 @@ export class TransactionsService {
         entryType = LedgerEntryType.DEBIT;
         balanceAfter = currentBalance.plus(txAmount);
       } else {
-        // PURCHASE
         entryType = LedgerEntryType.CREDIT;
         balanceAfter = currentBalance.plus(txAmount);
       }
@@ -209,12 +209,65 @@ export class TransactionsService {
         },
       });
 
+      let currentBalStrForPaid = balanceAfterStr;
+      let currentBalDecForPaid = balanceAfter;
+
+      if (paidDec.gt(0)) {
+        if (dto.type === TransactionType.SALE) {
+          const paidEntryType = LedgerEntryType.CREDIT;
+          const paidBalanceAfter = currentBalDecForPaid.minus(paidDec);
+          const paidAfterStr = paidBalanceAfter.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2);
+          await (tx as any).ledgerEntry.create({
+            data: {
+              transactionId: transaction.id,
+              accountId: account.id,
+              entryType: paidEntryType,
+              amount: normalizedPaidNow,
+              balanceBefore: currentBalStrForPaid,
+              balanceAfter: paidAfterStr,
+            },
+          });
+          currentBalStrForPaid = paidAfterStr;
+          currentBalDecForPaid = paidBalanceAfter;
+          await this.cashService.postCashMovement(tx, {
+            type: 'IN',
+            category: 'SALE_PAYMENT',
+            amount: normalizedPaidNow,
+            relatedTransactionId: transaction.id,
+            note: dto.note,
+          });
+        } else {
+          // PURCHASE
+          const paidEntryType = LedgerEntryType.DEBIT;
+          const paidBalanceAfter = currentBalDecForPaid.minus(paidDec);
+          const paidAfterStr = paidBalanceAfter.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2);
+          await (tx as any).ledgerEntry.create({
+            data: {
+              transactionId: transaction.id,
+              accountId: account.id,
+              entryType: paidEntryType,
+              amount: normalizedPaidNow,
+              balanceBefore: currentBalStrForPaid,
+              balanceAfter: paidAfterStr,
+            },
+          });
+          currentBalStrForPaid = paidAfterStr;
+          currentBalDecForPaid = paidBalanceAfter;
+          await this.cashService.postCashMovement(tx, {
+            type: 'OUT',
+            category: 'PURCHASE_PAYMENT',
+            amount: normalizedPaidNow,
+            relatedTransactionId: transaction.id,
+            note: dto.note,
+          });
+        }
+      }
+
       await (tx as any).account.update({
         where: { id: account.id },
-        data: { currentBalance: balanceAfterStr },
+        data: { currentBalance: currentBalStrForPaid },
       });
 
-      // Create item lines and stock movements
       for (const line of itemLinesData) {
         await (tx as any).transactionItem.create({
           data: {
@@ -250,7 +303,6 @@ export class TransactionsService {
         }
       }
 
-      // Create service lines
       for (const line of serviceLinesData) {
         await (tx as any).transactionService.create({
           data: {
@@ -262,7 +314,6 @@ export class TransactionsService {
         });
       }
 
-      // Return with relations
       const result = await (tx as any).transaction.findUnique({
         where: { id: transaction.id },
         include: {
@@ -333,6 +384,24 @@ export class TransactionsService {
         },
       });
 
+      if (type === TransactionType.PAYMENT_IN) {
+        await this.cashService.postCashMovement(tx, {
+          type: 'IN',
+          category: 'PAYMENT_IN',
+          amount: normalizedAmount,
+          relatedTransactionId: transaction.id,
+          note: dto.note,
+        });
+      } else {
+        await this.cashService.postCashMovement(tx, {
+          type: 'OUT',
+          category: 'PAYMENT_OUT',
+          amount: normalizedAmount,
+          relatedTransactionId: transaction.id,
+          note: dto.note,
+        });
+      }
+
       await (tx as any).account.update({
         where: { id: account.id },
         data: { currentBalance: balanceAfterStr },
@@ -386,7 +455,6 @@ export class TransactionsService {
         },
       });
 
-      // Entry 1: SUPPLIER DEBIT
       await (tx as any).ledgerEntry.create({
         data: {
           transactionId: transaction.id,
@@ -398,7 +466,6 @@ export class TransactionsService {
         },
       });
 
-      // Entry 2: CUSTOMER CREDIT
       await (tx as any).ledgerEntry.create({
         data: {
           transactionId: transaction.id,

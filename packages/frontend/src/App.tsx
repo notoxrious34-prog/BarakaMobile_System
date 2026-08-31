@@ -5,6 +5,8 @@ import { ContactsPage } from '@/pages/ContactsPage';
 import { InventoryPage } from '@/pages/InventoryPage';
 import { ServicesPage } from '@/pages/ServicesPage';
 import { TransactionsPage } from '@/pages/TransactionsPage';
+import { TreasuryPage } from '@/pages/TreasuryPage';
+import { ExpensesPage } from '@/pages/ExpensesPage';
 import { ReportsPage } from '@/pages/ReportsPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { NotFound } from '@/pages/NotFound';
@@ -18,6 +20,8 @@ export default function App() {
         <Route path="inventory" element={<InventoryPage />} />
         <Route path="services" element={<ServicesPage />} />
         <Route path="transactions" element={<TransactionsPage />} />
+        <Route path="treasury" element={<TreasuryPage />} />
+        <Route path="expenses" element={<ExpensesPage />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="*" element={<NotFound />} />

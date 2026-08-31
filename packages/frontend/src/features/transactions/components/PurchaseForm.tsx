@@ -36,6 +36,7 @@ export function PurchaseForm({ open, onClose }: Props) {
 
   const [contactId, setContactId] = useState('');
   const [note, setNote] = useState('');
+  const [amountPaidNow, setAmountPaidNow] = useState('');
   const [rows, setRows] = useState<Array<{ itemId: string; quantity: string; costPrice: string }>>([
     { itemId: '', quantity: '', costPrice: '' },
   ]);
@@ -48,6 +49,7 @@ export function PurchaseForm({ open, onClose }: Props) {
     if (open) {
       setContactId('');
       setNote('');
+      setAmountPaidNow('');
       setRows([{ itemId: '', quantity: '', costPrice: '' }]);
       setFieldErrors({});
       setApiError(null);
@@ -58,11 +60,19 @@ export function PurchaseForm({ open, onClose }: Props) {
 
   const isSubmitting = createMut.isPending;
   const supplierContacts = contacts?.filter((c) => c.role === 'SUPPLIER' || c.role === 'BOTH') ?? [];
+  const computedTotal = rows.reduce((sum, r) => {
+    const q = Number(r.quantity || 0);
+    const p = Number(r.costPrice || 0);
+    return sum + (q && p ? q * p : 0);
+  }, 0);
+  const remainingDebt = (computedTotal - Number(amountPaidNow || 0)).toFixed(2);
 
   function validate(): boolean {
     const errs: Record<string, string> = {};
     if (!contactId) errs.contactId = 'جهة الاتصال مطلوبة';
     if (rows.length === 0) errs.items = 'يجب إضافة منتج واحد على الأقل';
+    if (amountPaidNow && amountPaidNow.trim() && !/^\d+(\.\d{1,2})?$/.test(amountPaidNow.trim())) errs.amountPaidNow = 'المبلغ المدفوع يجب أن يكون رقمًا صحيحًا';
+    else if (amountPaidNow && Number(amountPaidNow) > computedTotal) errs.amountPaidNow = 'المبلغ المدفوع لا يمكن أن يتجاوز الإجمالي';
     rows.forEach((r, i) => {
       if (!r.itemId) errs[`row_${i}_itemId`] = 'المنتج مطلوب';
       if (!r.quantity.trim()) errs[`row_${i}_quantity`] = 'الكمية مطلوبة';
@@ -98,6 +108,7 @@ export function PurchaseForm({ open, onClose }: Props) {
         contactId,
         accountId: supplierAccount.id,
         amount,
+        amountPaidNow: amountPaidNow.trim() ? Number(amountPaidNow).toFixed(2) : undefined,
         note: note.trim() || undefined,
         itemLines,
       } as never);
@@ -236,6 +247,13 @@ export function PurchaseForm({ open, onClose }: Props) {
                 </div>
               ))}
             </div>
+          </div>
+
+          <div>
+            <label htmlFor="purchase-paid" className="mb-1 block text-sm font-medium text-zinc-700">المبلغ المدفوع الآن</label>
+            <input id="purchase-paid" type="text" inputMode="decimal" placeholder="0.00" value={amountPaidNow} onChange={(e) => setAmountPaidNow(e.target.value)} className={`w-full rounded-md border px-3 py-2 text-sm ${fieldErrors.amountPaidNow ? 'border-red-500' : 'border-zinc-300'}`} dir="ltr" />
+            {fieldErrors.amountPaidNow && <p className="mt-1 text-xs text-red-600">{fieldErrors.amountPaidNow}</p>}
+            <p className="mt-1 text-xs text-zinc-500">المتبقي كدين: {remainingDebt} دج — الإجمالي: {computedTotal.toFixed(2)} دج</p>
           </div>
 
           <div className="flex justify-end gap-2 pt-2">

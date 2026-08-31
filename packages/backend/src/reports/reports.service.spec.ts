@@ -1,6 +1,14 @@
 import { ReportsService } from './reports.service';
 import Decimal from 'decimal.js';
 
+const mockCashService: any = {
+  getCurrentBalance: jest.fn().mockResolvedValue({ currentBalance: '200.00' }),
+};
+
+const mockExpensesService: any = {
+  getExpenseBreakdown: jest.fn().mockResolvedValue([]),
+};
+
 const mockPrisma = {
   account: { findMany: jest.fn() },
   item: { findMany: jest.fn() },
@@ -11,6 +19,7 @@ const mockPrisma = {
   contact: { findMany: jest.fn() },
   setting: { findUnique: jest.fn() },
   ledgerEntry: { findMany: jest.fn() },
+  expense: { findMany: jest.fn() },
 } as any;
 
 describe('ReportsService', () => {
@@ -18,6 +27,8 @@ describe('ReportsService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockCashService.getCurrentBalance.mockResolvedValue({ currentBalance: '200.00' });
+    mockExpensesService.getExpenseBreakdown.mockResolvedValue([]);
     const prismaMock = {
       account: mockPrisma.account,
       item: mockPrisma.item,
@@ -28,20 +39,21 @@ describe('ReportsService', () => {
       contact: mockPrisma.contact,
       setting: mockPrisma.setting,
       ledgerEntry: mockPrisma.ledgerEntry,
+      expense: mockPrisma.expense,
     } as any;
-    service = new ReportsService(prismaMock);
+    service = new ReportsService(prismaMock, mockCashService, mockExpensesService);
   });
 
   describe('getCapital()', () => {
-    it('computes decimal.js precision correctly: inventory + receivables - payables', async () => {
+    it('computes decimal.js precision correctly: inventory + receivables + cashInHand - payables', async () => {
       mockPrisma.account.findMany
         .mockResolvedValueOnce([{ currentBalance: '1000.50', role: 'CUSTOMER', contact: { isActive: true } }])
         .mockResolvedValueOnce([{ currentBalance: '300.25', role: 'SUPPLIER', contact: { isActive: true } }]);
+      mockCashService.getCurrentBalance.mockResolvedValueOnce({ currentBalance: '200.00' });
       mockPrisma.item.findMany.mockResolvedValue([
         { id: 'item1', costPrice: '10.10', isActive: true },
         { id: 'item2', costPrice: '5.05', isActive: true },
       ]);
-      // mock computeStock: item1 stock 3, item2 stock 2
       mockPrisma.stockMovement.findFirst.mockResolvedValue(null);
       mockPrisma.stockMovement.aggregate
         .mockResolvedValueOnce({ _sum: { quantity: 3 } })
@@ -50,45 +62,52 @@ describe('ReportsService', () => {
         .mockResolvedValueOnce({ _sum: { quantity: 0 } });
 
       const result = await service.getCapital();
-      // inventory = 10.10*3 + 5.05*2 = 30.30 + 10.10 = 40.40
-      // netCapital = 1000.50 - 300.25 + 40.40 = 740.65
+      // inventory = 10.10*3 + 5.05*2 = 40.40, cash 200 => net = 1000.50 -300.25 +40.40+200 = 940.65
       expect(result.inventoryValue).toBe('40.40');
       expect(result.totalReceivables).toBe('1000.50');
       expect(result.totalPayables).toBe('300.25');
-      expect(result.netCapital).toBe('740.65');
+      expect(result.cashInHand).toBe('200.00');
+      expect(result.netCapital).toBe('940.65');
     });
 
     it('returns 0.00 values when no data', async () => {
       mockPrisma.account.findMany.mockResolvedValue([]).mockResolvedValue([]);
+      mockCashService.getCurrentBalance.mockResolvedValueOnce({ currentBalance: '0.00' });
       mockPrisma.item.findMany.mockResolvedValue([]);
       const result = await service.getCapital();
       expect(result.totalReceivables).toBe('0.00');
       expect(result.totalPayables).toBe('0.00');
       expect(result.inventoryValue).toBe('0.00');
+      expect(result.cashInHand).toBe('0.00');
       expect(result.netCapital).toBe('0.00');
+    });
+
+    it('netCapital includes cashInHand additive', async () => {
+      mockPrisma.account.findMany.mockResolvedValue([]).mockResolvedValue([]);
+      mockPrisma.item.findMany.mockResolvedValue([]);
+      mockCashService.getCurrentBalance.mockResolvedValueOnce({ currentBalance: '500.00' });
+      const result = await service.getCapital();
+      expect(result.cashInHand).toBe('500.00');
+      expect(result.netCapital).toBe('500.00');
     });
   });
 
   describe('getNetProfit() — AD-22 historical unitCost', () => {
     it('uses TransactionItem.unitCost (historical) NOT Item.costPrice (live) for profit', async () => {
-      // Setup: sale transaction 100.00, item profit should be (80.00 - 50.00)*2 = 60.00 even though Item.costPrice is now 800.00
       const saleTx = { id: 'tx1', type: 'SALE', amount: '160.00', createdAt: new Date('2026-08-15T10:00:00Z') };
       mockPrisma.transaction.findMany.mockResolvedValue([saleTx]);
-      // transactionItem with historical unitCost 50.00, unitPrice 80.00, quantity 2
       mockPrisma.transactionItem.findMany.mockResolvedValue([
         { id: 'ti1', transactionId: 'tx1', itemId: 'item1', quantity: 2, unitPrice: '80.00', unitCost: '50.00', totalPrice: '160.00' },
       ]);
-      // transactionService no service profit
       mockPrisma.transactionService.findMany.mockResolvedValue([]);
+      mockPrisma.expense.findMany.mockResolvedValue([]);
 
       const result = await service.getNetProfit();
 
-      // itemProfit = (80-50)*2 = 60.00, grossProfit = 60.00, revenue 160.00, margin = 60/160*100 = 37.50
       expect(result.itemProfit).toBe('60.00');
       expect(result.grossProfit).toBe('60.00');
       expect(result.totalRevenue).toBe('160.00');
       expect(result.grossMarginPct).toBe('37.50');
-      // totalCost = unitCost * qty = 50*2 = 100.00
       expect(result.totalCost).toBe('100.00');
     });
 
@@ -96,6 +115,7 @@ describe('ReportsService', () => {
       mockPrisma.transaction.findMany.mockResolvedValue([]);
       mockPrisma.transactionItem.findMany.mockResolvedValue([]);
       mockPrisma.transactionService.findMany.mockResolvedValue([]);
+      mockPrisma.expense.findMany.mockResolvedValue([]);
       const result = await service.getNetProfit();
       expect(result.grossMarginPct).toBe('0.00');
       expect(result.totalRevenue).toBe('0.00');
@@ -103,33 +123,56 @@ describe('ReportsService', () => {
 
     it('filters by date range when startDate/endDate provided', async () => {
       const saleInRange = { id: 'tx1', type: 'SALE', amount: '100.00', createdAt: new Date('2026-08-15T10:00:00Z') };
-      // Only return tx in range
       mockPrisma.transaction.findMany.mockResolvedValue([saleInRange]);
       mockPrisma.transactionItem.findMany.mockResolvedValue([
         { id: 'ti1', transactionId: 'tx1', itemId: 'item1', quantity: 1, unitPrice: '100.00', unitCost: '40.00', totalPrice: '100.00' },
       ]);
       mockPrisma.transactionService.findMany.mockResolvedValue([]);
+      mockPrisma.expense.findMany.mockResolvedValue([]);
 
       const result = await service.getNetProfit('2026-08-15', '2026-08-15');
       expect(result.totalRevenue).toBe('100.00');
       expect(result.itemProfit).toBe('60.00');
     });
+
+    it('includes totalExpenses and netProfitAfterExpenses correctly excluding owner movements', async () => {
+      const saleTx = { id: 'tx1', type: 'SALE', amount: '200.00', createdAt: new Date('2026-08-15T10:00:00Z') };
+      mockPrisma.transaction.findMany.mockResolvedValue([saleTx]);
+      mockPrisma.transactionItem.findMany.mockResolvedValue([
+        { id: 'ti1', transactionId: 'tx1', itemId: 'item1', quantity: 1, unitPrice: '200.00', unitCost: '100.00', totalPrice: '200.00' },
+      ]);
+      mockPrisma.transactionService.findMany.mockResolvedValue([]);
+      mockPrisma.expense.findMany.mockResolvedValue([{ id: 'e1', amount: '30.00' }, { id: 'e2', amount: '20.00' }]);
+
+      const result = await service.getNetProfit();
+      expect(result.grossProfit).toBe('100.00');
+      expect(result.totalExpenses).toBe('50.00');
+      expect(result.netProfitAfterExpenses).toBe('50.00');
+    });
+
+    it('owner draw/deposit not counted as expenses — netProfitAfterExpenses unaffected by cash movements', async () => {
+      // No expenses, but if there were OWNER movements they must not affect totalExpenses
+      mockPrisma.transaction.findMany.mockResolvedValue([{ id: 'tx1', type: 'SALE', amount: '100.00' }]);
+      mockPrisma.transactionItem.findMany.mockResolvedValue([{ id: 'ti1', quantity: 1, unitPrice: '100.00', unitCost: '0.00', totalPrice: '100.00' }]);
+      mockPrisma.transactionService.findMany.mockResolvedValue([]);
+      mockPrisma.expense.findMany.mockResolvedValue([]);
+      const result = await service.getNetProfit();
+      expect(result.totalExpenses).toBe('0.00');
+      expect(result.netProfitAfterExpenses).toBe(result.grossProfit);
+    });
   });
 
   describe('getDebtSummary()', () => {
     it('sorts topDebtors descending by balance', async () => {
-      // Mock capital
       mockPrisma.account.findMany
-        .mockResolvedValueOnce([{ currentBalance: '500.00' }]) // CUSTOMER for capital receivables
-        .mockResolvedValueOnce([{ currentBalance: '200.00' }]) // SUPPLIER for payables
+        .mockResolvedValueOnce([{ currentBalance: '500.00' }])
+        .mockResolvedValueOnce([{ currentBalance: '200.00' }])
         .mockResolvedValueOnce([
           { contactId: 'c1', currentBalance: '100.00', contact: { name: 'Alice' }, role: 'CUSTOMER' },
           { contactId: 'c2', currentBalance: '500.00', contact: { name: 'Bob' }, role: 'CUSTOMER' },
           { contactId: 'c3', currentBalance: '300.00', contact: { name: 'Charlie' }, role: 'CUSTOMER' },
         ])
-        .mockResolvedValueOnce([
-          { contactId: 's1', currentBalance: '50.00', contact: { name: 'Sup1' }, role: 'SUPPLIER' },
-        ]);
+        .mockResolvedValueOnce([{ contactId: 's1', currentBalance: '50.00', contact: { name: 'Sup1' }, role: 'SUPPLIER' }]);
       mockPrisma.item.findMany.mockResolvedValue([]);
       mockPrisma.stockMovement.findFirst.mockResolvedValue(null);
       mockPrisma.stockMovement.aggregate.mockResolvedValue({ _sum: { quantity: 0 } });
@@ -150,20 +193,33 @@ describe('ReportsService', () => {
   describe('getSummary()', () => {
     it('includes salesCount and salesVolume', async () => {
       mockPrisma.account.findMany.mockResolvedValue([]).mockResolvedValue([]);
+      mockCashService.getCurrentBalance.mockResolvedValue({ currentBalance: '0.00' });
       mockPrisma.item.findMany.mockResolvedValue([]);
       mockPrisma.stockMovement.findFirst.mockResolvedValue(null);
       mockPrisma.stockMovement.aggregate.mockResolvedValue({ _sum: { quantity: 0 } });
       mockPrisma.transactionService.findMany.mockResolvedValue([]);
       mockPrisma.transactionItem.findMany.mockResolvedValue([]);
       mockPrisma.transaction.findMany
-        .mockResolvedValueOnce([{ id: 't1', amount: '100.00' }, { id: 't2', amount: '200.00' }]) // salesInRange
-        .mockResolvedValueOnce([]); // recentRaw
+        .mockResolvedValueOnce([{ id: 't1', amount: '100.00' }, { id: 't2', amount: '200.00' }])
+        .mockResolvedValueOnce([]);
       mockPrisma.contact.findMany.mockResolvedValue([]);
       mockPrisma.setting.findUnique.mockResolvedValue(null);
 
       const result = await service.getSummary();
-      expect(result.salesCount).toBe(2);
-      expect(result.salesVolume).toBe('300.00');
+      expect(result.sales.salesCount).toBe(2);
+      expect(result.sales.salesVolume).toBe('300.00');
+    });
+  });
+
+  describe('getExpenseReport()', () => {
+    it('delegates to ExpensesService and computes totalExpenses', async () => {
+      mockExpensesService.getExpenseBreakdown.mockResolvedValue([
+        { categoryId: 'c1', categoryName: 'إيجار', totalAmount: '300.00', percentage: '60.00' },
+        { categoryId: 'c2', categoryName: 'كهرباء', totalAmount: '200.00', percentage: '40.00' },
+      ]);
+      const result = await service.getExpenseReport();
+      expect(result.totalExpenses).toBe('500.00');
+      expect(result.breakdown.length).toBe(2);
     });
   });
 });

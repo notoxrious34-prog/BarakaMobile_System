@@ -9,13 +9,15 @@ import { ProfitCard } from '@/features/reports/components/ProfitCard';
 import { DebtSummaryTable } from '@/features/reports/components/DebtSummaryTable';
 import { ContactLedgerModal } from '@/features/reports/components/ContactLedgerModal';
 import { useInvoiceSettings } from '@/features/settings/hooks/useInvoiceSettings';
+import { Link } from 'react-router-dom';
 
-type TabKey = 'summary' | 'profit' | 'debts';
+type TabKey = 'summary' | 'profit' | 'debts' | 'treasury';
 
 const TAB_LABELS: Record<TabKey, string> = {
   summary: 'الملخص المالي',
   profit: 'الأرباح والخسائر',
   debts: 'الديون والحسابات',
+  treasury: 'الخزينة والمصاريف',
 };
 
 type DatePreset = 'today' | 'week' | 'month' | 'custom';
@@ -287,6 +289,29 @@ export function ReportsPage() {
             ) : debtQ.data ? (
               <DebtSummaryTable data={debtQ.data} onViewLedger={handleViewLedger} />
             ) : null}
+          </section>
+        )}
+
+        {activeTab === 'treasury' && (
+          <section className="space-y-4">
+            <h2 className="text-base font-semibold text-zinc-900">الخزينة والمصاريف — ملخص</h2>
+            {capitalQ.data && (
+              <div className="rounded-lg border border-zinc-200 bg-white p-4">
+                <p className="text-sm text-zinc-500">السيولة في الصندوق</p>
+                <p className="mt-1 text-2xl font-bold" dir="ltr">{Number(capitalQ.data.cashInHand ?? '0.00').toFixed(2)} {currencySymbol}</p>
+                <p className="mt-1 text-xs text-zinc-500">مضمنة في حساب رأس المال: inventory + receivables + cash − payables</p>
+              </div>
+            )}
+            {profitQ.data && (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="rounded-lg border border-zinc-200 bg-white p-4"><p className="text-xs text-zinc-500">إجمالي المصاريف (للفترة)</p><p className="mt-1 text-lg font-bold" dir="ltr">{Number(profitQ.data.totalExpenses ?? '0.00').toFixed(2)} {currencySymbol}</p></div>
+                <div className="rounded-lg border-2 border-zinc-900 bg-white p-4"><p className="text-xs font-bold">صافي الربح بعد المصاريف</p><p className="mt-1 text-xl font-extrabold text-emerald-700" dir="ltr">{Number(profitQ.data.netProfitAfterExpenses ?? '0.00').toFixed(2)} {currencySymbol}</p></div>
+              </div>
+            )}
+            <div className="flex gap-2">
+              <Link to="/treasury" className="rounded-md bg-zinc-900 px-4 py-2 text-sm text-white">فتح الخزينة</Link>
+              <Link to="/expenses" className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm">فتح المصاريف</Link>
+            </div>
           </section>
         )}
       </div>

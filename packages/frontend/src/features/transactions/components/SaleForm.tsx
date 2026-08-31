@@ -43,6 +43,7 @@ export function SaleForm({ open, onClose }: Props) {
 
   const [contactId, setContactId] = useState('');
   const [note, setNote] = useState('');
+  const [amountPaidNow, setAmountPaidNow] = useState('');
   const [itemRows, setItemRows] = useState<Array<{ itemId: string; quantity: string }>>([]);
   const [serviceRows, setServiceRows] = useState<Array<{ serviceId: string; amount: string }>>([]);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -55,6 +56,7 @@ export function SaleForm({ open, onClose }: Props) {
     if (open) {
       setContactId('');
       setNote('');
+      setAmountPaidNow('');
       setItemRows([]);
       setServiceRows([]);
       setFieldErrors({});
@@ -72,6 +74,20 @@ export function SaleForm({ open, onClose }: Props) {
   const isSubmitting = createMut.isPending;
 
   const customerContacts = contacts?.filter((c) => c.role === 'CUSTOMER' || c.role === 'BOTH') ?? [];
+  const walkInContact = contacts?.find((c) => (c as unknown as { isWalkIn?: boolean }).isWalkIn === true) ?? null;
+  const computedTotal = (() => {
+    let t = 0;
+    for (const r of itemRows) {
+      const it = items?.find((x) => x.id === r.itemId);
+      if (it && r.quantity) t += Number(it.sellingPrice) * Number(r.quantity || 0);
+    }
+    for (const r of serviceRows) if (r.amount) t += Number(r.amount || 0);
+    return t;
+  })();
+  const remainingDebt = (() => {
+    const paid = Number(amountPaidNow || 0);
+    return (computedTotal - paid).toFixed(2);
+  })();
 
   function validate(): boolean {
     const errs: Record<string, string> = {};
@@ -79,6 +95,8 @@ export function SaleForm({ open, onClose }: Props) {
     if (itemRows.length === 0 && serviceRows.length === 0) {
       errs.items = 'يجب إضافة منتج واحد على الأقل أو خدمة واحدة';
     }
+    if (amountPaidNow && amountPaidNow.trim() && !/^\d+(\.\d{1,2})?$/.test(amountPaidNow.trim())) errs.amountPaidNow = 'المبلغ المدفوع يجب أن يكون رقمًا صحيحًا';
+    else if (amountPaidNow && Number(amountPaidNow) > computedTotal) errs.amountPaidNow = 'المبلغ المدفوع لا يمكن أن يتجاوز الإجمالي';
     itemRows.forEach((r, i) => {
       if (!r.itemId) errs[`item_${i}_itemId`] = 'المنتج مطلوب';
       if (!r.quantity.trim()) errs[`item_${i}_quantity`] = 'الكمية مطلوبة';
@@ -139,6 +157,7 @@ export function SaleForm({ open, onClose }: Props) {
         contactId,
         accountId: customerAccount.id,
         amount,
+        amountPaidNow: amountPaidNow.trim() ? Number(amountPaidNow).toFixed(2) : undefined,
         note: note.trim() || undefined,
         itemLines: itemLines.length > 0 ? itemLines : undefined,
         serviceLines: serviceLines.length > 0 ? serviceLines : undefined,
@@ -198,6 +217,9 @@ export function SaleForm({ open, onClose }: Props) {
               ))}
             </select>
             {fieldErrors.contactId && <p className="mt-1 text-xs text-red-600">{fieldErrors.contactId}</p>}
+            {walkInContact && (
+              <button type="button" onClick={() => setContactId(walkInContact.id)} className="mt-2 rounded-md border border-emerald-300 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100">زبون عابر</button>
+            )}
           </div>
 
           <div>
@@ -342,6 +364,13 @@ export function SaleForm({ open, onClose }: Props) {
                 ))}
               </div>
             )}
+          </div>
+
+          <div>
+            <label htmlFor="sale-paid" className="mb-1 block text-sm font-medium text-zinc-700">المبلغ المدفوع الآن</label>
+            <input id="sale-paid" type="text" inputMode="decimal" placeholder="0.00" value={amountPaidNow} onChange={(e) => setAmountPaidNow(e.target.value)} className={`w-full rounded-md border px-3 py-2 text-sm ${fieldErrors.amountPaidNow ? 'border-red-500' : 'border-zinc-300'}`} dir="ltr" />
+            {fieldErrors.amountPaidNow && <p className="mt-1 text-xs text-red-600">{fieldErrors.amountPaidNow}</p>}
+            <p className="mt-1 text-xs text-zinc-500">المتبقي كدين: {remainingDebt} دج — الإجمالي: {computedTotal.toFixed(2)} دج</p>
           </div>
 
           <div className="flex justify-end gap-2 pt-2">

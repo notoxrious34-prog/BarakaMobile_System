@@ -37,14 +37,20 @@ function getDatabaseUrl(): string {
     }
     const dbPath = path.join(userDataPath, 'barakamobile.db');
     if (!fs.existsSync(dbPath)) {
-      const bundledDb = path.join(process.resourcesPath, 'backend', 'prisma', 'dev.db');
-      try {
-        if (fs.existsSync(bundledDb)) {
-          fs.copyFileSync(bundledDb, dbPath);
-          console.log(`[Desktop] Seeded database to ${dbPath}`);
+      const candidates = [
+        path.join(process.resourcesPath, 'backend', 'prisma', 'production-seed.db'),
+        path.join(process.resourcesPath, 'backend', 'prisma', 'dev.db'),
+      ];
+      for (const bundledDb of candidates) {
+        try {
+          if (fs.existsSync(bundledDb)) {
+            fs.copyFileSync(bundledDb, dbPath);
+            console.log(`[Desktop] Seeded database to ${dbPath} from ${bundledDb}`);
+            break;
+          }
+        } catch (e) {
+          console.warn('[Desktop] Failed to seed database from', bundledDb, e);
         }
-      } catch (e) {
-        console.warn('[Desktop] Failed to seed database:', e);
       }
     }
     const normalized = dbPath.replace(/\\/g, '/');

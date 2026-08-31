@@ -11,6 +11,9 @@
     "test": "jest --runInBand",
     "test:watch": "jest --watch"
   },
+  "prisma": {
+    "seed": "ts-node --compiler-options {\"module\":\"commonjs\"} prisma/seed.ts"
+  },
   "dependencies": {
     "@nestjs/common": "^10.3.0",
     "@nestjs/core": "^10.3.0",

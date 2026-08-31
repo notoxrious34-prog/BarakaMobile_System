@@ -26,6 +26,7 @@ model Contact {
   role      ContactRole
   notes     String?
   isActive  Boolean     @default(true)
+  isWalkIn  Boolean     @default(false)
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
   accounts  Account[]
@@ -44,7 +45,6 @@ model Account {
   contact         Contact       @relation(fields: [contactId], references: [id])
   transactions    Transaction[]
   ledgerEntries   LedgerEntry[]
-
   @@unique([contactId, role])
 }
 
@@ -114,11 +114,28 @@ enum LedgerEntryType {
   CREDIT
 }
 
+enum CashMovementType {
+  IN
+  OUT
+}
+
+enum CashMovementCategory {
+  SALE_PAYMENT
+  PURCHASE_PAYMENT
+  PAYMENT_IN
+  PAYMENT_OUT
+  EXPENSE
+  OWNER_DRAW
+  OWNER_DEPOSIT
+  ADJUSTMENT
+}
+
 model Transaction {
   id             String               @id @default(cuid())
   type           TransactionType
   accountId      String
   amount         String
+  amountPaidNow  String?              @default("0.00")
   note           String?
   reference      String?
   reversalOf     String?
@@ -172,4 +189,46 @@ model Setting {
   key       String   @id
   value     String
   updatedAt DateTime @updatedAt
+}
+
+model CashAccount {
+  id             String         @id @default(cuid())
+  currentBalance String         @default("0.00")
+  updatedAt      DateTime       @updatedAt
+  movements      CashMovement[]
+}
+
+model CashMovement {
+  id                   String               @id @default(cuid())
+  cashAccountId        String
+  type                 CashMovementType
+  category             CashMovementCategory
+  amount               String
+  balanceBefore        String
+  balanceAfter         String
+  note                 String?
+  relatedTransactionId String?
+  relatedExpenseId     String?
+  createdAt            DateTime             @default(now())
+  cashAccount          CashAccount          @relation(fields: [cashAccountId], references: [id])
+}
+
+model ExpenseCategory {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  expenses  Expense[]
+}
+
+model Expense {
+  id          String          @id @default(cuid())
+  categoryId  String
+  amount      String
+  description String?
+  expenseDate DateTime        @default(now())
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  category    ExpenseCategory @relation(fields: [categoryId], references: [id])
 }

@@ -21,7 +21,7 @@ extraResources:
     to: backend/prisma-client
     filter:
       - "**/*"
-  - from: ../../packages/backend/prisma/dev.db
+  - from: ../../packages/backend/prisma/production-seed.db
     to: backend/prisma/dev.db
   - from: ../../packages/backend/prisma/schema.prisma
     to: backend/prisma/schema.prisma

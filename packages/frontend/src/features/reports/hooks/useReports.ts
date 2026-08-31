@@ -5,6 +5,7 @@ export type CapitalResponse = {
   totalReceivables: string;
   totalPayables: string;
   inventoryValue: string;
+  cashInHand: string;
   netCapital: string;
 };
 
@@ -15,6 +16,8 @@ export type ProfitResponse = {
   itemProfit: string;
   grossProfit: string;
   netProfit: string;
+  totalExpenses: string;
+  netProfitAfterExpenses: string;
   grossMarginPct: string;
 };
 

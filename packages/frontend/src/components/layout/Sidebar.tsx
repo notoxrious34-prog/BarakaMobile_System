@@ -5,6 +5,8 @@ import {
   Package,
   Wrench,
   Receipt,
+  Wallet,
+  CreditCard,
   BarChart3,
   Settings,
   PanelRightClose,
@@ -24,6 +26,8 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/inventory', label: 'المخزون', icon: Package },
   { to: '/services', label: 'الخدمات', icon: Wrench },
   { to: '/transactions', label: 'المعاملات', icon: Receipt },
+  { to: '/treasury', label: 'الخزينة', icon: Wallet },
+  { to: '/expenses', label: 'المصاريف', icon: CreditCard },
   { to: '/reports', label: 'التقارير', icon: BarChart3 },
   { to: '/settings', label: 'الإعدادات', icon: Settings },
 ];
