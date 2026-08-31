@@ -1,4 +1,4 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ReportsService } from './reports.service';
 
 @Controller('reports')
@@ -11,8 +11,8 @@ export class ReportsController {
   }
 
   @Get('profit')
-  getProfit() {
-    return this.reportsService.getNetProfit();
+  getProfit(@Query('startDate') startDate?: string, @Query('endDate') endDate?: string) {
+    return this.reportsService.getNetProfit(startDate, endDate);
   }
 
   @Get('debt-summary')
@@ -21,8 +21,8 @@ export class ReportsController {
   }
 
   @Get('summary')
-  getSummary() {
-    return this.reportsService.getSummary();
+  getSummary(@Query('startDate') startDate?: string, @Query('endDate') endDate?: string) {
+    return this.reportsService.getSummary(startDate, endDate);
   }
 
   @Get('contacts/:contactId/position')

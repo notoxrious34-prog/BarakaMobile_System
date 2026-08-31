@@ -24,6 +24,7 @@ export function ProfitCard({ data }: Props) {
       <StatCard label="ربح المنتجات" value={data.itemProfit} suffix={currencySymbol} tone="positive" />
       <StatCard label="إجمالي الربح" value={data.grossProfit} suffix={currencySymbol} tone="positive" />
       <StatCard label="صافي الربح" value={data.netProfit} suffix={currencySymbol} tone={netTone} />
+      <StatCard label="هامش الربح الإجمالي" value={data.grossMarginPct} suffix="%" tone={netTone} />
     </div>
   );
 }

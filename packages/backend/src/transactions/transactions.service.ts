@@ -79,6 +79,7 @@ export class TransactionsService {
         itemId: string;
         quantity: number;
         unitPrice: string;
+        unitCost: string;
         totalPrice: string;
       }> = [];
       if (dto.itemLines && dto.itemLines.length > 0) {
@@ -108,6 +109,7 @@ export class TransactionsService {
             itemId: line.itemId,
             quantity: line.quantity,
             unitPrice,
+            unitCost: item.costPrice,
             totalPrice,
           });
         }
@@ -220,6 +222,7 @@ export class TransactionsService {
             itemId: line.itemId,
             quantity: line.quantity,
             unitPrice: line.unitPrice,
+            unitCost: line.unitCost,
             totalPrice: line.totalPrice,
           },
         });

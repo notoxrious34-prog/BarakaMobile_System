@@ -15,6 +15,7 @@ export type ProfitResponse = {
   itemProfit: string;
   grossProfit: string;
   netProfit: string;
+  grossMarginPct: string;
 };
 
 export type ContactPosition = {
@@ -26,11 +27,19 @@ export type ContactPosition = {
   customerAccount?: { accountId: string; currentBalance: string };
 };
 
+export type TopContact = {
+  contactId: string;
+  contactName: string;
+  currentBalance: string;
+};
+
 export type DebtSummaryResponse = {
   totalReceivables: string;
   totalPayables: string;
   netDebtPosition: string;
   contacts: ContactPosition[];
+  topDebtors: TopContact[];
+  topCreditors: TopContact[];
 };
 
 export type LedgerEntry = {
@@ -43,6 +52,17 @@ export type LedgerEntry = {
   createdAt: string;
 };
 
+export type SummaryResponse = {
+  capital: { totalCapital: string; cashAndReceivables: string; stockValue: string };
+  todayProfit: { totalProfit: string; serviceProfit: string; itemProfit: string };
+  monthProfit: { totalProfit: string; serviceProfit: string; itemProfit: string };
+  debts: { totalCustomerDebt: string; totalSupplierDebt: string; netPosition: string };
+  inventory: { totalItems: number; lowStockItems: number; outOfStockItems: number };
+  salesCount: number;
+  salesVolume: string;
+  recentTransactions: Array<{ id: string; type: string; totalAmount: string; contactName: string; createdAt: string }>;
+};
+
 export function useCapitalQuery() {
   return useQuery<CapitalResponse>({
     queryKey: ['capital'],
@@ -50,10 +70,16 @@ export function useCapitalQuery() {
   });
 }
 
-export function useProfitQuery() {
+export function useProfitQuery(startDate?: string, endDate?: string) {
   return useQuery<ProfitResponse>({
-    queryKey: ['profit'],
-    queryFn: () => api.get<ProfitResponse>('/reports/profit'),
+    queryKey: ['profit', startDate ?? null, endDate ?? null],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (startDate) params.set('startDate', startDate);
+      if (endDate) params.set('endDate', endDate);
+      const qs = params.toString();
+      return api.get<ProfitResponse>(`/reports/profit${qs ? `?${qs}` : ''}`);
+    },
   });
 }
 
@@ -64,6 +90,19 @@ export function useDebtSummaryQuery() {
   });
 }
 
+export function useSummaryQuery(startDate?: string, endDate?: string) {
+  return useQuery<SummaryResponse>({
+    queryKey: ['summary', startDate ?? null, endDate ?? null],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (startDate) params.set('startDate', startDate);
+      if (endDate) params.set('endDate', endDate);
+      const qs = params.toString();
+      return api.get<SummaryResponse>(`/reports/summary${qs ? `?${qs}` : ''}`);
+    },
+  });
+}
+
 export function useLedgerQuery(accountId: string) {
   return useQuery<LedgerEntry[]>({
     queryKey: ['ledger', accountId],
@@ -71,3 +110,5 @@ export function useLedgerQuery(accountId: string) {
     enabled: !!accountId && accountId.length > 0,
   });
 }
+
+

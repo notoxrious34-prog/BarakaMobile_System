@@ -54,6 +54,44 @@ export function DebtSummaryTable({ data, onViewLedger }: Props) {
         </div>
       </div>
 
+      {data.topDebtors && data.topDebtors.length > 0 && (
+        <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+          <h3 className="mb-3 text-sm font-semibold text-zinc-900">أكبر المدينين (العملاء)</h3>
+          <ol className="space-y-2">
+            {data.topDebtors.map((d, idx) => (
+              <li key={d.contactId} className="flex items-center justify-between rounded-md bg-zinc-50 px-3 py-2">
+                <span className="flex items-center gap-2">
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700">{idx + 1}</span>
+                  <span className="text-sm font-medium text-zinc-900">{d.contactName}</span>
+                </span>
+                <span className="text-sm font-bold text-zinc-900" dir="ltr">
+                  {Number(d.currentBalance).toFixed(2)} {currencySymbol}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+
+      {data.topCreditors && data.topCreditors.length > 0 && (
+        <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+          <h3 className="mb-3 text-sm font-semibold text-zinc-900">أكبر الدائنين (الموردين)</h3>
+          <ol className="space-y-2">
+            {data.topCreditors.map((d, idx) => (
+              <li key={d.contactId} className="flex items-center justify-between rounded-md bg-zinc-50 px-3 py-2">
+                <span className="flex items-center gap-2">
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-700">{idx + 1}</span>
+                  <span className="text-sm font-medium text-zinc-900">{d.contactName}</span>
+                </span>
+                <span className="text-sm font-bold text-zinc-900" dir="ltr">
+                  {Number(d.currentBalance).toFixed(2)} {currencySymbol}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+
       <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-sm">

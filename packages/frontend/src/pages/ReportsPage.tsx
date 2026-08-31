@@ -1,19 +1,66 @@
-import { useState } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { RefreshCw, Printer, FileDown } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Loading } from '@/components/feedback/Loading';
 import { ErrorState } from '@/components/feedback/ErrorState';
-import { useCapitalQuery, useProfitQuery, useDebtSummaryQuery } from '@/features/reports/hooks/useReports';
+import { useCapitalQuery, useProfitQuery, useDebtSummaryQuery, useSummaryQuery } from '@/features/reports/hooks/useReports';
 import { CapitalCard } from '@/features/reports/components/CapitalCard';
 import { ProfitCard } from '@/features/reports/components/ProfitCard';
 import { DebtSummaryTable } from '@/features/reports/components/DebtSummaryTable';
 import { ContactLedgerModal } from '@/features/reports/components/ContactLedgerModal';
+import { useInvoiceSettings } from '@/features/settings/hooks/useInvoiceSettings';
+
+type TabKey = 'summary' | 'profit' | 'debts';
+
+const TAB_LABELS: Record<TabKey, string> = {
+  summary: 'الملخص المالي',
+  profit: 'الأرباح والخسائر',
+  debts: 'الديون والحسابات',
+};
+
+type DatePreset = 'today' | 'week' | 'month' | 'custom';
+
+function formatISODate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+function getPresetRange(preset: DatePreset, customStart: string, customEnd: string): { startDate?: string; endDate?: string } {
+  const now = new Date();
+  if (preset === 'today') {
+    const iso = formatISODate(now);
+    return { startDate: iso, endDate: iso };
+  }
+  if (preset === 'week') {
+    const start = new Date(now);
+    start.setDate(now.getDate() - 6);
+    return { startDate: formatISODate(start), endDate: formatISODate(now) };
+  }
+  if (preset === 'month') {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    return { startDate: formatISODate(start), endDate: formatISODate(now) };
+  }
+  if (preset === 'custom') {
+    return { startDate: customStart || undefined, endDate: customEnd || undefined };
+  }
+  return {};
+}
 
 export function ReportsPage() {
   const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState<TabKey>('summary');
+  const [preset, setPreset] = useState<DatePreset>('month');
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
+
+  const { startDate: profitStart, endDate: profitEnd } = getPresetRange(preset, customStart, customEnd);
+
   const capitalQ = useCapitalQuery();
-  const profitQ = useProfitQuery();
+  const profitQ = useProfitQuery(profitStart, profitEnd);
   const debtQ = useDebtSummaryQuery();
+  const summaryQ = useSummaryQuery(profitStart, profitEnd);
+
+  const { data: settingsData } = useInvoiceSettings();
+  const currencySymbol = settingsData?.currency_symbol ?? 'د.ج';
 
   const [ledgerState, setLedgerState] = useState<{
     accountId: string;
@@ -21,12 +68,39 @@ export function ReportsPage() {
     role: string;
   } | null>(null);
 
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.setAttribute('data-reports-print', 'true');
+    style.textContent = `
+      @media print {
+        body * { visibility: hidden; }
+        #reports-print-area, #reports-print-area * { visibility: visible; }
+        #reports-print-area { position: absolute; left: 0; top: 0; width: 100%; }
+        .no-print { display: none !important; }
+      }
+    `;
+    document.head.appendChild(style);
+    return () => { document.head.removeChild(style); };
+  }, []);
+
   function handleRefresh() {
     queryClient.invalidateQueries({ queryKey: ['capital'] });
     queryClient.invalidateQueries({ queryKey: ['profit'] });
     queryClient.invalidateQueries({ queryKey: ['debt-summary'] });
-    // also invalidate any ledger caches
+    queryClient.invalidateQueries({ queryKey: ['summary'] });
     queryClient.invalidateQueries({ queryKey: ['ledger'] });
+  }
+
+  async function handleExportPDF() {
+    const api = (window as any).electronAPI?.exportViewPDF;
+    if (api) {
+      const result = await api(`BarakaMobile-Report-${activeTab}-${formatISODate(new Date())}`);
+      if (!result.success && result.error !== 'cancelled') {
+        alert(`فشل تصدير PDF: ${result.error}`);
+      }
+      return;
+    }
+    window.print();
   }
 
   function handleViewLedger(accountId: string, contactName: string, role: string) {
@@ -35,62 +109,187 @@ export function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between no-print">
         <h1 className="text-xl font-bold text-zinc-900">التقارير</h1>
-        <button
-          type="button"
-          onClick={handleRefresh}
-          className="inline-flex items-center gap-2 rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-        >
-          <RefreshCw className="h-4 w-4" aria-hidden="true" />
-          تحديث
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleExportPDF}
+            className="inline-flex items-center gap-2 rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+          >
+            <FileDown className="h-4 w-4" aria-hidden="true" />
+            تصدير PDF
+          </button>
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="inline-flex items-center gap-2 rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+          >
+            <Printer className="h-4 w-4" aria-hidden="true" />
+            طباعة
+          </button>
+          <button
+            type="button"
+            onClick={handleRefresh}
+            className="inline-flex items-center gap-2 rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+          >
+            <RefreshCw className="h-4 w-4" aria-hidden="true" />
+            تحديث
+          </button>
+        </div>
       </div>
 
-      <section className="space-y-3">
-        <h2 className="text-base font-semibold text-zinc-900">رأس المال</h2>
-        {capitalQ.isLoading ? (
-          <Loading text="جاري تحميل رأس المال..." />
-        ) : capitalQ.isError ? (
-          <ErrorState
-            title="تعذر تحميل رأس المال"
-            message={capitalQ.error instanceof Error ? capitalQ.error.message : 'حدث خطأ أثناء جلب البيانات'}
-            onRetry={() => capitalQ.refetch()}
-          />
-        ) : capitalQ.data ? (
-          <CapitalCard data={capitalQ.data} />
-        ) : null}
-      </section>
+      <div className="flex gap-2 border-b border-zinc-200 no-print">
+        {(Object.keys(TAB_LABELS) as TabKey[]).map((key) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setActiveTab(key)}
+            className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+              activeTab === key
+                ? 'border-zinc-900 text-zinc-900'
+                : 'border-transparent text-zinc-500 hover:text-zinc-700'
+            }`}
+          >
+            {TAB_LABELS[key]}
+          </button>
+        ))}
+      </div>
 
-      <section className="space-y-3">
-        <h2 className="text-base font-semibold text-zinc-900">الأرباح</h2>
-        {profitQ.isLoading ? (
-          <Loading text="جاري تحميل الأرباح..." />
-        ) : profitQ.isError ? (
-          <ErrorState
-            title="تعذر تحميل الأرباح"
-            message={profitQ.error instanceof Error ? profitQ.error.message : 'حدث خطأ أثناء جلب البيانات'}
-            onRetry={() => profitQ.refetch()}
-          />
-        ) : profitQ.data ? (
-          <ProfitCard data={profitQ.data} />
-        ) : null}
-      </section>
+      <div id="reports-print-area" className="space-y-6">
+        {activeTab === 'summary' && (
+          <>
+            <section className="space-y-3">
+              <h2 className="text-base font-semibold text-zinc-900">رأس المال</h2>
+              {capitalQ.isLoading ? (
+                <Loading text="جاري تحميل رأس المال..." />
+              ) : capitalQ.isError ? (
+                <ErrorState
+                  title="تعذر تحميل رأس المال"
+                  message={capitalQ.error instanceof Error ? capitalQ.error.message : 'حدث خطأ أثناء جلب البيانات'}
+                  onRetry={() => capitalQ.refetch()}
+                />
+              ) : capitalQ.data ? (
+                <CapitalCard data={capitalQ.data} />
+              ) : null}
+            </section>
 
-      <section className="space-y-3">
-        <h2 className="text-base font-semibold text-zinc-900">ملخص الديون</h2>
-        {debtQ.isLoading ? (
-          <Loading text="جاري تحميل ملخص الديون..." />
-        ) : debtQ.isError ? (
-          <ErrorState
-            title="تعذر تحميل ملخص الديون"
-            message={debtQ.error instanceof Error ? debtQ.error.message : 'حدث خطأ أثناء جلب البيانات'}
-            onRetry={() => debtQ.refetch()}
-          />
-        ) : debtQ.data ? (
-          <DebtSummaryTable data={debtQ.data} onViewLedger={handleViewLedger} />
-        ) : null}
-      </section>
+            <section className="space-y-3">
+              <h2 className="text-base font-semibold text-zinc-900">الملخص التنفيذي</h2>
+              {summaryQ.isLoading ? (
+                <Loading text="جاري تحميل الملخص..." />
+              ) : summaryQ.isError ? (
+                <ErrorState
+                  title="تعذر تحميل الملخص"
+                  message={summaryQ.error instanceof Error ? summaryQ.error.message : 'حدث خطأ أثناء جلب البيانات'}
+                  onRetry={() => summaryQ.refetch()}
+                />
+              ) : summaryQ.data ? (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+                    <p className="text-xs font-medium text-zinc-500">إجمالي المبيعات (عدد)</p>
+                    <p className="mt-1 text-lg font-bold text-zinc-900">{summaryQ.data.salesCount}</p>
+                  </div>
+                  <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+                    <p className="text-xs font-medium text-zinc-500">حجم المبيعات</p>
+                    <p className="mt-1 text-lg font-bold text-zinc-900" dir="ltr">
+                      {Number(summaryQ.data.salesVolume).toFixed(2)} {currencySymbol}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+                    <p className="text-xs font-medium text-zinc-500">ربح اليوم</p>
+                    <p className="mt-1 text-lg font-bold text-emerald-700" dir="ltr">
+                      {Number(summaryQ.data.todayProfit.totalProfit).toFixed(2)} {currencySymbol}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+                    <p className="text-xs font-medium text-zinc-500">ربح الشهر</p>
+                    <p className="mt-1 text-lg font-bold text-emerald-700" dir="ltr">
+                      {Number(summaryQ.data.monthProfit.totalProfit).toFixed(2)} {currencySymbol}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+                    <p className="text-xs font-medium text-zinc-500">إجمالي المخزون</p>
+                    <p className="mt-1 text-lg font-bold text-zinc-900">{summaryQ.data.inventory.totalItems} صنف</p>
+                  </div>
+                  <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+                    <p className="text-xs font-medium text-zinc-500">أصناف منخفضة</p>
+                    <p className="mt-1 text-lg font-bold text-amber-600">{summaryQ.data.inventory.lowStockItems}</p>
+                  </div>
+                </div>
+              ) : null}
+            </section>
+          </>
+        )}
+
+        {activeTab === 'profit' && (
+          <section className="space-y-4">
+            <div className="flex flex-wrap items-center gap-2 no-print">
+              <span className="text-sm font-medium text-zinc-700">الفترة:</span>
+              <div className="flex gap-1 rounded-lg border border-zinc-200 bg-zinc-50 p-1">
+                {(['today', 'week', 'month', 'custom'] as DatePreset[]).map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setPreset(p)}
+                    className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${
+                      preset === p ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-600 hover:text-zinc-900'
+                    }`}
+                  >
+                    {p === 'today' ? 'اليوم' : p === 'week' ? 'هذا الأسبوع' : p === 'month' ? 'هذا الشهر' : 'مخصص'}
+                  </button>
+                ))}
+              </div>
+              {preset === 'custom' && (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={customStart}
+                    onChange={(e) => setCustomStart(e.target.value)}
+                    className="rounded-md border border-zinc-300 px-3 py-1 text-sm"
+                  />
+                  <span className="text-zinc-500">إلى</span>
+                  <input
+                    type="date"
+                    value={customEnd}
+                    onChange={(e) => setCustomEnd(e.target.value)}
+                    className="rounded-md border border-zinc-300 px-3 py-1 text-sm"
+                  />
+                </div>
+              )}
+            </div>
+            <h2 className="text-base font-semibold text-zinc-900">الأرباح والخسائر</h2>
+            {profitQ.isLoading ? (
+              <Loading text="جاري تحميل الأرباح..." />
+            ) : profitQ.isError ? (
+              <ErrorState
+                title="تعذر تحميل الأرباح"
+                message={profitQ.error instanceof Error ? profitQ.error.message : 'حدث خطأ أثناء جلب البيانات'}
+                onRetry={() => profitQ.refetch()}
+              />
+            ) : profitQ.data ? (
+              <ProfitCard data={profitQ.data} />
+            ) : null}
+          </section>
+        )}
+
+        {activeTab === 'debts' && (
+          <section className="space-y-3">
+            <h2 className="text-base font-semibold text-zinc-900">ملخص الديون</h2>
+            {debtQ.isLoading ? (
+              <Loading text="جاري تحميل ملخص الديون..." />
+            ) : debtQ.isError ? (
+              <ErrorState
+                title="تعذر تحميل ملخص الديون"
+                message={debtQ.error instanceof Error ? debtQ.error.message : 'حدث خطأ أثناء جلب البيانات'}
+                onRetry={() => debtQ.refetch()}
+              />
+            ) : debtQ.data ? (
+              <DebtSummaryTable data={debtQ.data} onViewLedger={handleViewLedger} />
+            ) : null}
+          </section>
+        )}
+      </div>
 
       <ContactLedgerModal
         open={!!ledgerState}

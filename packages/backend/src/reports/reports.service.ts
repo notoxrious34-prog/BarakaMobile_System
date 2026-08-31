@@ -11,7 +11,6 @@ export class ReportsService {
     return new Decimal(value).toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2);
   }
 
-  // Identical to InventoryService.computeStock
   private async computeStock(itemId: string): Promise<number> {
     const lastAdj = await (this.prisma as any).stockMovement.findFirst({
       where: { itemId, type: MovementType.ADJUSTMENT },
@@ -50,12 +49,45 @@ export class ReportsService {
     return new Date(Date.UTC(y, m, d, 0, 0, 0) - 60 * 60 * 1000);
   }
 
+  private getAlgeriaEndOfDay(now: Date): Date {
+    const start = this.getAlgeriaStartOfDay(now);
+    return new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
+  }
+
   private getAlgeriaStartOfMonth(now: Date): Date {
     const algeriaMs = now.getTime() + 60 * 60 * 1000;
     const algeriaDate = new Date(algeriaMs);
     const y = algeriaDate.getUTCFullYear();
     const m = algeriaDate.getUTCMonth();
     return new Date(Date.UTC(y, m, 1, 0, 0, 0) - 60 * 60 * 1000);
+  }
+
+  private parseDateBound(dateStr: string, isStart: boolean): Date | null {
+    if (!dateStr || typeof dateStr !== 'string') return null;
+    const trimmed = dateStr.trim();
+    if (trimmed.length === 0) return null;
+    const d = new Date(trimmed);
+    if (Number.isNaN(d.getTime())) return null;
+    if (isStart) return this.getAlgeriaStartOfDay(d);
+    return this.getAlgeriaEndOfDay(d);
+  }
+
+  private resolveRange(startDate?: string, endDate?: string, defaultToMonth = false): { start: Date | null; end: Date | null } {
+    let start: Date | null = null;
+    let end: Date | null = null;
+    if (startDate) start = this.parseDateBound(startDate, true);
+    if (endDate) end = this.parseDateBound(endDate, false);
+    if (!start && !end && defaultToMonth) {
+      const now = new Date();
+      start = this.getAlgeriaStartOfMonth(now);
+      end = now;
+    }
+    if (start && end && start.getTime() > end.getTime()) {
+      const tmp = start;
+      start = end;
+      end = tmp;
+    }
+    return { start, end };
   }
 
   private async getProfitForRange(start: Date, end: Date): Promise<{ serviceProfit: Decimal; itemProfit: Decimal; totalProfit: Decimal }> {
@@ -80,14 +112,12 @@ export class ReportsService {
           createdAt: { gte: start, lte: end },
         },
       },
-      include: { item: true },
     });
 
     let itemProfit = new Decimal(0);
     for (const ti of saleItems) {
-      const sellingRaw = (ti as any).sellingPrice ?? (ti as any).unitPrice;
-      const selling = new Decimal(sellingRaw);
-      const cost = new Decimal(ti.item.costPrice);
+      const selling = new Decimal(ti.unitPrice);
+      const cost = new Decimal(ti.unitCost ?? '0.00');
       const profitPerUnit = selling.minus(cost);
       itemProfit = itemProfit.plus(profitPerUnit.times(ti.quantity));
     }
@@ -220,12 +250,18 @@ export class ReportsService {
     };
   }
 
-  async getNetProfit() {
+  async getNetProfit(startDate?: string, endDate?: string) {
+    const { start, end } = this.resolveRange(startDate, endDate, false);
+
+    let txWhere: any = { type: 'SALE' };
+    if (start || end) {
+      txWhere.createdAt = {};
+      if (start) txWhere.createdAt.gte = start;
+      if (end) txWhere.createdAt.lte = end;
+    }
+
     const saleTxs = await (this.prisma as any).transaction.findMany({
-      where: { type: 'SALE' },
-    });
-    const purchaseTxs = await (this.prisma as any).transaction.findMany({
-      where: { type: 'PURCHASE' },
+      where: txWhere,
     });
 
     let totalRevenue = new Decimal(0);
@@ -234,33 +270,71 @@ export class ReportsService {
     }
 
     let totalCost = new Decimal(0);
-    for (const tx of purchaseTxs) {
-      totalCost = totalCost.plus(new Decimal(tx.amount));
+    const hasRange = !!(start || end);
+    if (hasRange && start && end) {
+      const cogsItems = await (this.prisma as any).transactionItem.findMany({
+        where: {
+          transaction: {
+            type: 'SALE',
+            createdAt: { gte: start, lte: end },
+          },
+        },
+      });
+      for (const ti of cogsItems) {
+        const cost = new Decimal(ti.unitCost ?? '0.00');
+        totalCost = totalCost.plus(cost.times(ti.quantity));
+      }
+    } else if (!hasRange) {
+      const allItems = await (this.prisma as any).transactionItem.findMany({
+        where: { transaction: { type: 'SALE' } },
+      });
+      for (const ti of allItems) {
+        const cost = new Decimal(ti.unitCost ?? '0.00');
+        totalCost = totalCost.plus(cost.times(ti.quantity));
+      }
+    } else {
+      const cogsItems = await (this.prisma as any).transactionItem.findMany({
+        where: {
+          transaction: {
+            type: 'SALE',
+            ...(start ? { createdAt: { gte: start } } : {}),
+            ...(end ? { createdAt: { lte: end } } : {}),
+          },
+        },
+      });
+      for (const ti of cogsItems) {
+        const cost = new Decimal(ti.unitCost ?? '0.00');
+        totalCost = totalCost.plus(cost.times(ti.quantity));
+      }
     }
 
-    const serviceLines = await (this.prisma as any).transactionService.findMany();
     let serviceProfit = new Decimal(0);
-    for (const sl of serviceLines) {
-      serviceProfit = serviceProfit.plus(new Decimal(sl.profit));
-    }
-
-    // itemProfit: sum (sellingPrice - costPrice) * quantity for SALE transactionItems (current costPrice)
-    const saleItems = await (this.prisma as any).transactionItem.findMany({
-      where: { transaction: { type: 'SALE' } },
-      include: { item: true },
-    });
-
     let itemProfit = new Decimal(0);
-    for (const ti of saleItems) {
-      const sellingRaw = (ti as any).sellingPrice ?? (ti as any).unitPrice;
-      const selling = new Decimal(sellingRaw);
-      const cost = new Decimal(ti.item.costPrice);
-      const profitPerUnit = selling.minus(cost);
-      itemProfit = itemProfit.plus(profitPerUnit.times(ti.quantity));
+    if (hasRange && start && end) {
+      const rangeProfit = await this.getProfitForRange(start, end);
+      serviceProfit = rangeProfit.serviceProfit;
+      itemProfit = rangeProfit.itemProfit;
+    } else if (!hasRange) {
+      const allStart = new Date('1970-01-01T00:00:00.000Z');
+      const allEnd = new Date('2100-01-01T00:00:00.000Z');
+      const rangeProfit = await this.getProfitForRange(allStart, allEnd);
+      serviceProfit = rangeProfit.serviceProfit;
+      itemProfit = rangeProfit.itemProfit;
+    } else {
+      const fallbackStart = start ?? new Date('1970-01-01T00:00:00.000Z');
+      const fallbackEnd = end ?? new Date('2100-01-01T00:00:00.000Z');
+      const rangeProfit = await this.getProfitForRange(fallbackStart, fallbackEnd);
+      serviceProfit = rangeProfit.serviceProfit;
+      itemProfit = rangeProfit.itemProfit;
     }
 
     const grossProfit = serviceProfit.plus(itemProfit);
-    const netProfit = grossProfit; // same for now
+    const netProfit = grossProfit;
+
+    let grossMarginPct = '0.00';
+    if (!totalRevenue.eq(0)) {
+      grossMarginPct = grossProfit.div(totalRevenue).times(100).toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2);
+    }
 
     return {
       totalRevenue: this.to2dp(totalRevenue),
@@ -269,6 +343,7 @@ export class ReportsService {
       itemProfit: this.to2dp(itemProfit),
       grossProfit: this.to2dp(grossProfit),
       netProfit: this.to2dp(netProfit),
+      grossMarginPct,
     };
   }
 
@@ -304,35 +379,80 @@ export class ReportsService {
     const totalPayables = new Decimal(capital.totalPayables);
     const netDebtPosition = totalReceivables.minus(totalPayables).toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2);
 
+    const customerAccounts = await (this.prisma as any).account.findMany({
+      where: { role: 'CUSTOMER', contact: { isActive: true } },
+      include: { contact: true },
+      orderBy: { currentBalance: 'desc' },
+    });
+    const supplierAccounts = await (this.prisma as any).account.findMany({
+      where: { role: 'SUPPLIER', contact: { isActive: true } },
+      include: { contact: true },
+      orderBy: { currentBalance: 'desc' },
+    });
+
+    const sortedCustomers = [...customerAccounts].sort((a: any, b: any) => {
+      const av = new Decimal(a.currentBalance);
+      const bv = new Decimal(b.currentBalance);
+      return bv.comparedTo(av);
+    });
+    const sortedSuppliers = [...supplierAccounts].sort((a: any, b: any) => {
+      const av = new Decimal(a.currentBalance);
+      const bv = new Decimal(b.currentBalance);
+      return bv.comparedTo(av);
+    });
+
+    const topDebtors = sortedCustomers.slice(0, 5).map((a: any) => ({
+      contactId: a.contactId,
+      contactName: a.contact?.name ?? '—',
+      currentBalance: this.to2dp(a.currentBalance),
+    })).filter((x: any) => new Decimal(x.currentBalance).gt(0));
+
+    const topCreditors = sortedSuppliers.slice(0, 5).map((a: any) => ({
+      contactId: a.contactId,
+      contactName: a.contact?.name ?? '—',
+      currentBalance: this.to2dp(a.currentBalance),
+    })).filter((x: any) => new Decimal(x.currentBalance).gt(0));
+
     return {
       totalReceivables: capital.totalReceivables,
       totalPayables: capital.totalPayables,
       netDebtPosition,
       contacts,
+      topDebtors,
+      topCreditors,
     };
   }
 
-  async getSummary() {
+  async getSummary(startDate?: string, endDate?: string) {
     const now = new Date();
-    const startOfDay = this.getAlgeriaStartOfDay(now);
-    const startOfMonth = this.getAlgeriaStartOfMonth(now);
+    const defaultStart = this.getAlgeriaStartOfMonth(now);
+    const { start, end } = this.resolveRange(startDate, endDate, false);
+    const rangeStart = start ?? defaultStart;
+    const rangeEnd = end ?? now;
 
-    // Capital
     const capitalData = await this.getCapital();
     const totalCapital = capitalData.netCapital;
     const cashAndReceivables = capitalData.totalReceivables;
     const stockValue = capitalData.inventoryValue;
 
-    // Profit — today and month
-    const todayProfitData = await this.getProfitForRange(startOfDay, now);
-    const monthProfitData = await this.getProfitForRange(startOfMonth, now);
+    const todayStart = this.getAlgeriaStartOfDay(now);
+    const todayProfitData = await this.getProfitForRange(todayStart, now);
+    const monthProfitData = await this.getProfitForRange(rangeStart, rangeEnd);
 
-    // Debts
+    const saleWhere: any = { type: 'SALE', createdAt: { gte: rangeStart, lte: rangeEnd } };
+    const salesInRange = await (this.prisma as any).transaction.findMany({
+      where: saleWhere,
+    });
+    const salesCount = salesInRange.length;
+    let salesVolume = new Decimal(0);
+    for (const tx of salesInRange) {
+      salesVolume = salesVolume.plus(new Decimal(tx.amount));
+    }
+
     const totalCustomerDebt = capitalData.totalReceivables;
     const totalSupplierDebt = capitalData.totalPayables;
     const netPosition = new Decimal(totalCustomerDebt).minus(new Decimal(totalSupplierDebt)).toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2);
 
-    // Inventory
     const items = await (this.prisma as any).item.findMany({
       where: { isActive: true },
     });
@@ -346,16 +466,14 @@ export class ReportsService {
         const parsed = parseInt(row.value, 10);
         if (!Number.isNaN(parsed) && parsed >= 0) lowStockThreshold = parsed;
       }
-    } catch {
-      // fallback to default 5 on any error — never throw from summary
-    }
+    } catch {}
+
     for (const item of items) {
       const stock = await this.computeStock(item.id);
       if (stock <= lowStockThreshold) lowStockItems++;
       if (stock === 0) outOfStockItems++;
     }
 
-    // Recent transactions — last 5 newest first
     const recentRaw = await (this.prisma as any).transaction.findMany({
       orderBy: { createdAt: 'desc' },
       take: 5,
@@ -400,6 +518,8 @@ export class ReportsService {
         lowStockItems,
         outOfStockItems,
       },
+      salesCount,
+      salesVolume: this.to2dp(salesVolume),
       recentTransactions,
     };
   }

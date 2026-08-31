@@ -230,6 +230,34 @@ app.whenReady().then(async () => {
         return { success: false, error: err instanceof Error ? err.message : String(err) };
       }
     });
+    ipcMain.handle('export-view-pdf', async (_event, suggestedFileName?: string) => {
+      if (!mainWindow) {
+        return { success: false, error: 'no window' };
+      }
+      try {
+        const pdfBuffer = await mainWindow.webContents.printToPDF({
+          margins: { top: 0, bottom: 0, left: 0, right: 0 },
+          pageSize: 'A4' as unknown as Record<string, unknown> as any,
+          printBackground: true,
+          preferCSSPageSize: true,
+        } as unknown as Electron.PrintToPDFOptions);
+        const defaultName = suggestedFileName && typeof suggestedFileName === 'string' && suggestedFileName.trim().length > 0
+          ? (suggestedFileName.trim().endsWith('.pdf') ? suggestedFileName.trim() : `${suggestedFileName.trim()}.pdf`)
+          : `BarakaMobile-Report-${new Date().toISOString().slice(0, 10)}.pdf`;
+        const { canceled, filePath } = await dialog.showSaveDialog(mainWindow!, {
+          title: 'حفظ التقرير كـ PDF',
+          defaultPath: defaultName,
+          filters: [{ name: 'PDF', extensions: ['pdf'] }],
+        });
+        if (canceled || !filePath) {
+          return { success: false, error: 'cancelled' };
+        }
+        fs.writeFileSync(filePath, pdfBuffer);
+        return { success: true, filePath };
+      } catch (err) {
+        return { success: false, error: err instanceof Error ? err.message : String(err) };
+      }
+    });
 
     if (app.isPackaged) {
       await spawnBackend();

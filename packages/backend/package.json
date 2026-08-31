@@ -7,7 +7,9 @@
     "bundle": "ncc build dist/main.js -o bundle_out --source-map",
     "start:dev": "ts-node -r tsconfig-paths/register src/main.ts",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev"
+    "prisma:migrate": "prisma migrate dev",
+    "test": "jest --runInBand",
+    "test:watch": "jest --watch"
   },
   "dependencies": {
     "@nestjs/common": "^10.3.0",
@@ -24,9 +26,12 @@
   "devDependencies": {
     "@nestjs/cli": "^10.3.0",
     "@nestjs/schematics": "^10.1.0",
+    "@types/jest": "^30.0.0",
     "@types/node": "^20.11.0",
     "@vercel/ncc": "^0.45.0",
+    "jest": "^30.5.0",
     "prisma": "^6.13.0",
+    "ts-jest": "^29.4.12",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.3.3"

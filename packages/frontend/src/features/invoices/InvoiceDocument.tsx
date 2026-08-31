@@ -9,6 +9,7 @@ declare global {
   interface Window {
     electronAPI?: {
       exportInvoicePDF?: (invoiceNumber?: string) => Promise<{ success: boolean; filePath?: string; error?: string }>;
+      exportViewPDF?: (suggestedFileName?: string) => Promise<{ success: boolean; filePath?: string; error?: string }>;
       getVersion?: () => Promise<string>;
       platform?: string;
     };
