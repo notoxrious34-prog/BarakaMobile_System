@@ -22,6 +22,7 @@ build/
 # Electron
 packages/desktop/dist/
 packages/desktop/release/
+dist-electron/
 
 # IDE
 .vscode/

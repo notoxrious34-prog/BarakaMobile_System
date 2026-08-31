@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, dialog, ipcMain } from 'electron';
+import { app, BrowserWindow, shell, dialog, ipcMain, Menu } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { spawn, ChildProcess } from 'child_process';
@@ -96,6 +96,7 @@ function spawnBackend(): Promise<void> {
       env,
       stdio: stdioOption,
       detached: false,
+      windowsHide: true,
     });
 
     backendProcess = child;
@@ -199,6 +200,7 @@ async function createWindow(): Promise<void> {
 
 app.whenReady().then(async () => {
   try {
+    Menu.setApplicationMenu(null);
     ipcMain.handle('get-version', () => app.getVersion());
 
     if (app.isPackaged) {
