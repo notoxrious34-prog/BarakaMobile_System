@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api, ApiError } from '@/lib/api';
-import { useRepairsQuery, useCreateRepairMutation, type RepairTicket } from '@/features/repair/hooks/useRepairs';
+import { useRepairsQuery, useCreateRepairMutation, type RepairTicket } from '@/features/repairs/hooks/useRepairs';
 import { RepairDetailModal } from '@/features/repairs/RepairDetailModal';
 
 const STATUS_LABEL: Record<string, string> = {

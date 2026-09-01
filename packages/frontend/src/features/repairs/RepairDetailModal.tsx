@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api, ApiError } from '@/lib/api';
-import { useUpdateStatusMutation, useRecordExternalCostMutation, type RepairTicket } from '@/features/repair/hooks/useRepairs';
+import { useUpdateStatusMutation, useRecordExternalCostMutation, type RepairTicket } from '@/features/repairs/hooks/useRepairs';
 
 const STATUS_LABEL: Record<string, string> = {
   RECEIVED: 'مستلم',
