@@ -48,29 +48,34 @@ export class RepairService {
       throw new BadRequestException('deviceType invalid');
     }
 
+    const depositDec = new Decimal(depositAmount);
+    const needsAccount = depositDec.gt(0);
+
     return this.prisma.$transaction(async (tx: PrismaTx) => {
-      const contact = await (tx as any).contact.findUnique({
+      const contact = await tx.contact.findUnique({
         where: { id: dto.contactId },
         include: { accounts: true },
       });
       if (!contact) {
         throw new NotFoundException(`Contact with id ${dto.contactId} not found`);
       }
-      const account = await (tx as any).account.findFirst({ where: { contactId: dto.contactId, role: 'CUSTOMER' } });
-      if (!account) throw new BadRequestException('Contact must have CUSTOMER account');
+      if (needsAccount) {
+        const account = await tx.account.findFirst({ where: { contactId: dto.contactId, role: 'CUSTOMER' } });
+        if (!account) throw new BadRequestException('Contact must have CUSTOMER account');
+      }
 
-      const seqSetting = await (tx as any).setting.findUnique({ where: { key: 'repair_sequence_next' } });
+      const seqSetting = await tx.setting.findUnique({ where: { key: 'repair_sequence_next' } });
       const currentSeqStr: string = seqSetting?.value ?? '1';
       const currentSeq = Number.parseInt(currentSeqStr, 10);
       const seq = Number.isNaN(currentSeq) || currentSeq < 1 ? 1 : currentSeq;
       const ticketNumber = `REP-${String(seq).padStart(6, '0')}`;
-      await (tx as any).setting.upsert({
+      await tx.setting.upsert({
         where: { key: 'repair_sequence_next' },
         update: { value: String(seq + 1) },
         create: { key: 'repair_sequence_next', value: String(seq + 1) },
       });
 
-      const ticket = await (tx as any).repairTicket.create({
+      const ticket = await tx.repairTicket.create({
         data: {
           ticketNumber,
           contactId: dto.contactId,
@@ -85,12 +90,12 @@ export class RepairService {
           actualCost: '0.00',
           externalCost: '0.00',
           depositAmount,
-          depositPaid: new Decimal(depositAmount).gt(0),
+          depositPaid: depositDec.gt(0),
           notes: dto.notes,
         },
       });
 
-      if (new Decimal(depositAmount).gt(0)) {
+      if (depositDec.gt(0)) {
         await this.cashService.postCashMovement(tx, {
           type: 'IN',
           category: 'SALE_PAYMENT',
@@ -99,13 +104,13 @@ export class RepairService {
         });
       }
 
-      return (tx as any).repairTicket.findUnique({ where: { id: ticket.id }, include: { contact: true } });
+      return tx.repairTicket.findUnique({ where: { id: ticket.id }, include: { contact: true } });
     });
   }
 
   async updateStatus(id: string, dto: { status: string; actualCost?: string; notes?: string }) {
     return this.prisma.$transaction(async (tx: PrismaTx) => {
-      const ticket = await (tx as any).repairTicket.findFirst({ where: { id, isActive: true } });
+      const ticket = await tx.repairTicket.findFirst({ where: { id, isActive: true } });
       if (!ticket) throw new NotFoundException(`RepairTicket with id ${id} not found`);
 
       const currentStatus = ticket.status;
@@ -138,12 +143,12 @@ export class RepairService {
         const remaining = actualDec.minus(depositDec);
         const remainingStr = this.to2dp(remaining.gt(0) ? remaining : new Decimal(0));
 
-        const seqSetting = await (tx as any).setting.findUnique({ where: { key: 'repair_sequence_next' } });
+        const seqSetting = await tx.setting.findUnique({ where: { key: 'repair_sequence_next' } });
         const currentSeqStr: string = seqSetting?.value ?? '1';
         const currentSeq = Number.parseInt(currentSeqStr, 10);
         const seq = Number.isNaN(currentSeq) || currentSeq < 1 ? 1 : currentSeq;
         const invoiceNumber = `REP-${String(seq).padStart(6, '0')}`;
-        await (tx as any).setting.upsert({
+        await tx.setting.upsert({
           where: { key: 'repair_sequence_next' },
           update: { value: String(seq + 1) },
           create: { key: 'repair_sequence_next', value: String(seq + 1) },
@@ -178,18 +183,18 @@ export class RepairService {
         updateData.actualCost = this.normalizeAmount(dto.actualCost);
       }
 
-      const updated = await (tx as any).repairTicket.update({
+      const updated = await tx.repairTicket.update({
         where: { id },
         data: updateData,
       });
 
-      return (tx as any).repairTicket.findUnique({ where: { id: updated.id }, include: { contact: true } });
+      return tx.repairTicket.findUnique({ where: { id: updated.id }, include: { contact: true } });
     });
   }
 
   async recordExternalCost(id: string, dto: { externalCost: string; note?: string }) {
     return this.prisma.$transaction(async (tx: PrismaTx) => {
-      const ticket = await (tx as any).repairTicket.findFirst({ where: { id, isActive: true } });
+      const ticket = await tx.repairTicket.findFirst({ where: { id, isActive: true } });
       if (!ticket) throw new NotFoundException(`RepairTicket with id ${id} not found`);
       if (ticket.repairType !== 'EXTERNAL') {
         throw new BadRequestException('External cost only allowed for EXTERNAL repairs');
@@ -211,11 +216,11 @@ export class RepairService {
 
       const existing = new Decimal(ticket.externalCost ?? '0.00');
       const updatedCost = existing.plus(new Decimal(normalized));
-      const updated = await (tx as any).repairTicket.update({
+      const updated = await tx.repairTicket.update({
         where: { id },
         data: { externalCost: this.to2dp(updatedCost) },
       });
-      return (tx as any).repairTicket.findUnique({ where: { id: updated.id }, include: { contact: true } });
+      return tx.repairTicket.findUnique({ where: { id: updated.id }, include: { contact: true } });
     });
   }
 
@@ -224,7 +229,7 @@ export class RepairService {
     if (filters?.status) where.status = filters.status;
     if (filters?.contactId) where.contactId = filters.contactId;
     if (filters?.repairType) where.repairType = filters.repairType;
-    return (this.prisma as any).repairTicket.findMany({
+    return this.prisma.repairTicket.findMany({
       where,
       include: { contact: true },
       orderBy: { createdAt: 'desc' },
@@ -232,7 +237,7 @@ export class RepairService {
   }
 
   async findOne(id: string) {
-    const ticket = await (this.prisma as any).repairTicket.findUnique({
+    const ticket = await this.prisma.repairTicket.findUnique({
       where: { id },
       include: { contact: true },
     });
@@ -241,9 +246,9 @@ export class RepairService {
   }
 
   async softDelete(id: string) {
-    const ticket = await (this.prisma as any).repairTicket.findFirst({ where: { id, isActive: true } });
+    const ticket = await this.prisma.repairTicket.findFirst({ where: { id, isActive: true } });
     if (!ticket) throw new NotFoundException(`RepairTicket with id ${id} not found`);
-    return (this.prisma as any).repairTicket.update({ where: { id }, data: { isActive: false } });
+    return this.prisma.repairTicket.update({ where: { id }, data: { isActive: false } });
   }
 
   async getRepairProfit(startDate?: string, endDate?: string) {
@@ -259,7 +264,7 @@ export class RepairService {
         if (!Number.isNaN(d.getTime())) where.deliveredAt.lte = this.getAlgeriaEndOfDay(d);
       }
     }
-    const tickets = await (this.prisma as any).repairTicket.findMany({ where });
+    const tickets = await this.prisma.repairTicket.findMany({ where });
     let totalRepairRevenue = new Decimal(0);
     let totalExternalCost = new Decimal(0);
     let totalRepairProfit = new Decimal(0);

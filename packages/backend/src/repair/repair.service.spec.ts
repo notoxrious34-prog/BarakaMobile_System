@@ -84,7 +84,7 @@ describe('RepairService', () => {
     expect(mockPrisma.ledgerEntry.create).not.toHaveBeenCalled();
     expect(mockPrisma.account.update).not.toHaveBeenCalled();
     expect(mockPrisma.repairTicket.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ invoiceNumber: 'REP-000005' }) }));
-    expect(result.invoiceNumber).toBe('REP-000005');
+    expect((result as any).invoiceNumber).toBe('REP-000005');
   });
 
   it('updateStatus to DELIVERED when actualCost <= depositAmount posts no CashMovement', async () => {

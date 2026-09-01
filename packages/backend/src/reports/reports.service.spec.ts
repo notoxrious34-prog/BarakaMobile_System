@@ -31,10 +31,11 @@ describe('ReportsService', () => {
   let service: ReportsService;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
     mockCashService.getCurrentBalance.mockResolvedValue({ currentBalance: '200.00' });
     mockExpensesService.getExpenseBreakdown.mockResolvedValue([]);
     mockRepairService.getRepairProfit.mockResolvedValue({ totalRepairRevenue: '0.00', totalExternalCost: '0.00', totalRepairProfit: '0.00', ticketCount: 0 });
+    mockPrisma.repairTicket.count.mockResolvedValue(0);
     const prismaMock = {
       account: mockPrisma.account,
       item: mockPrisma.item,
@@ -69,7 +70,6 @@ describe('ReportsService', () => {
         .mockResolvedValueOnce({ _sum: { quantity: 0 } });
 
       const result = await service.getCapital();
-      // inventory = 10.10*3 + 5.05*2 = 40.40, cash 200 => net = 1000.50 -300.25 +40.40+200 = 940.65
       expect(result.inventoryValue).toBe('40.40');
       expect(result.totalReceivables).toBe('1000.50');
       expect(result.totalPayables).toBe('300.25');
@@ -78,7 +78,9 @@ describe('ReportsService', () => {
     });
 
     it('returns 0.00 values when no data', async () => {
-      mockPrisma.account.findMany.mockResolvedValue([]).mockResolvedValue([]);
+      mockPrisma.account.findMany
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
       mockCashService.getCurrentBalance.mockResolvedValueOnce({ currentBalance: '0.00' });
       mockPrisma.item.findMany.mockResolvedValue([]);
       const result = await service.getCapital();
@@ -90,7 +92,9 @@ describe('ReportsService', () => {
     });
 
     it('netCapital includes cashInHand additive', async () => {
-      mockPrisma.account.findMany.mockResolvedValue([]).mockResolvedValue([]);
+      mockPrisma.account.findMany
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
       mockPrisma.item.findMany.mockResolvedValue([]);
       mockCashService.getCurrentBalance.mockResolvedValueOnce({ currentBalance: '500.00' });
       const result = await service.getCapital();
@@ -215,7 +219,9 @@ describe('ReportsService', () => {
 
   describe('getSummary()', () => {
     it('includes salesCount and salesVolume', async () => {
-      mockPrisma.account.findMany.mockResolvedValue([]).mockResolvedValue([]);
+      mockPrisma.account.findMany
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
       mockCashService.getCurrentBalance.mockResolvedValue({ currentBalance: '0.00' });
       mockPrisma.item.findMany.mockResolvedValue([]);
       mockPrisma.stockMovement.findFirst.mockResolvedValue(null);

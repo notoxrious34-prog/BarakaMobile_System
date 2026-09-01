@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Prisma } from '@prisma/client';
+import { Prisma, CashMovementCategory } from '@prisma/client';
 import Decimal from 'decimal.js';
 
 type PrismaTx = Prisma.TransactionClient;
@@ -44,9 +44,9 @@ export class CashService {
     if (amountDec.lte(0)) {
       throw new BadRequestException('المبلغ يجب أن يكون أكبر من صفر');
     }
-    let cashAccount = await (tx as any).cashAccount.findFirst({});
+    let cashAccount = await tx.cashAccount.findFirst({});
     if (!cashAccount) {
-      cashAccount = await (tx as any).cashAccount.create({ data: { currentBalance: '0.00' } });
+      cashAccount = await tx.cashAccount.create({ data: { currentBalance: '0.00' } });
     }
     const beforeDec = new Decimal(cashAccount.currentBalance);
     let afterDec: Decimal;
@@ -60,11 +60,11 @@ export class CashService {
     }
     const balanceBefore = this.to2dp(beforeDec);
     const balanceAfter = this.to2dp(afterDec);
-    await (tx as any).cashMovement.create({
+    await tx.cashMovement.create({
       data: {
         cashAccountId: cashAccount.id,
         type: params.type,
-        category: params.category,
+        category: params.category as CashMovementCategory,
         amount: normalizedAmount,
         balanceBefore,
         balanceAfter,
@@ -73,16 +73,16 @@ export class CashService {
         relatedExpenseId: params.relatedExpenseId,
       },
     });
-    await (tx as any).cashAccount.update({
+    await tx.cashAccount.update({
       where: { id: cashAccount.id },
       data: { currentBalance: balanceAfter },
     });
   }
 
   async getCurrentBalance(): Promise<{ currentBalance: string }> {
-    let acc = await (this.prisma as any).cashAccount.findFirst({});
+    let acc = await this.prisma.cashAccount.findFirst({});
     if (!acc) {
-      acc = await (this.prisma as any).cashAccount.create({ data: { currentBalance: '0.00' } });
+      acc = await this.prisma.cashAccount.create({ data: { currentBalance: '0.00' } });
     }
     return { currentBalance: this.to2dp(acc.currentBalance) };
   }
@@ -101,14 +101,13 @@ export class CashService {
         if (!Number.isNaN(d.getTime())) where.createdAt.lte = this.getAlgeriaEndOfDay(d);
       }
     }
-    return (this.prisma as any).cashMovement.findMany({ where, orderBy: { createdAt: 'desc' } });
+    return this.prisma.cashMovement.findMany({ where, orderBy: { createdAt: 'desc' } });
   }
 
   async recordOwnerDraw(dto: { amount: string; note?: string }): Promise<any> {
     return this.prisma.$transaction(async (tx: PrismaTx) => {
       await this.postCashMovement(tx, { type: 'OUT', category: 'OWNER_DRAW', amount: dto.amount, note: dto.note });
-      const acc = await (tx as any).cashAccount.findFirst({});
-      const last = await (tx as any).cashMovement.findFirst({ orderBy: { createdAt: 'desc' } });
+      const last = await tx.cashMovement.findFirst({ orderBy: { createdAt: 'desc' } });
       return last;
     });
   }
@@ -116,7 +115,7 @@ export class CashService {
   async recordOwnerDeposit(dto: { amount: string; note?: string }): Promise<any> {
     return this.prisma.$transaction(async (tx: PrismaTx) => {
       await this.postCashMovement(tx, { type: 'IN', category: 'OWNER_DEPOSIT', amount: dto.amount, note: dto.note });
-      const last = await (tx as any).cashMovement.findFirst({ orderBy: { createdAt: 'desc' } });
+      const last = await tx.cashMovement.findFirst({ orderBy: { createdAt: 'desc' } });
       return last;
     });
   }
@@ -126,7 +125,7 @@ export class CashService {
     if (Number.isNaN(d.getTime())) throw new BadRequestException('Invalid date');
     const start = this.getAlgeriaStartOfDay(d);
     const end = this.getAlgeriaEndOfDay(d);
-    const movements = await (this.prisma as any).cashMovement.findMany({
+    const movements = await this.prisma.cashMovement.findMany({
       where: { createdAt: { gte: start, lte: end } },
       orderBy: { createdAt: 'asc' },
     });
@@ -134,20 +133,15 @@ export class CashService {
     if (movements.length > 0) {
       openingBalance = movements[0].balanceBefore;
     } else {
-      const lastBefore = await (this.prisma as any).cashMovement.findFirst({
+      const lastBefore = await this.prisma.cashMovement.findFirst({
         where: { createdAt: { lt: start } },
         orderBy: { createdAt: 'desc' },
       });
-      if (lastBefore) openingBalance = lastBefore.balanceAfter;
-      else {
-        const acc = await (this.prisma as any).cashAccount.findFirst({});
+      if (lastBefore) {
+        openingBalance = lastBefore.balanceAfter;
+      } else {
+        const acc = await this.prisma.cashAccount.findFirst({});
         openingBalance = acc ? this.to2dp(acc.currentBalance) : '0.00';
-        // If there are movements after this date, we need balance before that date; if no movements at all, current balance is correct for empty day
-        // But if movements exist only after, opening should be 0 or last before — already handled.
-        // For correctness when no movements in range and no prior, use lastBefore or 0.
-        if (lastBefore) openingBalance = lastBefore.balanceAfter;
-        // If we have future movements but no prior, opening is still balanceBefore of first future? Actually opening for empty day with future data should be balanceAfter of lastBefore or 0.
-        // Keep as is.
       }
     }
     let totalIn = new Decimal(0);
@@ -167,7 +161,6 @@ export class CashService {
     } else {
       const openDec = new Decimal(openingBalance);
       closingBalance = openDec.plus(totalIn).minus(totalOut).toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2);
-      // If no movements, closing == opening
     }
     const breakdown = Array.from(breakdownMap.entries()).map(([category, amount]) => ({
       category,

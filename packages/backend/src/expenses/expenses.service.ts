@@ -35,7 +35,7 @@ export class ExpensesService {
       throw new BadRequestException('المبلغ يجب أن يكون أكبر من صفر');
     }
     return this.prisma.$transaction(async (tx: PrismaTx) => {
-      const category = await (tx as any).expenseCategory.findFirst({
+      const category = await tx.expenseCategory.findFirst({
         where: { id: dto.categoryId, isActive: true },
       });
       if (!category) {
@@ -46,7 +46,7 @@ export class ExpensesService {
         const d = new Date(dto.expenseDate);
         if (!Number.isNaN(d.getTime())) expenseDate = d;
       }
-      const expense = await (tx as any).expense.create({
+      const expense = await tx.expense.create({
         data: {
           categoryId: dto.categoryId,
           amount: normalizedAmount,
@@ -79,7 +79,7 @@ export class ExpensesService {
         if (!Number.isNaN(d.getTime())) where.expenseDate.lte = this.getAlgeriaEndOfDay(d);
       }
     }
-    return (this.prisma as any).expense.findMany({ where, include: { category: true }, orderBy: { expenseDate: 'desc' } });
+    return this.prisma.expense.findMany({ where, include: { category: true }, orderBy: { expenseDate: 'desc' } });
   }
 
   async getExpenseBreakdown(startDate?: string, endDate?: string): Promise<{ categoryId: string; categoryName: string; totalAmount: string; percentage: string }[]> {
@@ -99,7 +99,6 @@ export class ExpensesService {
       const pct = grandTotal.eq(0) ? '0.00' : v.total.div(grandTotal).times(100).toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2);
       result.push({ categoryId, categoryName: v.name, totalAmount: this.to2dp(v.total), percentage: pct });
     }
-    // Include zero categories? Only those with expenses.
     result.sort((a, b) => new Decimal(b.totalAmount).comparedTo(new Decimal(a.totalAmount)));
     return result;
   }
@@ -107,19 +106,24 @@ export class ExpensesService {
   async createCategory(dto: { name: string }): Promise<any> {
     const trimmed = dto.name.trim();
     if (trimmed.length < 2) throw new BadRequestException('الاسم قصير جداً');
-    const existing = await (this.prisma as any).expenseCategory.findFirst({ where: { name: trimmed } });
-    if (existing) throw new BadRequestException('فئة بهذا الاسم موجودة مسبقاً');
-    return (this.prisma as any).expenseCategory.create({ data: { name: trimmed } });
+    const existing = await this.prisma.expenseCategory.findFirst({ where: { name: trimmed } });
+    if (existing) {
+      if (!existing.isActive) {
+        return this.prisma.expenseCategory.update({ where: { id: existing.id }, data: { isActive: true } });
+      }
+      throw new BadRequestException('فئة بهذا الاسم موجودة مسبقاً');
+    }
+    return this.prisma.expenseCategory.create({ data: { name: trimmed } });
   }
 
   async findAllCategories(): Promise<any[]> {
-    return (this.prisma as any).expenseCategory.findMany({ where: { isActive: true }, orderBy: { name: 'asc' } });
+    return this.prisma.expenseCategory.findMany({ where: { isActive: true }, orderBy: { name: 'asc' } });
   }
 
   async deactivateCategory(id: string): Promise<any> {
-    const cat = await (this.prisma as any).expenseCategory.findUnique({ where: { id } });
+    const cat = await this.prisma.expenseCategory.findUnique({ where: { id } });
     if (!cat) throw new NotFoundException('الفئة غير موجودة');
     if (!cat.isActive) return cat;
-    return (this.prisma as any).expenseCategory.update({ where: { id }, data: { isActive: false } });
+    return this.prisma.expenseCategory.update({ where: { id }, data: { isActive: false } });
   }
 }

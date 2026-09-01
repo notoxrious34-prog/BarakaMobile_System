@@ -20,14 +20,14 @@ export class ReportsService {
   }
 
   private async computeStock(itemId: string): Promise<number> {
-    const lastAdj = await (this.prisma as any).stockMovement.findFirst({
+    const lastAdj = await this.prisma.stockMovement.findFirst({
       where: { itemId, type: MovementType.ADJUSTMENT },
       orderBy: { createdAt: 'desc' },
     });
     const baseDate: Date | null = lastAdj ? lastAdj.createdAt : null;
     const baseQty = lastAdj ? lastAdj.quantity : 0;
 
-    const inAgg = await (this.prisma as any).stockMovement.aggregate({
+    const inAgg = await this.prisma.stockMovement.aggregate({
       where: {
         itemId,
         type: MovementType.IN,
@@ -35,7 +35,7 @@ export class ReportsService {
       },
       _sum: { quantity: true },
     });
-    const outAgg = await (this.prisma as any).stockMovement.aggregate({
+    const outAgg = await this.prisma.stockMovement.aggregate({
       where: {
         itemId,
         type: MovementType.OUT,
@@ -99,7 +99,7 @@ export class ReportsService {
   }
 
   private async getProfitForRange(start: Date, end: Date): Promise<{ serviceProfit: Decimal; itemProfit: Decimal; totalProfit: Decimal }> {
-    const serviceLines = await (this.prisma as any).transactionService.findMany({
+    const serviceLines = await this.prisma.transactionService.findMany({
       where: {
         transaction: {
           createdAt: { gte: start, lte: end },
@@ -113,7 +113,7 @@ export class ReportsService {
       serviceProfit = serviceProfit.plus(new Decimal(sl.profit));
     }
 
-    const saleItems = await (this.prisma as any).transactionItem.findMany({
+    const saleItems = await this.prisma.transactionItem.findMany({
       where: {
         transaction: {
           type: 'SALE',
@@ -135,7 +135,7 @@ export class ReportsService {
   }
 
   async getContactPosition(contactId: string) {
-    const contact = await (this.prisma as any).contact.findFirst({
+    const contact = await this.prisma.contact.findFirst({
       where: { id: contactId, isActive: true },
       include: { accounts: true },
     });
@@ -157,14 +157,12 @@ export class ReportsService {
       contactRole: contact.role,
       netPosition,
     };
-
     if (supplierAccount) {
       result.supplierAccount = {
         accountId: supplierAccount.id,
         currentBalance: this.to2dp(supplierAccount.currentBalance),
       };
     }
-
     if (customerAccount) {
       result.customerAccount = {
         accountId: customerAccount.id,
@@ -176,7 +174,7 @@ export class ReportsService {
   }
 
   async getAllContactPositions() {
-    const contacts = await (this.prisma as any).contact.findMany({
+    const contacts = await this.prisma.contact.findMany({
       where: { isActive: true },
       orderBy: { name: 'asc' },
       include: { accounts: true },
@@ -214,13 +212,13 @@ export class ReportsService {
   }
 
   async getCapital() {
-    const customerAccounts = await (this.prisma as any).account.findMany({
+    const customerAccounts = await this.prisma.account.findMany({
       where: {
         role: 'CUSTOMER',
         contact: { isActive: true },
       },
     });
-    const supplierAccounts = await (this.prisma as any).account.findMany({
+    const supplierAccounts = await this.prisma.account.findMany({
       where: {
         role: 'SUPPLIER',
         contact: { isActive: true },
@@ -231,13 +229,12 @@ export class ReportsService {
     for (const acc of customerAccounts) {
       totalReceivables = totalReceivables.plus(new Decimal(acc.currentBalance));
     }
-
     let totalPayables = new Decimal(0);
     for (const acc of supplierAccounts) {
       totalPayables = totalPayables.plus(new Decimal(acc.currentBalance));
     }
 
-    const items = await (this.prisma as any).item.findMany({
+    const items = await this.prisma.item.findMany({
       where: { isActive: true },
     });
 
@@ -271,7 +268,7 @@ export class ReportsService {
       if (end) txWhere.createdAt.lte = end;
     }
 
-    const saleTxs = await (this.prisma as any).transaction.findMany({
+    const saleTxs = await this.prisma.transaction.findMany({
       where: txWhere,
     });
 
@@ -283,7 +280,7 @@ export class ReportsService {
     let totalCost = new Decimal(0);
     const hasRange = !!(start || end);
     if (hasRange && start && end) {
-      const cogsItems = await (this.prisma as any).transactionItem.findMany({
+      const cogsItems = await this.prisma.transactionItem.findMany({
         where: {
           transaction: {
             type: 'SALE',
@@ -296,7 +293,7 @@ export class ReportsService {
         totalCost = totalCost.plus(cost.times(ti.quantity));
       }
     } else if (!hasRange) {
-      const allItems = await (this.prisma as any).transactionItem.findMany({
+      const allItems = await this.prisma.transactionItem.findMany({
         where: { transaction: { type: 'SALE' } },
       });
       for (const ti of allItems) {
@@ -304,7 +301,7 @@ export class ReportsService {
         totalCost = totalCost.plus(cost.times(ti.quantity));
       }
     } else {
-      const cogsItems = await (this.prisma as any).transactionItem.findMany({
+      const cogsItems = await this.prisma.transactionItem.findMany({
         where: {
           transaction: {
             type: 'SALE',
@@ -343,11 +340,10 @@ export class ReportsService {
     const grossProfit = serviceProfit.plus(itemProfit).plus(new Decimal(repairData.totalRepairProfit));
     const netProfit = grossProfit;
 
-    // totalExpenses within same range, independent of owner draws
     let expenseWhere: any = {};
     if (start) expenseWhere.expenseDate = { ...(expenseWhere.expenseDate ?? {}), gte: start };
     if (end) expenseWhere.expenseDate = { ...(expenseWhere.expenseDate ?? {}), lte: end };
-    const expenses = await (this.prisma as any).expense.findMany({ where: expenseWhere });
+    const expenses = await this.prisma.expense.findMany({ where: expenseWhere });
     let totalExpenses = new Decimal(0);
     for (const e of expenses) {
       totalExpenses = totalExpenses.plus(new Decimal(e.amount));
@@ -375,14 +371,14 @@ export class ReportsService {
   }
 
   async getLedger(accountId: string) {
-    const account = await (this.prisma as any).account.findUnique({
+    const account = await this.prisma.account.findUnique({
       where: { id: accountId },
     });
     if (!account) {
       throw new NotFoundException(`Account with id ${accountId} not found`);
     }
 
-    const entries = await (this.prisma as any).ledgerEntry.findMany({
+    const entries = await this.prisma.ledgerEntry.findMany({
       where: { accountId },
       orderBy: { createdAt: 'asc' },
     });
@@ -406,25 +402,26 @@ export class ReportsService {
     const totalPayables = new Decimal(capital.totalPayables);
     const netDebtPosition = totalReceivables.minus(totalPayables).toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2);
 
-    const customerAccounts = await (this.prisma as any).account.findMany({
+    const customerAccounts = await this.prisma.account.findMany({
       where: { role: 'CUSTOMER', contact: { isActive: true } },
       include: { contact: true },
-      orderBy: { currentBalance: 'desc' },
     });
-    const supplierAccounts = await (this.prisma as any).account.findMany({
+    const supplierAccounts = await this.prisma.account.findMany({
       where: { role: 'SUPPLIER', contact: { isActive: true } },
       include: { contact: true },
-      orderBy: { currentBalance: 'desc' },
     });
 
-    const sortedCustomers = [...customerAccounts].sort((a: any, b: any) => {
-      const av = new Decimal(a.currentBalance);
-      const bv = new Decimal(b.currentBalance);
+    const filteredCustomers = customerAccounts.filter((a: any) => !new Decimal(a.currentBalance).eq(0));
+    const filteredSuppliers = supplierAccounts.filter((a: any) => !new Decimal(a.currentBalance).eq(0));
+
+    const sortedCustomers = [...filteredCustomers].sort((a: any, b: any) => {
+      const av = new Decimal(a.currentBalance).abs();
+      const bv = new Decimal(b.currentBalance).abs();
       return bv.comparedTo(av);
     });
-    const sortedSuppliers = [...supplierAccounts].sort((a: any, b: any) => {
-      const av = new Decimal(a.currentBalance);
-      const bv = new Decimal(b.currentBalance);
+    const sortedSuppliers = [...filteredSuppliers].sort((a: any, b: any) => {
+      const av = new Decimal(a.currentBalance).abs();
+      const bv = new Decimal(b.currentBalance).abs();
       return bv.comparedTo(av);
     });
 
@@ -432,13 +429,13 @@ export class ReportsService {
       contactId: a.contactId,
       contactName: a.contact?.name ?? '—',
       currentBalance: this.to2dp(a.currentBalance),
-    })).filter((x: any) => new Decimal(x.currentBalance).gt(0));
+    }));
 
     const topCreditors = sortedSuppliers.slice(0, 5).map((a: any) => ({
       contactId: a.contactId,
       contactName: a.contact?.name ?? '—',
       currentBalance: this.to2dp(a.currentBalance),
-    })).filter((x: any) => new Decimal(x.currentBalance).gt(0));
+    }));
 
     return {
       totalReceivables: capital.totalReceivables,
@@ -467,7 +464,7 @@ export class ReportsService {
     const monthProfitData = await this.getProfitForRange(rangeStart, rangeEnd);
 
     const saleWhere: any = { type: 'SALE', createdAt: { gte: rangeStart, lte: rangeEnd } };
-    const salesInRange = await (this.prisma as any).transaction.findMany({
+    const salesInRange = await this.prisma.transaction.findMany({
       where: saleWhere,
     });
     const salesCount = salesInRange.length;
@@ -480,7 +477,7 @@ export class ReportsService {
     const totalSupplierDebt = capitalData.totalPayables;
     const netPosition = new Decimal(totalCustomerDebt).minus(new Decimal(totalSupplierDebt)).toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2);
 
-    const items = await (this.prisma as any).item.findMany({
+    const items = await this.prisma.item.findMany({
       where: { isActive: true },
     });
     const totalItems = items.length;
@@ -488,7 +485,7 @@ export class ReportsService {
     let outOfStockItems = 0;
     let lowStockThreshold = 5;
     try {
-      const row = await (this.prisma as any).setting.findUnique({ where: { key: 'low_stock_threshold' } });
+      const row = await this.prisma.setting.findUnique({ where: { key: 'low_stock_threshold' } });
       if (row?.value) {
         const parsed = parseInt(row.value, 10);
         if (!Number.isNaN(parsed) && parsed >= 0) lowStockThreshold = parsed;
@@ -500,7 +497,7 @@ export class ReportsService {
       if (stock === 0) outOfStockItems++;
     }
 
-    const recentRaw = await (this.prisma as any).transaction.findMany({
+    const recentRaw = await this.prisma.transaction.findMany({
       orderBy: { createdAt: 'desc' },
       take: 5,
       include: {
@@ -518,12 +515,12 @@ export class ReportsService {
       createdAt: tx.createdAt instanceof Date ? tx.createdAt.toISOString() : String(tx.createdAt),
     }));
 
-    const openTickets = await (this.prisma as any).repairTicket.count({
+    const openTickets = await this.prisma.repairTicket.count({
       where: { isActive: true, status: { notIn: ['DELIVERED', 'CANCELLED'] } },
     });
     const todayStartForRepair = this.getAlgeriaStartOfDay(now);
     const todayEndForRepair = this.getAlgeriaEndOfDay(now);
-    const deliveredToday = await (this.prisma as any).repairTicket.count({
+    const deliveredToday = await this.prisma.repairTicket.count({
       where: { isActive: true, status: 'DELIVERED', deliveredAt: { gte: todayStartForRepair, lte: todayEndForRepair } },
     });
 
