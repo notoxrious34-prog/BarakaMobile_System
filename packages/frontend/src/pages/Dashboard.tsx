@@ -1,275 +1,225 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { RefreshCw } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { useDashboard } from '@/features/reports/hooks/useDashboard';
-import { useInvoiceSettings } from '@/features/settings/hooks/useInvoiceSettings';
-import { ErrorState } from '@/components/feedback/ErrorState';
+import { api } from '@/lib/api';
+import type { RepairTicket } from '@/features/repairs/hooks/useRepairs';
 
-const TX_TYPE_LABEL: Record<string, string> = {
+const TRANSACTION_TYPE_LABEL: Record<string, string> = {
   SALE: 'بيع',
   PURCHASE: 'شراء',
   PAYMENT_IN: 'تحصيل',
   PAYMENT_OUT: 'دفع',
-  OFFSET: 'تسوية',
+  OFFSET: 'مقاصة',
 };
 
-function formatMoney(value: string | number | undefined | null, currencySymbol: string): string {
-  if (value === undefined || value === null || value === '') return `0.00 ${currencySymbol}`;
-  const n = Number(value);
-  if (Number.isNaN(n)) return `0.00 ${currencySymbol}`;
-  return `${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currencySymbol}`;
-}
-
-function SkeletonCard() {
-  return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
-      <div className="h-3 w-20 animate-pulse rounded bg-zinc-200" />
-      <div className="mt-3 h-6 w-32 animate-pulse rounded bg-zinc-200" />
-    </div>
-  );
-}
-
-function SkeletonTableRow() {
-  return (
-    <tr>
-      <td className="px-4 py-3"><div className="h-4 w-12 animate-pulse rounded bg-zinc-200" /></td>
-      <td className="px-4 py-3"><div className="h-4 w-20 animate-pulse rounded bg-zinc-200" /></td>
-      <td className="px-4 py-3"><div className="h-4 w-24 animate-pulse rounded bg-zinc-200" /></td>
-      <td className="px-4 py-3"><div className="h-4 w-20 animate-pulse rounded bg-zinc-200" /></td>
-    </tr>
-  );
-}
-
-function DashboardSkeleton() {
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="h-7 w-32 animate-pulse rounded bg-zinc-200" />
-        <div className="h-9 w-24 animate-pulse rounded bg-zinc-200" />
-      </div>
-      <div className="grid gap-4 sm:grid-cols-3">
-        <SkeletonCard />
-        <SkeletonCard />
-        <SkeletonCard />
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <SkeletonCard />
-        <SkeletonCard />
-        <SkeletonCard />
-        <SkeletonCard />
-      </div>
-      <div className="grid gap-4 sm:grid-cols-3">
-        <SkeletonCard />
-        <SkeletonCard />
-        <SkeletonCard />
-      </div>
-      <div className="grid gap-4 sm:grid-cols-3">
-        <SkeletonCard />
-        <SkeletonCard />
-        <SkeletonCard />
-      </div>
-      <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
-        <div className="mb-4 h-5 w-32 animate-pulse rounded bg-zinc-200" />
-        <table className="w-full">
-          <tbody>
-            <SkeletonTableRow />
-            <SkeletonTableRow />
-            <SkeletonTableRow />
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function NetPositionTone(value: string): string {
-  const n = Number(value);
-  if (Number.isNaN(n) || n === 0) return 'border-zinc-200 bg-zinc-50 text-zinc-900';
-  if (n > 0) return 'border-emerald-200 bg-emerald-50 text-emerald-900';
-  return 'border-red-200 bg-red-50 text-red-900';
-}
+type Transaction = {
+  id: string;
+  type: string;
+  amount: string;
+  createdAt: string;
+};
 
 export function Dashboard() {
-  const { data, isLoading, isError, refetch, dataUpdatedAt } = useDashboard();
-  const { data: settingsData } = useInvoiceSettings();
-  const currencySymbol = settingsData?.currency_symbol ?? 'د.ج';
-  const [nowTick, setNowTick] = useState(() => Date.now());
+  const { data: summaryRaw, isLoading, isError } = useDashboard();
+  const summary = summaryRaw as unknown as Record<string, string | undefined>;
 
-  useEffect(() => {
-    const id = setInterval(() => setNowTick(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
+  const { data: repairsData } = useQuery<RepairTicket[]>({
+    queryKey: ['repairs', null],
+    queryFn: () => api.get<RepairTicket[]>('/repair'),
+  });
 
-  const lastUpdatedLabel = dataUpdatedAt
-    ? new Date(dataUpdatedAt).toLocaleString('ar-DZ', { dateStyle: 'medium', timeStyle: 'medium' })
-    : new Date(nowTick).toLocaleString('ar-DZ', { dateStyle: 'medium', timeStyle: 'medium' });
+  const { data: transactionsData } = useQuery<Transaction[]>({
+    queryKey: ['transactions'],
+    queryFn: () => api.get<Transaction[]>('/transactions'),
+  });
+
+  const repairCounts = (repairsData ?? []).reduce((acc, t) => {
+    acc[t.status] = (acc[t.status] ?? 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const recentTransactions = (transactionsData ?? []).slice(0, 5);
+
+  const navigate = useNavigate();
 
   if (isLoading) {
-    return <DashboardSkeleton />;
-  }
-
-  if (isError) {
     return (
-      <div className="space-y-6">
-        <header className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-zinc-900">لوحة التحكم</h1>
-        </header>
-        <ErrorState
-          title="تعذر تحميل لوحة التحكم"
-          message="حدث خطأ أثناء جلب البيانات. حاول مرة أخرى."
-          onRetry={() => refetch()}
-        />
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <p className="text-slate-400 font-sans">جاري التحميل...</p>
       </div>
     );
   }
 
-  if (!data) {
-    return <DashboardSkeleton />;
+  if (isError) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <p className="text-rose-400 font-sans">تعذر تحميل البيانات</p>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-zinc-900">لوحة التحكم</h1>
-          <p className="mt-1 text-xs text-zinc-500">آخر تحديث: {lastUpdatedLabel}</p>
+    <div dir="rtl" className="min-h-screen bg-slate-950 p-4 font-sans">
+      {/* Zone B — Header bar */}
+      <div className="flex flex-row items-center justify-between">
+        <h1 className="text-xl font-bold text-slate-100">لوحة التحكم</h1>
+        <span className="text-sm text-slate-400">
+          {new Date().toLocaleDateString('ar-DZ', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+        </span>
+      </div>
+
+      {/* Zone C — KPI strip */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
+        <div className="bg-slate-900 rounded-xl border border-slate-800 p-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-slate-400">إجمالي المبيعات</span>
+            <span>💰</span>
+          </div>
+          <p className="text-2xl font-bold font-mono text-slate-100 mt-1 text-emerald-400">
+            <span dir="ltr">{summary?.totalSales ?? '0.00'}</span>
+          </p>
+          <p className="text-xs text-slate-500 mt-0.5">د.ج</p>
         </div>
+        <div className="bg-slate-900 rounded-xl border border-slate-800 p-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-slate-400">المصاريف</span>
+            <span>📤</span>
+          </div>
+          <p className="text-2xl font-bold font-mono text-slate-100 mt-1 text-rose-400">
+            <span dir="ltr">{summary?.totalExpenses ?? '0.00'}</span>
+          </p>
+          <p className="text-xs text-slate-500 mt-0.5">د.ج</p>
+        </div>
+        <div className="bg-slate-900 rounded-xl border border-slate-800 p-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-slate-400">أرباح الصيانة</span>
+            <span>🔧</span>
+          </div>
+          <p className="text-2xl font-bold font-mono text-slate-100 mt-1 text-amber-400">
+            <span dir="ltr">{summary?.repairProfit ?? '0.00'}</span>
+          </p>
+          <p className="text-xs text-slate-500 mt-0.5">د.ج</p>
+        </div>
+        <div className="bg-slate-900 rounded-xl border border-slate-800 p-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-slate-400">رصيد الصندوق</span>
+            <span>🏦</span>
+          </div>
+          <p className="text-2xl font-bold font-mono text-slate-100 mt-1 text-cyan-400">
+            <span dir="ltr">{summary?.cashBalance ?? '0.00'}</span>
+          </p>
+          <p className="text-xs text-slate-500 mt-0.5">د.ج</p>
+        </div>
+      </div>
+
+      {/* Zone D — Active Repairs Status card */}
+      <div className="bg-slate-900 rounded-xl border border-amber-500/20 p-4 mt-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-amber-400">تذاكر الورشة النشطة</h2>
+        </div>
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mt-3">
+          <div className="bg-slate-800 rounded-lg p-2 text-center">
+            <p className="text-lg font-bold font-mono text-slate-100">{repairCounts['RECEIVED'] ?? 0}</p>
+            <p className="text-xs text-slate-400 mt-0.5">مستلم</p>
+          </div>
+          <div className="bg-slate-800 rounded-lg p-2 text-center">
+            <p className="text-lg font-bold font-mono text-slate-100">{repairCounts['DIAGNOSING'] ?? 0}</p>
+            <p className="text-xs text-slate-400 mt-0.5">قيد التشخيص</p>
+          </div>
+          <div className="bg-slate-800 rounded-lg p-2 text-center">
+            <p className="text-lg font-bold font-mono text-slate-100">{repairCounts['IN_REPAIR'] ?? 0}</p>
+            <p className="text-xs text-slate-400 mt-0.5">قيد الإصلاح</p>
+          </div>
+          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-2 text-center">
+            <p className="text-lg font-bold font-mono text-emerald-400">{repairCounts['READY'] ?? 0}</p>
+            <p className="text-xs text-slate-400 mt-0.5">جاهز 🔔</p>
+          </div>
+          <div className="bg-slate-800 rounded-lg p-2 text-center">
+            <p className="text-lg font-bold font-mono text-slate-100">{repairCounts['DELIVERED'] ?? 0}</p>
+            <p className="text-xs text-slate-400 mt-0.5">تم التسليم</p>
+          </div>
+          <div className="bg-slate-800 rounded-lg p-2 text-center">
+            <p className="text-lg font-bold font-mono text-slate-100">{repairCounts['CANCELLED'] ?? 0}</p>
+            <p className="text-xs text-slate-400 mt-0.5">ملغى</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Zone E — Quick Actions bar */}
+      <div className="flex flex-wrap gap-2 mt-4">
         <button
-          onClick={() => refetch()}
-          className="inline-flex items-center gap-2 rounded-md border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-zinc-400 focus:ring-offset-2"
+          type="button"
+          onClick={() => navigate('/repairs')}
+          className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/30"
         >
-          <RefreshCw className="h-4 w-4" aria-hidden="true" />
-          تحديث
+          تذكرة صيانة جديدة
         </button>
-      </header>
+        <button
+          type="button"
+          onClick={() => navigate('/transactions')}
+          className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/30"
+        >
+          بيع جديد
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate('/expenses')}
+          className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/30"
+        >
+          مصروف جديد
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate('/inventory')}
+          className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700"
+        >
+          المخزون
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate('/reports')}
+          className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700"
+        >
+          التقارير
+        </button>
+      </div>
 
-      {/* Row 1 — Capital (3 cards) */}
-      <section aria-label="رأس المال">
-        <h2 className="mb-3 text-sm font-semibold text-zinc-700">رأس المال</h2>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
-            <p className="text-xs font-medium text-zinc-500">رأس المال الكلي</p>
-            <p className="mt-1 text-lg font-bold text-zinc-900" dir="ltr">{formatMoney(data.capital.totalCapital, currencySymbol)}</p>
-          </div>
-          <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
-            <p className="text-xs font-medium text-zinc-500">النقد والمديونيات</p>
-            <p className="mt-1 text-lg font-bold text-zinc-900" dir="ltr">{formatMoney(data.capital.cashAndReceivables, currencySymbol)}</p>
-          </div>
-          <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
-            <p className="text-xs font-medium text-zinc-500">قيمة المخزون</p>
-            <p className="mt-1 text-lg font-bold text-zinc-900" dir="ltr">{formatMoney(data.capital.stockValue, currencySymbol)}</p>
-          </div>
+      {/* Zone F — Recent Transactions table */}
+      <div className="bg-slate-900 rounded-xl border border-slate-800 p-4 mt-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-slate-300">آخر المعاملات</h2>
         </div>
-      </section>
-
-      {/* Row 2 — Profit (4 cards, 2x2) */}
-      <section aria-label="الأرباح">
-        <h2 className="mb-3 text-sm font-semibold text-zinc-700">الأرباح</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
-            <p className="text-xs font-medium text-zinc-500">أرباح اليوم — الإجمالي</p>
-            <p className="mt-1 text-lg font-bold text-zinc-900" dir="ltr">{formatMoney(data.todayProfit.totalProfit, currencySymbol)}</p>
-          </div>
-          <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
-            <p className="text-xs font-medium text-zinc-500">أرباح اليوم — الخدمات</p>
-            <p className="mt-1 text-lg font-bold text-zinc-900" dir="ltr">{formatMoney(data.todayProfit.serviceProfit, currencySymbol)}</p>
-          </div>
-          <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
-            <p className="text-xs font-medium text-zinc-500">أرباح الشهر — الإجمالي</p>
-            <p className="mt-1 text-lg font-bold text-zinc-900" dir="ltr">{formatMoney(data.monthProfit.totalProfit, currencySymbol)}</p>
-          </div>
-          <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
-            <p className="text-xs font-medium text-zinc-500">أرباح الشهر — الخدمات</p>
-            <p className="mt-1 text-lg font-bold text-zinc-900" dir="ltr">{formatMoney(data.monthProfit.serviceProfit, currencySymbol)}</p>
-          </div>
-        </div>
-      </section>
-
-      {/* Row 3 — Debts (3 cards) */}
-      <section aria-label="الديون">
-        <h2 className="mb-3 text-sm font-semibold text-zinc-700">الديون</h2>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
-            <p className="text-xs font-medium text-zinc-500">ديون العملاء (ما يدينون لنا)</p>
-            <p className="mt-1 text-lg font-bold text-zinc-900" dir="ltr">{formatMoney(data.debts.totalCustomerDebt, currencySymbol)}</p>
-          </div>
-          <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
-            <p className="text-xs font-medium text-zinc-500">ديون الموردين (ما ندين لهم)</p>
-            <p className="mt-1 text-lg font-bold text-zinc-900" dir="ltr">{formatMoney(data.debts.totalSupplierDebt, currencySymbol)}</p>
-          </div>
-          <div className={`rounded-lg border p-4 shadow-sm ${NetPositionTone(data.debts.netPosition)}`}>
-            <p className="text-xs font-medium opacity-70">الوضع الصافي</p>
-            <p className="mt-1 text-lg font-bold" dir="ltr">{formatMoney(data.debts.netPosition, currencySymbol)}</p>
-          </div>
-        </div>
-      </section>
-
-      {/* Row 4 — Inventory (3 cards) */}
-      <section aria-label="المخزون">
-        <h2 className="mb-3 text-sm font-semibold text-zinc-700">المخزون</h2>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
-            <p className="text-xs font-medium text-zinc-500">إجمالي الأصناف</p>
-            <p className="mt-1 text-lg font-bold text-zinc-900">{data.inventory.totalItems}</p>
-          </div>
-          <div className="rounded-lg border border-amber-200 bg-white p-4 shadow-sm">
-            <p className="flex items-center gap-2 text-xs font-medium text-zinc-500">
-              أصناف منخفضة المخزون
-              <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">تحذير</span>
-            </p>
-            <p className="mt-1 text-lg font-bold text-amber-900">{data.inventory.lowStockItems}</p>
-          </div>
-          <div className="rounded-lg border border-red-200 bg-white p-4 shadow-sm">
-            <p className="flex items-center gap-2 text-xs font-medium text-zinc-500">
-              أصناف نفدت
-              <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">خطر</span>
-            </p>
-            <p className="mt-1 text-lg font-bold text-red-900">{data.inventory.outOfStockItems}</p>
-          </div>
-        </div>
-      </section>
-
-      {/* Row 5 — Recent transactions */}
-      <section aria-label="المعاملات الأخيرة" className="rounded-lg border border-zinc-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3">
-          <h2 className="text-sm font-semibold text-zinc-800">المعاملات الأخيرة</h2>
-          <Link
-            to="/transactions"
-            className="text-sm font-medium text-zinc-700 hover:text-zinc-900 hover:underline"
-          >
-            عرض كل المعاملات
-          </Link>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-zinc-200 bg-zinc-50 text-zinc-600">
-                <th className="px-4 py-2 text-right font-medium">النوع</th>
-                <th className="px-4 py-2 text-right font-medium">المبلغ</th>
-                <th className="px-4 py-2 text-right font-medium">جهة الاتصال</th>
-                <th className="px-4 py-2 text-right font-medium">التاريخ</th>
+        <table className="w-full text-sm mt-3">
+          <thead>
+            <tr>
+              <th className="text-right text-xs text-slate-500 pb-2">النوع</th>
+              <th className="text-right text-xs text-slate-500 pb-2">المبلغ</th>
+              <th className="text-right text-xs text-slate-500 pb-2">التاريخ</th>
+            </tr>
+          </thead>
+          <tbody>
+            {recentTransactions.length === 0 ? (
+              <tr className="border-t border-slate-800">
+                <td colSpan={3} className="text-center text-slate-500 py-4">
+                  لا توجد معاملات
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {data.recentTransactions.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-zinc-500">لا توجد معاملات بعد</td>
+            ) : (
+              recentTransactions.map((tx) => (
+                <tr key={tx.id} className="border-t border-slate-800">
+                  <td className="py-2 text-slate-200">{TRANSACTION_TYPE_LABEL[tx.type] ?? tx.type}</td>
+                  <td className="py-2">
+                    <span dir="ltr" className="font-mono text-slate-200">
+                      {tx.amount}
+                    </span>
+                  </td>
+                  <td className="py-2 text-slate-400">{new Date(tx.createdAt).toLocaleDateString('ar-DZ')}</td>
                 </tr>
-              ) : (
-                data.recentTransactions.map((tx) => (
-                  <tr key={tx.id} className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50">
-                    <td className="px-4 py-3 text-zinc-900">{TX_TYPE_LABEL[tx.type] ?? tx.type}</td>
-                    <td className="px-4 py-3 text-zinc-900" dir="ltr">{formatMoney(tx.totalAmount, currencySymbol)}</td>
-                    <td className="px-4 py-3 text-zinc-700">{tx.contactName}</td>
-                    <td className="px-4 py-3 text-zinc-600" dir="ltr">{new Date(tx.createdAt).toLocaleString('ar-DZ')}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
