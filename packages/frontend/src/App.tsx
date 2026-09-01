@@ -5,6 +5,7 @@ import { ContactsPage } from '@/pages/ContactsPage';
 import { InventoryPage } from '@/pages/InventoryPage';
 import { ServicesPage } from '@/pages/ServicesPage';
 import { TransactionsPage } from '@/pages/TransactionsPage';
+import { RepairsPage } from '@/pages/RepairsPage';
 import { TreasuryPage } from '@/pages/TreasuryPage';
 import { ExpensesPage } from '@/pages/ExpensesPage';
 import { ReportsPage } from '@/pages/ReportsPage';
@@ -20,6 +21,7 @@ export default function App() {
         <Route path="inventory" element={<InventoryPage />} />
         <Route path="services" element={<ServicesPage />} />
         <Route path="transactions" element={<TransactionsPage />} />
+        <Route path="repairs" element={<RepairsPage />} />
         <Route path="treasury" element={<TreasuryPage />} />
         <Route path="expenses" element={<ExpensesPage />} />
         <Route path="reports" element={<ReportsPage />} />

@@ -12,9 +12,10 @@ import { SettingsModule } from './settings/settings.module';
 import { SearchModule } from './search/search.module';
 import { CashModule } from './cash/cash.module';
 import { ExpensesModule } from './expenses/expenses.module';
+import { RepairModule } from './repair/repair.module';
 
 @Module({
-  imports: [PrismaModule, ContactsModule, AccountsModule, InventoryModule, ServicesModule, TransactionsModule, ReportsModule, SettingsModule, SearchModule, CashModule, ExpensesModule],
+  imports: [PrismaModule, ContactsModule, AccountsModule, InventoryModule, ServicesModule, TransactionsModule, ReportsModule, SettingsModule, SearchModule, CashModule, ExpensesModule, RepairModule],
   controllers: [AppController],
   providers: [AppService],
 })

@@ -26,6 +26,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/inventory', label: 'المخزون', icon: Package },
   { to: '/services', label: 'الخدمات', icon: Wrench },
   { to: '/transactions', label: 'المعاملات', icon: Receipt },
+  { to: '/repairs', label: 'الإصلاحات', icon: Wrench },
   { to: '/treasury', label: 'الخزينة', icon: Wallet },
   { to: '/expenses', label: 'المصاريف', icon: CreditCard },
   { to: '/reports', label: 'التقارير', icon: BarChart3 },

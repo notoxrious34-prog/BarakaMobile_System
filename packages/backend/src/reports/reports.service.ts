@@ -4,6 +4,7 @@ import { MovementType } from '@prisma/client';
 import Decimal from 'decimal.js';
 import { CashService } from '../cash/cash.service';
 import { ExpensesService } from '../expenses/expenses.service';
+import { RepairService } from '../repair/repair.service';
 
 @Injectable()
 export class ReportsService {
@@ -11,6 +12,7 @@ export class ReportsService {
     private readonly prisma: PrismaService,
     private readonly cashService: CashService,
     private readonly expensesService: ExpensesService,
+    private readonly repairService: RepairService,
   ) {}
 
   private to2dp(value: string | number | Decimal): string {
@@ -337,7 +339,8 @@ export class ReportsService {
       itemProfit = rangeProfit.itemProfit;
     }
 
-    const grossProfit = serviceProfit.plus(itemProfit);
+    const repairData = await this.repairService.getRepairProfit(startDate, endDate);
+    const grossProfit = serviceProfit.plus(itemProfit).plus(new Decimal(repairData.totalRepairProfit));
     const netProfit = grossProfit;
 
     // totalExpenses within same range, independent of owner draws
@@ -361,6 +364,8 @@ export class ReportsService {
       totalCost: this.to2dp(totalCost),
       serviceProfit: this.to2dp(serviceProfit),
       itemProfit: this.to2dp(itemProfit),
+      repairProfit: this.to2dp(new Decimal(repairData.totalRepairProfit)),
+      totalRepairRevenue: this.to2dp(new Decimal(repairData.totalRepairRevenue)),
       grossProfit: this.to2dp(grossProfit),
       netProfit: this.to2dp(netProfit),
       totalExpenses: this.to2dp(totalExpenses),
@@ -513,6 +518,15 @@ export class ReportsService {
       createdAt: tx.createdAt instanceof Date ? tx.createdAt.toISOString() : String(tx.createdAt),
     }));
 
+    const openTickets = await (this.prisma as any).repairTicket.count({
+      where: { isActive: true, status: { notIn: ['DELIVERED', 'CANCELLED'] } },
+    });
+    const todayStartForRepair = this.getAlgeriaStartOfDay(now);
+    const todayEndForRepair = this.getAlgeriaEndOfDay(now);
+    const deliveredToday = await (this.prisma as any).repairTicket.count({
+      where: { isActive: true, status: 'DELIVERED', deliveredAt: { gte: todayStartForRepair, lte: todayEndForRepair } },
+    });
+
     return {
       capital: {
         totalCapital: this.to2dp(totalCapital),
@@ -546,6 +560,10 @@ export class ReportsService {
         outOfStockItems,
       },
       recentTransactions,
+      repairStats: {
+        openTickets,
+        deliveredToday,
+      },
     };
   }
 

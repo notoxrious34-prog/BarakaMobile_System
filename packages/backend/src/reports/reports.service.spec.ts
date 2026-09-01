@@ -9,6 +9,10 @@ const mockExpensesService: any = {
   getExpenseBreakdown: jest.fn().mockResolvedValue([]),
 };
 
+const mockRepairService: any = {
+  getRepairProfit: jest.fn().mockResolvedValue({ totalRepairRevenue: '0.00', totalExternalCost: '0.00', totalRepairProfit: '0.00', ticketCount: 0 }),
+};
+
 const mockPrisma = {
   account: { findMany: jest.fn() },
   item: { findMany: jest.fn() },
@@ -20,6 +24,7 @@ const mockPrisma = {
   setting: { findUnique: jest.fn() },
   ledgerEntry: { findMany: jest.fn() },
   expense: { findMany: jest.fn() },
+  repairTicket: { findMany: jest.fn(), count: jest.fn().mockResolvedValue(0) },
 } as any;
 
 describe('ReportsService', () => {
@@ -29,6 +34,7 @@ describe('ReportsService', () => {
     jest.clearAllMocks();
     mockCashService.getCurrentBalance.mockResolvedValue({ currentBalance: '200.00' });
     mockExpensesService.getExpenseBreakdown.mockResolvedValue([]);
+    mockRepairService.getRepairProfit.mockResolvedValue({ totalRepairRevenue: '0.00', totalExternalCost: '0.00', totalRepairProfit: '0.00', ticketCount: 0 });
     const prismaMock = {
       account: mockPrisma.account,
       item: mockPrisma.item,
@@ -40,8 +46,9 @@ describe('ReportsService', () => {
       setting: mockPrisma.setting,
       ledgerEntry: mockPrisma.ledgerEntry,
       expense: mockPrisma.expense,
+      repairTicket: mockPrisma.repairTicket,
     } as any;
-    service = new ReportsService(prismaMock, mockCashService, mockExpensesService);
+    service = new ReportsService(prismaMock, mockCashService, mockExpensesService, mockRepairService);
   });
 
   describe('getCapital()', () => {

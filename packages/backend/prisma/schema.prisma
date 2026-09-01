@@ -19,18 +19,19 @@ enum AccountRole {
 }
 
 model Contact {
-  id        String      @id @default(cuid())
+  id        String         @id @default(cuid())
   name      String
   phone     String?
   address   String?
   role      ContactRole
   notes     String?
-  isActive  Boolean     @default(true)
-  isWalkIn  Boolean     @default(false)
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  isActive  Boolean        @default(true)
+  isWalkIn  Boolean        @default(false)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
   accounts  Account[]
   services  Service[]
+  repairs   RepairTicket[]
 }
 
 model Account {
@@ -231,4 +232,52 @@ model Expense {
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
   category    ExpenseCategory @relation(fields: [categoryId], references: [id])
+}
+
+enum DeviceType {
+  PHONE
+  TABLET
+  LAPTOP
+  OTHER
+}
+
+enum RepairStatus {
+  RECEIVED
+  DIAGNOSING
+  IN_REPAIR
+  READY
+  DELIVERED
+  CANCELLED
+}
+
+enum RepairType {
+  INTERNAL
+  EXTERNAL
+}
+
+model RepairTicket {
+  id                   String    @id @default(cuid())
+  ticketNumber         String    @unique
+  contactId            String
+  deviceType           String
+  deviceBrand          String
+  deviceModel          String
+  problemDescription   String
+  status               String    @default("RECEIVED")
+  repairType           String    @default("INTERNAL")
+  technicianName       String?
+  estimatedCost        String    @default("0.00")
+  actualCost           String    @default("0.00")
+  externalCost         String    @default("0.00")
+  depositAmount        String    @default("0.00")
+  depositPaid          Boolean   @default(false)
+  invoiceNumber        String?   @unique
+  relatedTransactionId String?
+  notes                String?
+  receivedAt           DateTime  @default(now())
+  deliveredAt          DateTime?
+  isActive             Boolean   @default(true)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  contact              Contact   @relation(fields: [contactId], references: [id])
 }

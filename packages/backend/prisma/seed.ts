@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-  // 7 default Settings (idempotent upsert)
+  // 8 default Settings (idempotent upsert)
   const settings: Array<{ key: string; value: string }> = [
     { key: 'business_name', value: 'BarakaMobile' },
     { key: 'business_phone', value: '+213 000 000 000' },
@@ -12,6 +12,7 @@ async function main() {
     { key: 'low_stock_threshold', value: '5' },
     { key: 'invoice_footer_note', value: 'شكرا لتعاملكم معنا' },
     { key: 'invoice_sequence_next', value: '1' },
+    { key: 'repair_sequence_next', value: '1' },
   ];
   for (const s of settings) {
     await prisma.setting.upsert({
@@ -77,7 +78,7 @@ async function main() {
     }
   }
 
-  console.log('Seed completed: Settings 7, CashAccount 1, ExpenseCategory 4, WalkIn 1');
+  console.log('Seed completed: Settings 8, CashAccount 1, ExpenseCategory 4, WalkIn 1');
   const counts = {
     settings: await prisma.setting.count(),
     cashAccount: await (prisma as any).cashAccount.count(),
