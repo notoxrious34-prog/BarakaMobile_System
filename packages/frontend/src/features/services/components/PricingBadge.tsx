@@ -16,16 +16,20 @@ export function PricingBadge({ pricingType, value }: Props) {
 
   if (pricingType === 'FIXED') {
     return (
-      <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-800">
-        {normalized} {currencySymbol}
+      <span className="inline-flex rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-0.5 text-xs font-medium text-cyan-400">
+        <span className="font-mono" dir="ltr">
+          {normalized} {currencySymbol}
+        </span>
       </span>
     );
   }
 
   // COMMISSION
   return (
-    <span className="inline-flex items-center rounded-full border border-purple-200 bg-purple-50 px-2.5 py-0.5 text-xs font-medium text-purple-800">
-      {normalized}%
+    <span className="inline-flex rounded-full border border-purple-500/30 bg-purple-500/10 px-2.5 py-0.5 text-xs font-medium text-purple-400">
+      <span className="font-mono" dir="ltr">
+        {normalized}%
+      </span>
     </span>
   );
 }
