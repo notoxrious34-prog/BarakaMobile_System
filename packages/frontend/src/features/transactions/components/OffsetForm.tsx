@@ -45,7 +45,6 @@ export function OffsetForm({ open, onClose }: Props) {
       setApiError(null);
     }
   }, [open]);
-
   if (!open) return null;
 
   const isSubmitting = createMut.isPending;
@@ -83,38 +82,38 @@ export function OffsetForm({ open, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" dir="rtl">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} aria-hidden="true" />
       <div
         role="dialog"
         aria-modal="true"
         aria-label="إنشاء مقاصة"
-        className="relative z-10 w-full max-w-md rounded-lg border border-zinc-200 bg-white p-6 shadow-lg"
+        className="relative z-10 w-full max-w-md rounded-lg border border-slate-800 bg-slate-900 p-6 text-slate-100 shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-zinc-900">مقاصة</h2>
-          <button type="button" onClick={onClose} aria-label="إغلاق" className="rounded-md p-1 text-zinc-500 hover:bg-zinc-100">
+          <h2 className="text-base font-semibold text-slate-100">مقاصة</h2>
+          <button type="button" onClick={onClose} aria-label="إغلاق" className="rounded-md p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-100">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {apiError && (
-          <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+          <div className="mb-4 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-400" role="alert">
             {apiError}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <div>
-            <label htmlFor="offset-contact" className="mb-1 block text-sm font-medium text-zinc-700">
-              جهة الاتصال <span className="text-red-500">*</span>
+            <label htmlFor="offset-contact" className="mb-1 block text-sm font-medium text-slate-300">
+              جهة الاتصال <span className="text-rose-400">*</span>
             </label>
             <select
               id="offset-contact"
               value={contactId}
               onChange={(e) => setContactId(e.target.value)}
               disabled={isSubmitting}
-              className={`w-full rounded-md border px-3 py-2 text-sm ${fieldErrors.contactId ? 'border-red-500' : 'border-zinc-300'}`}
+              className={`w-full rounded-md border bg-slate-800 px-3 py-2 text-sm text-slate-100 ${fieldErrors.contactId ? 'border-rose-500/50' : 'border-slate-700'}`}
             >
               <option value="">اختر جهة اتصال (مورد وعميل)</option>
               {bothContacts.map((c) => (
@@ -123,25 +122,25 @@ export function OffsetForm({ open, onClose }: Props) {
                 </option>
               ))}
             </select>
-            {fieldErrors.contactId && <p className="mt-1 text-xs text-red-600">{fieldErrors.contactId}</p>}
-            {bothContacts.length === 0 && <p className="mt-1 text-xs text-zinc-500">لا توجد جهات اتصال من نوع مورد وعميل.</p>}
+            {fieldErrors.contactId && <p className="mt-1 text-xs text-rose-400">{fieldErrors.contactId}</p>}
+            {bothContacts.length === 0 && <p className="mt-1 text-xs text-slate-500">لا توجد جهات اتصال من نوع مورد وعميل.</p>}
           </div>
 
           {contactId && (
-            <div className="rounded-md bg-zinc-50 p-3 text-sm">
+            <div className="rounded-md border border-slate-700 bg-slate-800 p-3 text-sm">
               {accountsLoading ? (
-                <p className="text-zinc-500">جاري تحميل الأرصدة...</p>
+                <p className="text-slate-500">جاري تحميل الأرصدة...</p>
               ) : (
                 <div className="space-y-1">
                   <div className="flex justify-between">
-                    <span className="text-zinc-500">رصيد المورد:</span>
-                    <span dir="ltr" className="font-medium">
+                    <span className="text-slate-400">رصيد المورد:</span>
+                    <span dir="ltr" className="font-mono font-medium text-slate-100">
                       {supplierBalance !== null ? `${Number(supplierBalance).toFixed(2)} ${currencySymbol}` : '—'}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-zinc-500">رصيد العميل:</span>
-                    <span dir="ltr" className="font-medium">
+                    <span className="text-slate-400">رصيد العميل:</span>
+                    <span dir="ltr" className="font-mono font-medium text-slate-100">
                       {customerBalance !== null ? `${Number(customerBalance).toFixed(2)} ${currencySymbol}` : '—'}
                     </span>
                   </div>
@@ -151,8 +150,8 @@ export function OffsetForm({ open, onClose }: Props) {
           )}
 
           <div>
-            <label htmlFor="offset-amount" className="mb-1 block text-sm font-medium text-zinc-700">
-              المبلغ <span className="text-red-500">*</span>
+            <label htmlFor="offset-amount" className="mb-1 block text-sm font-medium text-slate-300">
+              المبلغ <span className="text-rose-400">*</span>
             </label>
             <input
               id="offset-amount"
@@ -161,15 +160,15 @@ export function OffsetForm({ open, onClose }: Props) {
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               disabled={isSubmitting}
-              className={`w-full rounded-md border px-3 py-2 text-sm ${fieldErrors.amount ? 'border-red-500' : 'border-zinc-300'}`}
+              className={`w-full rounded-md border bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 ${fieldErrors.amount ? 'border-rose-500/50' : 'border-slate-700'}`}
               placeholder="مثال: 400.00"
               dir="ltr"
             />
-            {fieldErrors.amount && <p className="mt-1 text-xs text-red-600">{fieldErrors.amount}</p>}
+            {fieldErrors.amount && <p className="mt-1 text-xs text-rose-400">{fieldErrors.amount}</p>}
           </div>
 
           <div>
-            <label htmlFor="offset-note" className="mb-1 block text-sm font-medium text-zinc-700">
+            <label htmlFor="offset-note" className="mb-1 block text-sm font-medium text-slate-300">
               ملاحظة
             </label>
             <textarea
@@ -178,16 +177,16 @@ export function OffsetForm({ open, onClose }: Props) {
               onChange={(e) => setNote(e.target.value)}
               disabled={isSubmitting}
               rows={2}
-              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+              className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500"
               placeholder="ملاحظة اختيارية"
             />
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={onClose} disabled={isSubmitting} className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm">
+            <button type="button" onClick={onClose} disabled={isSubmitting} className="rounded-md border border-slate-700 bg-slate-800 px-4 py-2 text-sm text-slate-300 hover:bg-slate-700">
               إلغاء
             </button>
-            <button type="submit" disabled={isSubmitting} className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50">
+            <button type="submit" disabled={isSubmitting} className="rounded-md bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-500 disabled:opacity-50">
               {isSubmitting ? 'جاري الحفظ...' : 'تأكيد المقاصة'}
             </button>
           </div>

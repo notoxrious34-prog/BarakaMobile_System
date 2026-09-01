@@ -55,7 +55,6 @@ export function PurchaseForm({ open, onClose }: Props) {
       setApiError(null);
     }
   }, [open]);
-
   if (!open) return null;
 
   const isSubmitting = createMut.isPending;
@@ -121,38 +120,38 @@ export function PurchaseForm({ open, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" dir="rtl">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} aria-hidden="true" />
       <div
         role="dialog"
         aria-modal="true"
         aria-label="إنشاء عملية شراء"
-        className="relative z-10 max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-zinc-200 bg-white p-6 shadow-lg"
+        className="relative z-10 max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-slate-800 bg-slate-900 p-6 text-slate-100 shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-zinc-900">عملية شراء</h2>
-          <button type="button" onClick={onClose} aria-label="إغلاق" className="rounded-md p-1 text-zinc-500 hover:bg-zinc-100">
+          <h2 className="text-base font-semibold text-slate-100">عملية شراء</h2>
+          <button type="button" onClick={onClose} aria-label="إغلاق" className="rounded-md p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-100">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {apiError && (
-          <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+          <div className="mb-4 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-400" role="alert">
             {apiError}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <div>
-            <label htmlFor="purchase-contact" className="mb-1 block text-sm font-medium text-zinc-700">
-              جهة الاتصال <span className="text-red-500">*</span>
+            <label htmlFor="purchase-contact" className="mb-1 block text-sm font-medium text-slate-300">
+              جهة الاتصال <span className="text-rose-400">*</span>
             </label>
             <select
               id="purchase-contact"
               value={contactId}
               onChange={(e) => setContactId(e.target.value)}
               disabled={isSubmitting}
-              className={`w-full rounded-md border px-3 py-2 text-sm ${fieldErrors.contactId ? 'border-red-500' : 'border-zinc-300'}`}
+              className={`w-full rounded-md border bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 ${fieldErrors.contactId ? 'border-rose-500/50' : 'border-slate-700'}`}
             >
               <option value="">اختر جهة الاتصال</option>
               {supplierContacts.map((c) => (
@@ -161,11 +160,11 @@ export function PurchaseForm({ open, onClose }: Props) {
                 </option>
               ))}
             </select>
-            {fieldErrors.contactId && <p className="mt-1 text-xs text-red-600">{fieldErrors.contactId}</p>}
+            {fieldErrors.contactId && <p className="mt-1 text-xs text-rose-400">{fieldErrors.contactId}</p>}
           </div>
 
           <div>
-            <label htmlFor="purchase-note" className="mb-1 block text-sm font-medium text-zinc-700">
+            <label htmlFor="purchase-note" className="mb-1 block text-sm font-medium text-slate-300">
               ملاحظة
             </label>
             <textarea
@@ -174,33 +173,33 @@ export function PurchaseForm({ open, onClose }: Props) {
               onChange={(e) => setNote(e.target.value)}
               disabled={isSubmitting}
               rows={2}
-              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+              className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500"
               placeholder="ملاحظة اختيارية"
             />
           </div>
 
           <div>
             <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-zinc-900">
-                المنتجات <span className="text-red-500">*</span>
+              <h3 className="text-sm font-semibold text-slate-100">
+                المنتجات <span className="text-rose-400">*</span>
               </h3>
               <button
                 type="button"
                 onClick={() => setRows((prev) => [...prev, { itemId: '', quantity: '', costPrice: '' }])}
-                className="inline-flex items-center gap-1 rounded-md border border-zinc-300 bg-white px-3 py-1 text-xs font-medium hover:bg-zinc-50"
+                className="inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-800 px-3 py-1 text-xs font-medium text-slate-300 hover:bg-slate-700"
               >
                 <Plus className="h-3 w-3" /> إضافة منتج
               </button>
             </div>
-            {fieldErrors.items && <p className="mb-2 text-xs text-red-600">{fieldErrors.items}</p>}
+            {fieldErrors.items && <p className="mb-2 text-xs text-rose-400">{fieldErrors.items}</p>}
             <div className="space-y-2">
               {rows.map((row, idx) => (
-                <div key={idx} className="flex items-start gap-2 rounded-md border border-zinc-200 p-2">
+                <div key={idx} className="flex items-start gap-2 rounded-md border border-slate-700 bg-slate-800/50 p-2">
                   <div className="flex-1">
                     <select
                       value={row.itemId}
                       onChange={(e) => setRows((prev) => prev.map((r, i) => (i === idx ? { ...r, itemId: e.target.value } : r)))}
-                      className={`w-full rounded-md border px-2 py-1.5 text-sm ${fieldErrors[`row_${idx}_itemId`] ? 'border-red-500' : 'border-zinc-300'}`}
+                      className={`w-full rounded-md border bg-slate-800 px-2 py-1.5 text-sm text-slate-100 ${fieldErrors[`row_${idx}_itemId`] ? 'border-rose-500/50' : 'border-slate-700'}`}
                     >
                       <option value="">اختر المنتج</option>
                       {items?.map((it) => (
@@ -209,7 +208,7 @@ export function PurchaseForm({ open, onClose }: Props) {
                         </option>
                       ))}
                     </select>
-                    {fieldErrors[`row_${idx}_itemId`] && <p className="mt-1 text-xs text-red-600">{fieldErrors[`row_${idx}_itemId`]}</p>}
+                    {fieldErrors[`row_${idx}_itemId`] && <p className="mt-1 text-xs text-rose-400">{fieldErrors[`row_${idx}_itemId`]}</p>}
                   </div>
                   <div className="w-20">
                     <input
@@ -218,10 +217,10 @@ export function PurchaseForm({ open, onClose }: Props) {
                       placeholder="الكمية"
                       value={row.quantity}
                       onChange={(e) => setRows((prev) => prev.map((r, i) => (i === idx ? { ...r, quantity: e.target.value } : r)))}
-                      className={`w-full rounded-md border px-2 py-1.5 text-sm ${fieldErrors[`row_${idx}_quantity`] ? 'border-red-500' : 'border-zinc-300'}`}
+                      className={`w-full rounded-md border bg-slate-800 px-2 py-1.5 text-sm text-slate-100 placeholder:text-slate-500 ${fieldErrors[`row_${idx}_quantity`] ? 'border-rose-500/50' : 'border-slate-700'}`}
                       dir="ltr"
                     />
-                    {fieldErrors[`row_${idx}_quantity`] && <p className="mt-1 text-xs text-red-600">{fieldErrors[`row_${idx}_quantity`]}</p>}
+                    {fieldErrors[`row_${idx}_quantity`] && <p className="mt-1 text-xs text-rose-400">{fieldErrors[`row_${idx}_quantity`]}</p>}
                   </div>
                   <div className="w-24">
                     <input
@@ -230,15 +229,15 @@ export function PurchaseForm({ open, onClose }: Props) {
                       placeholder="التكلفة"
                       value={row.costPrice}
                       onChange={(e) => setRows((prev) => prev.map((r, i) => (i === idx ? { ...r, costPrice: e.target.value } : r)))}
-                      className={`w-full rounded-md border px-2 py-1.5 text-sm ${fieldErrors[`row_${idx}_costPrice`] ? 'border-red-500' : 'border-zinc-300'}`}
+                      className={`w-full rounded-md border bg-slate-800 px-2 py-1.5 text-sm text-slate-100 placeholder:text-slate-500 ${fieldErrors[`row_${idx}_costPrice`] ? 'border-rose-500/50' : 'border-slate-700'}`}
                       dir="ltr"
                     />
-                    {fieldErrors[`row_${idx}_costPrice`] && <p className="mt-1 text-xs text-red-600">{fieldErrors[`row_${idx}_costPrice`]}</p>}
+                    {fieldErrors[`row_${idx}_costPrice`] && <p className="mt-1 text-xs text-rose-400">{fieldErrors[`row_${idx}_costPrice`]}</p>}
                   </div>
                   <button
                     type="button"
                     onClick={() => setRows((prev) => prev.filter((_, i) => i !== idx))}
-                    className="rounded-md p-1.5 text-red-500 hover:bg-red-50"
+                    className="rounded-md p-1.5 text-rose-400 hover:bg-slate-700"
                     aria-label="حذف المنتج"
                     disabled={rows.length === 1}
                   >
@@ -250,17 +249,17 @@ export function PurchaseForm({ open, onClose }: Props) {
           </div>
 
           <div>
-            <label htmlFor="purchase-paid" className="mb-1 block text-sm font-medium text-zinc-700">المبلغ المدفوع الآن</label>
-            <input id="purchase-paid" type="text" inputMode="decimal" placeholder="0.00" value={amountPaidNow} onChange={(e) => setAmountPaidNow(e.target.value)} className={`w-full rounded-md border px-3 py-2 text-sm ${fieldErrors.amountPaidNow ? 'border-red-500' : 'border-zinc-300'}`} dir="ltr" />
-            {fieldErrors.amountPaidNow && <p className="mt-1 text-xs text-red-600">{fieldErrors.amountPaidNow}</p>}
-            <p className="mt-1 text-xs text-zinc-500">المتبقي كدين: {remainingDebt} دج — الإجمالي: {computedTotal.toFixed(2)} دج</p>
+            <label htmlFor="purchase-paid" className="mb-1 block text-sm font-medium text-slate-300">المبلغ المدفوع الآن</label>
+            <input id="purchase-paid" type="text" inputMode="decimal" placeholder="0.00" value={amountPaidNow} onChange={(e) => setAmountPaidNow(e.target.value)} className={`w-full rounded-md border bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 ${fieldErrors.amountPaidNow ? 'border-rose-500/50' : 'border-slate-700'}`} dir="ltr" />
+            {fieldErrors.amountPaidNow && <p className="mt-1 text-xs text-rose-400">{fieldErrors.amountPaidNow}</p>}
+            <p className="mt-1 text-xs text-slate-500">المتبقي كدين: {remainingDebt} دج — الإجمالي: {computedTotal.toFixed(2)} دج</p>
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={onClose} disabled={isSubmitting} className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm">
+            <button type="button" onClick={onClose} disabled={isSubmitting} className="rounded-md border border-slate-700 bg-slate-800 px-4 py-2 text-sm text-slate-300 hover:bg-slate-700">
               إلغاء
             </button>
-            <button type="submit" disabled={isSubmitting} className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50">
+            <button type="submit" disabled={isSubmitting} className="rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500 disabled:opacity-50">
               {isSubmitting ? 'جاري الحفظ...' : 'إنشاء عملية الشراء'}
             </button>
           </div>
