@@ -24,7 +24,7 @@ describe('RepairService', () => {
     service = new RepairService(mockPrisma, mockCashService);
   });
 
-  it('createTicket with deposit > 0 posts CashMovement IN and LedgerEntry DEBIT', async () => {
+  it('createTicket with deposit > 0 posts CashMovement IN and no ledger/account writes', async () => {
     mockPrisma.contact.findUnique.mockResolvedValue({ id: 'c1', accounts: [{ id: 'a1', role: 'CUSTOMER', currentBalance: '100.00' }] });
     mockPrisma.account.findFirst.mockResolvedValue({ id: 'a1', role: 'CUSTOMER', currentBalance: '100.00' });
     mockPrisma.setting.findUnique.mockResolvedValue({ value: '1' });
@@ -45,7 +45,8 @@ describe('RepairService', () => {
     });
 
     expect(mockCashService.postCashMovement).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ type: 'IN', category: 'SALE_PAYMENT', amount: '50.00' }));
-    expect(mockPrisma.ledgerEntry.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ entryType: 'DEBIT', amount: '50.00' }) }));
+    expect(mockPrisma.ledgerEntry.create).not.toHaveBeenCalled();
+    expect(mockPrisma.account.update).not.toHaveBeenCalled();
     expect(result).toBeDefined();
   });
 
@@ -74,20 +75,19 @@ describe('RepairService', () => {
     mockPrisma.repairTicket.findFirst.mockResolvedValue({ id: 'r1', status: 'READY', depositAmount: '50.00', depositPaid: true, contactId: 'c1', ticketNumber: 'REP-000001', repairType: 'INTERNAL', externalCost: '0.00' });
     mockPrisma.setting.findUnique.mockResolvedValue({ value: '5' });
     mockPrisma.setting.upsert.mockResolvedValue({ value: '6' });
-    mockPrisma.account.findFirst.mockResolvedValue({ id: 'a1', role: 'CUSTOMER', currentBalance: '100.00' });
-    mockPrisma.ledgerEntry.create.mockResolvedValue({});
-    mockPrisma.account.update.mockResolvedValue({});
     mockPrisma.repairTicket.update.mockResolvedValue({ id: 'r1', status: 'DELIVERED' });
     mockPrisma.repairTicket.findUnique.mockResolvedValue({ id: 'r1', status: 'DELIVERED', invoiceNumber: 'REP-000005' });
 
     const result = await service.updateStatus('r1', { status: 'DELIVERED', actualCost: '200.00' });
 
     expect(mockCashService.postCashMovement).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ type: 'IN', category: 'SALE_PAYMENT', amount: '150.00' }));
+    expect(mockPrisma.ledgerEntry.create).not.toHaveBeenCalled();
+    expect(mockPrisma.account.update).not.toHaveBeenCalled();
     expect(mockPrisma.repairTicket.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ invoiceNumber: 'REP-000005' }) }));
     expect(result.invoiceNumber).toBe('REP-000005');
   });
 
-  it('updateStatus to DELIVERED when actualCost <= depositAmount posts no additional CashMovement', async () => {
+  it('updateStatus to DELIVERED when actualCost <= depositAmount posts no CashMovement', async () => {
     mockPrisma.repairTicket.findFirst.mockResolvedValue({ id: 'r1', status: 'READY', depositAmount: '100.00', depositPaid: true, contactId: 'c1', ticketNumber: 'REP-000003', repairType: 'INTERNAL', externalCost: '0.00' });
     mockPrisma.setting.findUnique.mockResolvedValue({ value: '7' });
     mockPrisma.setting.upsert.mockResolvedValue({ value: '8' });
@@ -101,7 +101,6 @@ describe('RepairService', () => {
 
   it('updateStatus to CANCELLED with deposit refunds via CashMovement OUT ADJUSTMENT', async () => {
     mockPrisma.repairTicket.findFirst.mockResolvedValue({ id: 'r1', status: 'RECEIVED', depositAmount: '40.00', depositPaid: true, contactId: 'c1', ticketNumber: 'REP-000001', repairType: 'INTERNAL' });
-    mockPrisma.account.findFirst.mockResolvedValue({ id: 'a1', role: 'CUSTOMER', currentBalance: '140.00' });
     mockPrisma.ledgerEntry.create.mockResolvedValue({});
     mockPrisma.account.update.mockResolvedValue({});
     mockPrisma.repairTicket.update.mockResolvedValue({ id: 'r1', status: 'CANCELLED' });
@@ -110,7 +109,8 @@ describe('RepairService', () => {
     await service.updateStatus('r1', { status: 'CANCELLED' });
 
     expect(mockCashService.postCashMovement).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ type: 'OUT', category: 'ADJUSTMENT', amount: '40.00' }));
-    expect(mockPrisma.ledgerEntry.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ entryType: 'CREDIT', amount: '40.00' }) }));
+    expect(mockPrisma.ledgerEntry.create).not.toHaveBeenCalled();
+    expect(mockPrisma.account.update).not.toHaveBeenCalled();
   });
 
   it('recordExternalCost posts CashMovement OUT PURCHASE_PAYMENT', async () => {
@@ -122,5 +122,11 @@ describe('RepairService', () => {
 
     expect(mockCashService.postCashMovement).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ type: 'OUT', category: 'PURCHASE_PAYMENT', amount: '50.00' }));
     expect(mockPrisma.repairTicket.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ externalCost: '60.00' }) }));
+  });
+
+  it('updateStatus on terminal ticket throws BadRequestException', async () => {
+    mockPrisma.repairTicket.findFirst.mockResolvedValue({ id: 'r1', status: 'DELIVERED', depositAmount: '0.00', depositPaid: false });
+
+    await expect(service.updateStatus('r1', { status: 'READY' })).rejects.toThrow('Cannot change status of terminal ticket');
   });
 });

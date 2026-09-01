@@ -158,7 +158,6 @@ describe('ReportsService', () => {
     });
 
     it('owner draw/deposit not counted as expenses — netProfitAfterExpenses unaffected by cash movements', async () => {
-      // No expenses, but if there were OWNER movements they must not affect totalExpenses
       mockPrisma.transaction.findMany.mockResolvedValue([{ id: 'tx1', type: 'SALE', amount: '100.00' }]);
       mockPrisma.transactionItem.findMany.mockResolvedValue([{ id: 'ti1', quantity: 1, unitPrice: '100.00', unitCost: '0.00', totalPrice: '100.00' }]);
       mockPrisma.transactionService.findMany.mockResolvedValue([]);
@@ -166,6 +165,23 @@ describe('ReportsService', () => {
       const result = await service.getNetProfit();
       expect(result.totalExpenses).toBe('0.00');
       expect(result.netProfitAfterExpenses).toBe(result.grossProfit);
+    });
+
+    it('includes nonzero repairProfit correctly in grossProfit and netProfitAfterExpenses', async () => {
+      const saleTx = { id: 'tx1', type: 'SALE', amount: '100.00', createdAt: new Date('2026-08-15T10:00:00Z') };
+      mockPrisma.transaction.findMany.mockResolvedValue([saleTx]);
+      mockPrisma.transactionItem.findMany.mockResolvedValue([
+        { id: 'ti1', quantity: 1, unitPrice: '100.00', unitCost: '60.00', totalPrice: '100.00' },
+      ]);
+      mockPrisma.transactionService.findMany.mockResolvedValue([]);
+      mockPrisma.expense.findMany.mockResolvedValue([]);
+      mockRepairService.getRepairProfit.mockResolvedValueOnce({ totalRepairRevenue: '150.00', totalExternalCost: '50.00', totalRepairProfit: '75.00', ticketCount: 1 });
+
+      const result = await service.getNetProfit();
+
+      expect(result.repairProfit).toBe('75.00');
+      expect(result.grossProfit).toBe('115.00');
+      expect(result.netProfitAfterExpenses).toBe('115.00');
     });
   });
 

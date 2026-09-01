@@ -56,11 +56,6 @@ export class RepairService {
       if (!contact) {
         throw new NotFoundException(`Contact with id ${dto.contactId} not found`);
       }
-      const customerAccount = contact.accounts?.find((a: any) => a.role === 'CUSTOMER') ?? (await (tx as any).account.findFirst({ where: { contactId: dto.contactId, role: 'CUSTOMER' } }));
-      if (!customerAccount) {
-        const acc = await (tx as any).account.findFirst({ where: { contactId: dto.contactId, role: 'CUSTOMER' } });
-        if (!acc) throw new BadRequestException('Contact must have CUSTOMER account');
-      }
       const account = await (tx as any).account.findFirst({ where: { contactId: dto.contactId, role: 'CUSTOMER' } });
       if (!account) throw new BadRequestException('Contact must have CUSTOMER account');
 
@@ -96,31 +91,11 @@ export class RepairService {
       });
 
       if (new Decimal(depositAmount).gt(0)) {
-        const before = new Decimal(account.currentBalance);
-        const after = before.plus(new Decimal(depositAmount));
-        const balanceAfterStr = this.to2dp(after);
-        const balanceBeforeStr = this.to2dp(before);
-
-        await (tx as any).ledgerEntry.create({
-          data: {
-            transactionId: ticket.id,
-            accountId: account.id,
-            entryType: 'DEBIT',
-            amount: depositAmount,
-            balanceBefore: balanceBeforeStr,
-            balanceAfter: balanceAfterStr,
-          },
-        });
-        await (tx as any).account.update({
-          where: { id: account.id },
-          data: { currentBalance: balanceAfterStr },
-        });
         await this.cashService.postCashMovement(tx, {
           type: 'IN',
           category: 'SALE_PAYMENT',
           amount: depositAmount,
           note: `Repair deposit ${ticketNumber}`,
-          relatedTransactionId: ticket.id,
         });
       }
 
@@ -176,46 +151,12 @@ export class RepairService {
         updateData.invoiceNumber = invoiceNumber;
 
         if (remaining.gt(0)) {
-          const account = await (tx as any).account.findFirst({ where: { contactId: ticket.contactId, role: 'CUSTOMER' } });
-          if (account) {
-            const before = new Decimal(account.currentBalance);
-            const afterDebit = before.plus(remaining);
-            const afterDebitStr = this.to2dp(afterDebit);
-            const afterCredit = afterDebit.minus(remaining);
-            const afterCreditStr = this.to2dp(afterCredit);
-
-            await (tx as any).ledgerEntry.create({
-              data: {
-                transactionId: ticket.id,
-                accountId: account.id,
-                entryType: 'DEBIT',
-                amount: remainingStr,
-                balanceBefore: this.to2dp(before),
-                balanceAfter: afterDebitStr,
-              },
-            });
-            await (tx as any).ledgerEntry.create({
-              data: {
-                transactionId: ticket.id,
-                accountId: account.id,
-                entryType: 'CREDIT',
-                amount: remainingStr,
-                balanceBefore: afterDebitStr,
-                balanceAfter: afterCreditStr,
-              },
-            });
-            await (tx as any).account.update({
-              where: { id: account.id },
-              data: { currentBalance: afterCreditStr },
-            });
-            await this.cashService.postCashMovement(tx, {
-              type: 'IN',
-              category: 'SALE_PAYMENT',
-              amount: remainingStr,
-              relatedTransactionId: ticket.id,
-              note: `Repair delivery ${invoiceNumber}`,
-            });
-          }
+          await this.cashService.postCashMovement(tx, {
+            type: 'IN',
+            category: 'SALE_PAYMENT',
+            amount: remainingStr,
+            note: `Repair delivery ${invoiceNumber}`,
+          });
         }
       }
 
@@ -223,36 +164,13 @@ export class RepairService {
         const depositDec = new Decimal(ticket.depositAmount ?? '0.00');
         const depositPaid = ticket.depositPaid;
         if (depositDec.gt(0) && depositPaid) {
-          const account = await (tx as any).account.findFirst({ where: { contactId: ticket.contactId, role: 'CUSTOMER' } });
-          if (account) {
-            const depositStr = this.to2dp(depositDec);
-            const before = new Decimal(account.currentBalance);
-            const after = before.minus(depositDec);
-            const beforeStr = this.to2dp(before);
-            const afterStr = this.to2dp(after.gt(0) ? after : before.minus(depositDec));
-
-            await (tx as any).ledgerEntry.create({
-              data: {
-                transactionId: ticket.id,
-                accountId: account.id,
-                entryType: 'CREDIT',
-                amount: depositStr,
-                balanceBefore: beforeStr,
-                balanceAfter: this.to2dp(before.minus(depositDec)),
-              },
-            });
-            await (tx as any).account.update({
-              where: { id: account.id },
-              data: { currentBalance: this.to2dp(before.minus(depositDec)) },
-            });
-            await this.cashService.postCashMovement(tx, {
-              type: 'OUT',
-              category: 'ADJUSTMENT',
-              amount: depositStr,
-              relatedTransactionId: ticket.id,
-              note: `Repair cancelled refund ${ticket.ticketNumber}`,
-            });
-          }
+          const depositStr = this.to2dp(depositDec);
+          await this.cashService.postCashMovement(tx, {
+            type: 'OUT',
+            category: 'ADJUSTMENT',
+            amount: depositStr,
+            note: `Repair cancelled refund ${ticket.ticketNumber}`,
+          });
         }
       }
 
@@ -288,7 +206,6 @@ export class RepairService {
         type: 'OUT',
         category: 'PURCHASE_PAYMENT',
         amount: normalized,
-        relatedTransactionId: ticket.id,
         note: dto.note ?? `External cost for ${ticket.ticketNumber}`,
       });
 
