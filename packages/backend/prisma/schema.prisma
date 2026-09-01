@@ -274,6 +274,9 @@ model RepairTicket {
   invoiceNumber        String?   @unique
   relatedTransactionId String?
   notes                String?
+  physicalCondition    String?
+  hasPasscode          Boolean   @default(false)
+  accessories          String?
   receivedAt           DateTime  @default(now())
   deliveredAt          DateTime?
   isActive             Boolean   @default(true)

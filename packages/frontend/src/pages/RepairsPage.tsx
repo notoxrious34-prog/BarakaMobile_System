@@ -13,26 +13,36 @@ const STATUS_LABEL: Record<string, string> = {
   CANCELLED: 'ملغى',
 };
 
-const STATUS_COLOR: Record<string, string> = {
-  RECEIVED: 'bg-blue-100 text-blue-700',
-  DIAGNOSING: 'bg-yellow-100 text-yellow-700',
-  IN_REPAIR: 'bg-orange-100 text-orange-700',
-  READY: 'bg-green-100 text-green-700',
-  DELIVERED: 'bg-zinc-200 text-zinc-700',
-  CANCELLED: 'bg-red-100 text-red-700',
-};
-
-const REPAIR_TYPE_LABEL: Record<string, string> = {
-  INTERNAL: 'داخلي',
-  EXTERNAL: 'خارجي',
-};
-
-const REPAIR_TYPE_COLOR: Record<string, string> = {
-  INTERNAL: 'bg-indigo-100 text-indigo-700',
-  EXTERNAL: 'bg-purple-100 text-purple-700',
-};
+const KANBAN_ORDER: { status: string; label: string }[] = [
+  { status: 'RECEIVED', label: 'مستلم' },
+  { status: 'DIAGNOSING', label: 'قيد التشخيص' },
+  { status: 'IN_REPAIR', label: 'قيد الإصلاح' },
+  { status: 'READY', label: 'جاهز' },
+  { status: 'DELIVERED', label: 'تم التسليم' },
+  { status: 'CANCELLED', label: 'ملغى' },
+];
 
 type Contact = { id: string; name: string; role: string };
+
+const PHYSICAL_OPTIONS: { value: string; label: string }[] = [
+  { value: 'SCRATCHES', label: 'خدوش' },
+  { value: 'CRACKED_SCREEN', label: 'شاشة مكسورة' },
+  { value: 'BROKEN_BACK', label: 'كسر في الهيكل الخلفي' },
+  { value: 'WATER_DAMAGE', label: 'ضرر مائي' },
+  { value: 'DENTS', label: 'انبعاج' },
+  { value: 'NONE', label: 'لا يوجد' },
+];
+
+const ACCESSORIES_OPTIONS: { value: string; label: string }[] = [
+  { value: 'CHARGER', label: 'شاحن' },
+  { value: 'CABLE', label: 'كابل' },
+  { value: 'EARPHONES', label: 'سماعات' },
+  { value: 'CASE', label: 'غطاء حماية' },
+  { value: 'SIM_CARD', label: 'شريحة اتصال' },
+  { value: 'MEMORY_CARD', label: 'بطاقة ذاكرة' },
+  { value: 'BOX', label: 'علبة الجهاز' },
+  { value: 'NONE', label: 'لا يوجد' },
+];
 
 export function RepairsPage() {
   const [statusFilter, setStatusFilter] = useState('');
@@ -40,6 +50,7 @@ export function RepairsPage() {
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [view, setView] = useState<'table' | 'kanban'>('table');
 
   const repairsQ = useRepairsQuery({
     status: statusFilter || undefined,
@@ -58,20 +69,49 @@ export function RepairsPage() {
   });
 
   return (
-    <div className="space-y-6" dir="rtl">
+    <div dir="rtl" className="min-h-screen bg-slate-950 p-4 font-sans space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-zinc-900">الإصلاحات</h1>
+        <h1 className="text-xl font-bold text-slate-100">الإصلاحات</h1>
         <button
           type="button"
           onClick={() => setShowForm(true)}
-          className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+          className="rounded-md bg-amber-500 px-4 py-2 text-sm font-medium text-slate-950 hover:bg-amber-400"
         >
           تذكرة جديدة
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-2 rounded-lg border border-zinc-200 bg-white p-3">
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="rounded-md border px-3 py-1.5 text-sm">
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => setView('table')}
+          className={
+            view === 'table'
+              ? 'rounded-md bg-amber-500/20 text-amber-400 border border-amber-500/40 px-4 py-2 text-sm'
+              : 'rounded-md bg-slate-800 text-slate-400 border border-slate-700 px-4 py-2 text-sm'
+          }
+        >
+          عرض الجدول
+        </button>
+        <button
+          type="button"
+          onClick={() => setView('kanban')}
+          className={
+            view === 'kanban'
+              ? 'rounded-md bg-amber-500/20 text-amber-400 border border-amber-500/40 px-4 py-2 text-sm'
+              : 'rounded-md bg-slate-800 text-slate-400 border border-slate-700 px-4 py-2 text-sm'
+          }
+        >
+          عرض الأعمدة
+        </button>
+      </div>
+
+      <div className="flex flex-wrap gap-2 rounded-xl border border-slate-800 bg-slate-900 p-3">
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100"
+        >
           <option value="">كل الحالات</option>
           <option value="RECEIVED">مستلم</option>
           <option value="DIAGNOSING">قيد التشخيص</option>
@@ -80,7 +120,11 @@ export function RepairsPage() {
           <option value="DELIVERED">تم التسليم</option>
           <option value="CANCELLED">ملغى</option>
         </select>
-        <select value={repairTypeFilter} onChange={(e) => setRepairTypeFilter(e.target.value)} className="rounded-md border px-3 py-1.5 text-sm">
+        <select
+          value={repairTypeFilter}
+          onChange={(e) => setRepairTypeFilter(e.target.value)}
+          className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100"
+        >
           <option value="">كل الأنواع</option>
           <option value="INTERNAL">داخلي</option>
           <option value="EXTERNAL">خارجي</option>
@@ -90,55 +134,106 @@ export function RepairsPage() {
           placeholder="بحث: رقم التذكرة أو الجهاز"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 rounded-md border px-3 py-1.5 text-sm"
+          className="flex-1 rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500"
         />
       </div>
 
-      <div className="rounded-lg border border-zinc-200 bg-white">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-zinc-500">
-                <th className="px-3 py-2 text-right">التذكرة</th>
-                <th className="px-3 py-2 text-right">الجهاز</th>
-                <th className="px-3 py-2 text-right">العميل</th>
-                <th className="px-3 py-2 text-right">الحالة</th>
-                <th className="px-3 py-2 text-right">النوع</th>
-                <th className="px-3 py-2 text-left">التكلفة المقدرة</th>
-                <th className="px-3 py-2 text-right">إجراء</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((t) => (
-                <tr key={t.id} className="border-b">
-                  <td className="px-3 py-2">
-                    <span className="rounded bg-zinc-100 px-2 py-1 text-xs font-mono">{t.ticketNumber}</span>
-                  </td>
-                  <td className="px-3 py-2">{t.deviceBrand} {t.deviceModel}</td>
-                  <td className="px-3 py-2">{t.contact?.name ?? t.contactId}</td>
-                  <td className="px-3 py-2">
-                    <span className={`rounded px-2 py-0.5 text-xs ${STATUS_COLOR[t.status] ?? 'bg-zinc-100'}`}>{STATUS_LABEL[t.status] ?? t.status}</span>
-                  </td>
-                  <td className="px-3 py-2">
-                    <span className={`rounded px-2 py-0.5 text-xs ${REPAIR_TYPE_COLOR[t.repairType] ?? 'bg-zinc-100'}`}>{REPAIR_TYPE_LABEL[t.repairType] ?? t.repairType}</span>
-                  </td>
-                  <td className="px-3 py-2 text-left" dir="ltr">{Number(t.estimatedCost).toFixed(2)} د.ج</td>
-                  <td className="px-3 py-2">
-                    <button type="button" onClick={() => setSelectedId(t.id)} className="rounded-md border px-3 py-1 text-xs hover:bg-zinc-50">
-                      تفاصيل
-                    </button>
-                  </td>
+      {view === 'table' ? (
+        <div className="rounded-xl border border-slate-800 bg-slate-900">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-800 text-slate-400">
+                  <th className="px-3 py-2 text-right">التذكرة</th>
+                  <th className="px-3 py-2 text-right">الجهاز</th>
+                  <th className="px-3 py-2 text-right">العميل</th>
+                  <th className="px-3 py-2 text-right">الحالة</th>
+                  <th className="px-3 py-2 text-right">النوع</th>
+                  <th className="px-3 py-2 text-left">التكلفة المقدرة</th>
+                  <th className="px-3 py-2 text-right">إجراء</th>
                 </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="py-6 text-center text-zinc-500">لا توجد تذاكر</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filtered.map((t) => (
+                  <tr key={t.id} className="border-b border-slate-800">
+                    <td className="px-3 py-2">
+                      <span className="bg-amber-500/10 text-amber-400 font-mono border border-amber-500/30 rounded px-2 py-1 text-xs">
+                        {t.ticketNumber}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-slate-300">
+                      {t.deviceBrand} {t.deviceModel}
+                    </td>
+                    <td className="px-3 py-2 text-slate-300">{t.contact?.name ?? t.contactId}</td>
+                    <td className="px-3 py-2">
+                      <span className="rounded px-2 py-0.5 text-xs bg-slate-800 text-slate-300 border border-slate-700">
+                        {STATUS_LABEL[t.status] ?? t.status}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2">
+                      <span className="rounded px-2 py-0.5 text-xs bg-slate-800 text-slate-300 border border-slate-700">
+                        {t.repairType === 'INTERNAL' ? 'داخلي' : t.repairType === 'EXTERNAL' ? 'خارجي' : t.repairType}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-left font-mono text-slate-100" dir="ltr">
+                      {Number(t.estimatedCost).toFixed(2)} د.ج
+                    </td>
+                    <td className="px-3 py-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedId(t.id)}
+                        className="rounded-md border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-300 hover:bg-slate-700"
+                      >
+                        تفاصيل
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="py-6 text-center text-slate-500">
+                      لا توجد تذاكر
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex gap-3 overflow-x-auto pb-2">
+          {KANBAN_ORDER.map((col) => {
+            const colTickets = filtered.filter((t) => t.status === col.status);
+            return (
+              <div
+                key={col.status}
+                className="min-w-[220px] bg-slate-900 rounded-xl border border-slate-800 p-3 flex-shrink-0"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-slate-200">{col.label}</span>
+                  <span className="text-xs text-slate-500">{colTickets.length}</span>
+                </div>
+                {colTickets.map((t) => (
+                  <div
+                    key={t.id}
+                    onClick={() => setSelectedId(t.id)}
+                    className="bg-slate-800 rounded-lg p-2 mt-2 cursor-pointer hover:bg-slate-700"
+                  >
+                    <span className="bg-amber-500/10 text-amber-400 font-mono border border-amber-500/30 rounded px-2 py-1 text-xs">
+                      {t.ticketNumber}
+                    </span>
+                    <p className="text-xs text-slate-300 mt-1">
+                      {t.deviceBrand} {t.deviceModel}
+                    </p>
+                    <p className="text-xs text-slate-500">{t.contact?.name ?? t.contactId}</p>
+                  </div>
+                ))}
+                {colTickets.length === 0 && <p className="mt-2 text-center text-xs text-slate-500">—</p>}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {showForm && <RepairForm onClose={() => setShowForm(false)} />}
       {selectedId && <RepairDetailModal ticketId={selectedId} onClose={() => setSelectedId(null)} />}
@@ -159,9 +254,36 @@ function RepairForm({ onClose }: { onClose: () => void }) {
   const [estimatedCost, setEstimatedCost] = useState('');
   const [depositAmount, setDepositAmount] = useState('');
   const [notes, setNotes] = useState('');
+  const [physicalCondition, setPhysicalCondition] = useState<string[]>([]);
+  const [hasPasscode, setHasPasscode] = useState(false);
+  const [accessories, setAccessories] = useState<string[]>([]);
   const [apiError, setApiError] = useState<string | null>(null);
 
   const customerContacts = contacts?.filter((c) => c.role === 'CUSTOMER' || c.role === 'BOTH') ?? [];
+
+  function togglePhysical(value: string) {
+    setPhysicalCondition((prev) => {
+      if (value === 'NONE') {
+        if (prev.includes('NONE')) return [];
+        return ['NONE'];
+      }
+      if (prev.includes(value)) return prev.filter((v) => v !== value);
+      const next = prev.filter((v) => v !== 'NONE');
+      return [...next, value];
+    });
+  }
+
+  function toggleAccessories(value: string) {
+    setAccessories((prev) => {
+      if (value === 'NONE') {
+        if (prev.includes('NONE')) return [];
+        return ['NONE'];
+      }
+      if (prev.includes(value)) return prev.filter((v) => v !== value);
+      const next = prev.filter((v) => v !== 'NONE');
+      return [...next, value];
+    });
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -170,6 +292,8 @@ function RepairForm({ onClose }: { onClose: () => void }) {
       setApiError('جميع الحقول المطلوبة يجب ملؤها');
       return;
     }
+    const physicalStr = physicalCondition.length > 0 ? physicalCondition.join(',') : undefined;
+    const accessoriesStr = accessories.length > 0 ? accessories.join(',') : undefined;
     try {
       await createMut.mutateAsync({
         contactId,
@@ -182,6 +306,9 @@ function RepairForm({ onClose }: { onClose: () => void }) {
         estimatedCost: estimatedCost || undefined,
         depositAmount: depositAmount || undefined,
         notes: notes || undefined,
+        physicalCondition: physicalStr,
+        hasPasscode,
+        accessories: accessoriesStr,
       });
       onClose();
     } catch (err) {
@@ -189,48 +316,123 @@ function RepairForm({ onClose }: { onClose: () => void }) {
     }
   }
 
+  const inputCls = 'w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500';
+  const selectCls = 'w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100';
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" dir="rtl">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative z-10 max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-lg border bg-white p-6">
-        <h3 className="mb-4 text-base font-semibold">تذكرة إصلاح جديدة</h3>
-        {apiError && <p className="mb-3 rounded bg-red-50 px-3 py-2 text-sm text-red-700">{apiError}</p>}
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="relative z-10 max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-lg border border-slate-800 bg-slate-900 p-6">
+        <h3 className="mb-4 text-base font-semibold text-slate-100">تذكرة إصلاح جديدة</h3>
+        {apiError && <p className="mb-3 rounded bg-red-500/10 px-3 py-2 text-sm text-red-400 border border-red-500/30">{apiError}</p>}
         <form onSubmit={handleSubmit} className="space-y-3">
-          <select value={contactId} onChange={(e) => setContactId(e.target.value)} className="w-full rounded-md border px-3 py-2 text-sm">
+          <select value={contactId} onChange={(e) => setContactId(e.target.value)} className={selectCls}>
             <option value="">اختر العميل</option>
-            {customerContacts.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.role})</option>)}
+            {customerContacts.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name} ({c.role})
+              </option>
+            ))}
           </select>
           <div className="grid grid-cols-2 gap-2">
-            <select value={deviceType} onChange={(e) => setDeviceType(e.target.value)} className="rounded-md border px-3 py-2 text-sm">
+            <select value={deviceType} onChange={(e) => setDeviceType(e.target.value)} className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100">
               <option value="PHONE">هاتف</option>
               <option value="TABLET">تابلت</option>
               <option value="LAPTOP">لابتوب</option>
               <option value="OTHER">أخرى</option>
             </select>
-            <select value={repairType} onChange={(e) => setRepairType(e.target.value)} className="rounded-md border px-3 py-2 text-sm">
+            <select value={repairType} onChange={(e) => setRepairType(e.target.value)} className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100">
               <option value="INTERNAL">داخلي</option>
               <option value="EXTERNAL">خارجي</option>
             </select>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <input type="text" placeholder="الماركة *" value={deviceBrand} onChange={(e) => setDeviceBrand(e.target.value)} className="rounded-md border px-3 py-2 text-sm" />
-            <input type="text" placeholder="الموديل *" value={deviceModel} onChange={(e) => setDeviceModel(e.target.value)} className="rounded-md border px-3 py-2 text-sm" />
+            <input type="text" placeholder="الماركة *" value={deviceBrand} onChange={(e) => setDeviceBrand(e.target.value)} className={inputCls} />
+            <input type="text" placeholder="الموديل *" value={deviceModel} onChange={(e) => setDeviceModel(e.target.value)} className={inputCls} />
           </div>
-          <textarea placeholder="وصف المشكلة *" value={problemDescription} onChange={(e) => setProblemDescription(e.target.value)} rows={2} className="w-full rounded-md border px-3 py-2 text-sm" />
-          <input type="text" placeholder="اسم الفني (اختياري)" value={technicianName} onChange={(e) => setTechnicianName(e.target.value)} className="w-full rounded-md border px-3 py-2 text-sm" />
+          <textarea
+            placeholder="وصف المشكلة *"
+            value={problemDescription}
+            onChange={(e) => setProblemDescription(e.target.value)}
+            rows={2}
+            className={inputCls}
+          />
+          <input type="text" placeholder="اسم الفني (اختياري)" value={technicianName} onChange={(e) => setTechnicianName(e.target.value)} className={inputCls} />
           <div className="grid grid-cols-2 gap-2">
-            <input type="text" placeholder="التكلفة المقدرة" value={estimatedCost} onChange={(e) => setEstimatedCost(e.target.value)} className="rounded-md border px-3 py-2 text-sm" dir="ltr" />
-            <input type="text" placeholder="العربون" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} className="rounded-md border px-3 py-2 text-sm" dir="ltr" />
+            <input type="text" placeholder="التكلفة المقدرة" value={estimatedCost} onChange={(e) => setEstimatedCost(e.target.value)} className={inputCls} dir="ltr" />
+            <input type="text" placeholder="العربون" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} className={inputCls} dir="ltr" />
           </div>
-          {depositAmount && <p className="text-xs text-zinc-500">سيتم تسجيل العربون كدفعة نقدية فور إنشاء التذكرة</p>}
-          <textarea placeholder="ملاحظات (اختياري)" value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="w-full rounded-md border px-3 py-2 text-sm" />
+          {depositAmount && <p className="text-xs text-slate-500">سيتم تسجيل العربون كدفعة نقدية فور إنشاء التذكرة</p>}
+          <textarea
+            placeholder="ملاحظات (اختياري)"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={2}
+            className={inputCls}
+          />
+
+          <div>
+            <h4 className="text-sm font-semibold text-amber-400 mt-4 mb-2">حالة الجهاز عند الاستلام</h4>
+            <div className="flex flex-wrap gap-2">
+              {PHYSICAL_OPTIONS.map((opt) => {
+                const selected = physicalCondition.includes(opt.value);
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => togglePhysical(opt.value)}
+                    className={
+                      selected
+                        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded-full px-3 py-1 text-xs'
+                        : 'bg-slate-800 text-slate-400 border border-slate-700 rounded-full px-3 py-1 text-xs'
+                    }
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <label className="flex items-center gap-2 text-sm text-slate-300 mt-3">
+              <input type="checkbox" checked={hasPasscode} onChange={(e) => setHasPasscode(e.target.checked)} className="rounded border-slate-700" />
+              يحتوي على كلمة سر
+            </label>
+
+            <div className="flex flex-wrap gap-2 mt-3">
+              {ACCESSORIES_OPTIONS.map((opt) => {
+                const selected = accessories.includes(opt.value);
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => toggleAccessories(opt.value)}
+                    className={
+                      selected
+                        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded-full px-3 py-1 text-xs'
+                        : 'bg-slate-800 text-slate-400 border border-slate-700 rounded-full px-3 py-1 text-xs'
+                    }
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="flex justify-end gap-2">
-            <button type="button" onClick={onClose} className="rounded-md border px-4 py-2 text-sm">إلغاء</button>
-            <button type="submit" disabled={createMut.isPending} className="rounded-md bg-zinc-900 px-4 py-2 text-sm text-white disabled:opacity-50">{createMut.isPending ? '...' : 'إنشاء'}</button>
+            <button type="button" onClick={onClose} className="rounded-md border border-slate-700 bg-slate-800 px-4 py-2 text-sm text-slate-300">
+              إلغاء
+            </button>
+            <button
+              type="submit"
+              disabled={createMut.isPending}
+              className="rounded-md bg-amber-500 px-4 py-2 text-sm text-slate-950 disabled:opacity-50"
+            >
+              {createMut.isPending ? '...' : 'إنشاء'}
+            </button>
           </div>
         </form>
       </div>
     </div>
   );
 }
-

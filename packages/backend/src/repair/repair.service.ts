@@ -91,7 +91,10 @@ export class RepairService {
           externalCost: '0.00',
           depositAmount,
           depositPaid: depositDec.gt(0),
-          notes: dto.notes,
+          notes: dto.notes ?? null,
+          physicalCondition: dto.physicalCondition ?? null,
+          hasPasscode: dto.hasPasscode ?? false,
+          accessories: dto.accessories ?? null,
         },
       });
 

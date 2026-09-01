@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsEnum, Matches } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsEnum, IsBoolean, Matches } from 'class-validator';
 
 export class CreateRepairTicketDto {
   @IsString()
@@ -42,4 +42,16 @@ export class CreateRepairTicketDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsString()
+  physicalCondition?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  hasPasscode?: boolean;
+
+  @IsOptional()
+  @IsString()
+  accessories?: string;
 }

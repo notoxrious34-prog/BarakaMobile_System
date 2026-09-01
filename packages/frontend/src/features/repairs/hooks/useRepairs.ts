@@ -19,6 +19,9 @@ export type RepairTicket = {
   depositPaid: boolean;
   invoiceNumber?: string | null;
   notes?: string | null;
+  physicalCondition?: string | null;
+  hasPasscode: boolean;
+  accessories?: string | null;
   receivedAt: string;
   deliveredAt?: string | null;
   createdAt: string;
@@ -36,6 +39,9 @@ export type CreateRepairTicketDto = {
   estimatedCost?: string;
   depositAmount?: string;
   notes?: string;
+  physicalCondition?: string;
+  hasPasscode?: boolean;
+  accessories?: string;
 };
 
 export type UpdateRepairStatusDto = {
