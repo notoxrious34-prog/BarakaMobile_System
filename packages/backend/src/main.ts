@@ -8,7 +8,20 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   app.enableCors({
-    origin: true,
+    origin: (
+      origin: string | undefined,
+      callback: (err: Error | null, allow?: boolean) => void,
+    ) => {
+      if (origin === undefined || origin === 'null' || origin.startsWith('file://')) {
+        callback(null, true);
+        return;
+      }
+      if (origin === 'http://localhost:5173' || origin === 'http://127.0.0.1:5173') {
+        callback(null, true);
+        return;
+      }
+      callback(null, false);
+    },
     credentials: true,
   });
 
