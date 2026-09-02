@@ -15,6 +15,7 @@ export function useUpdateSettings() {
     mutationFn: (data: Record<string, string>) => api.patch<Record<string, string>>('/settings', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['settings'] });
+      queryClient.invalidateQueries({ queryKey: ['settings', 'invoice'] });
     },
   });
 }
