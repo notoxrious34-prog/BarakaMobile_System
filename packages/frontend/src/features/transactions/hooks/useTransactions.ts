@@ -113,7 +113,7 @@ export function useAccountsByContactQuery(contactId: string) {
 export function useCreateSaleMutation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: CreateSalePayload & { accountId: string; amount: string; amountPaidNow?: string; itemLines?: any[]; serviceLines?: any[] }) => {
+    mutationFn: async (payload: Omit<CreateSalePayload, 'contactId'> & { accountId: string; amount: string; amountPaidNow?: string; itemLines?: any[]; serviceLines?: any[] }) => {
       const body: Record<string, unknown> = {
         accountId: payload.accountId,
         amount: payload.amount,

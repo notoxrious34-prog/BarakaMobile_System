@@ -108,6 +108,9 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.60.0
         version: 5.102.8(react@18.3.1)
+      decimal.js:
+        specifier: ^10.4.3
+        version: 10.6.0
       lucide-react:
         specifier: ^1.35.0
         version: 1.35.0(react@18.3.1)
