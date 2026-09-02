@@ -110,7 +110,7 @@ export function ReportsPage() {
   }
 
   return (
-    <div dir="rtl" className="min-h-screen bg-slate-950 p-4 font-sans space-y-4">
+    <div dir="rtl" className="font-sans space-y-4">
       <div className="flex items-center justify-between no-print">
         <h1 className="text-xl font-bold text-slate-100">التقارير</h1>
         <div className="flex items-center gap-2">

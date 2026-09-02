@@ -79,7 +79,7 @@ export function ContactsPage() {
   })();
 
   return (
-    <div dir="rtl" className="min-h-screen bg-slate-950 p-4 font-sans space-y-6 text-slate-100">
+    <div dir="rtl" className="font-sans space-y-6 text-slate-100">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-bold text-slate-100">جهات الاتصال</h1>
@@ -92,7 +92,7 @@ export function ContactsPage() {
         <button
           type="button"
           onClick={openCreate}
-          className="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500"
+          className="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
         >
           <Plus className="h-4 w-4" aria-hidden="true" />
           إضافة جهة اتصال

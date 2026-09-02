@@ -100,7 +100,7 @@ export function SettingsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 p-4 font-sans" dir="rtl">
+      <div className="font-sans" dir="rtl">
         <div className="mx-auto max-w-6xl space-y-6">
           <div className="flex items-center justify-between">
             <Skeleton className="h-7 w-28" />
@@ -150,7 +150,7 @@ export function SettingsPage() {
 
   if (isError) {
     return (
-      <div className="min-h-screen bg-slate-950 p-4 font-sans" dir="rtl">
+      <div className="font-sans" dir="rtl">
         <div className="mx-auto max-w-6xl space-y-6">
           <header className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-slate-100">الإعدادات</h1>
@@ -166,7 +166,7 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 p-4 font-sans" dir="rtl">
+    <div className="font-sans" dir="rtl">
       <div className="mx-auto max-w-6xl space-y-6">
         {/* Toast */}
         {toast && (

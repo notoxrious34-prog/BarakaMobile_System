@@ -9,7 +9,12 @@ export function FlexyExpressWidget() {
           <span aria-hidden>⚡</span>
         </span>
         <h2 className="text-sm font-semibold text-cyan-400">فليكسي إكسبريس</h2>
-        <span className="mr-auto rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2 py-0.5 text-xs font-medium text-cyan-300">قريباً</span>
+        <span className="mr-auto rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-0.5 text-xs font-medium text-cyan-400">
+          محاكاة واجهة الشحن السريع
+        </span>
+      </div>
+      <div className="mt-3 rounded-md border border-slate-700 bg-slate-800/40 px-3 py-2">
+        <p className="text-xs leading-5 text-slate-400">واجهة تجريبية — لا يتم إرسال رصيد حقيقي عبر الشريحة حالياً</p>
       </div>
       <p className="mt-2 text-xs leading-5 text-slate-400">
         تعبئة الرصيد وبيع الأرصدة متاحة عبر مركز الخدمات. أنشئ خدمة فليكسي من صفحة الخدمات وتابعها كأي خدمة رقمية.
@@ -17,9 +22,9 @@ export function FlexyExpressWidget() {
       <button
         type="button"
         onClick={() => navigate('/services')}
-        className="mt-3 w-full rounded-lg bg-cyan-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-cyan-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
+        className="mt-3 w-full rounded-lg bg-cyan-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-cyan-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
       >
-        الذهاب إلى الخدمات
+        تسجيل عملية شحن (عرض تجريبي)
       </button>
     </div>
   );

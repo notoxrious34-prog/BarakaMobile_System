@@ -95,7 +95,7 @@ export function TreasuryPage() {
   });
 
   return (
-    <div dir="rtl" className="min-h-screen bg-slate-950 p-4 font-sans space-y-6 text-slate-100">
+    <div dir="rtl" className="font-sans space-y-6 text-slate-100">
       <div>
         <h1 className="text-xl font-bold text-slate-100">الخزينة</h1>
         <p className="mt-1 text-sm text-slate-400">الصندوق النقدي والإغلاق اليومي</p>
@@ -198,15 +198,15 @@ export function TreasuryPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-800 text-slate-400">
-                  <th className="py-2 text-right font-medium">الفئة</th>
-                  <th className="py-2 text-left font-medium">المبلغ</th>
+                  <th className="px-3 py-2.5 text-right font-medium">الفئة</th>
+                  <th className="px-3 py-2.5 text-left font-medium">المبلغ</th>
                 </tr>
               </thead>
               <tbody>
                 {closingQ.data.breakdown.map((b) => (
                   <tr key={b.category} className="border-b border-slate-800/80">
                     <td className="py-2 text-slate-300">{CATEGORY_LABEL[b.category] ?? b.category}</td>
-                    <td className="py-2 text-left font-mono text-slate-100" dir="ltr">
+                    <td className="px-3 py-2.5 text-left font-mono text-slate-100" dir="ltr">
                       {Number(b.amount).toFixed(2)}
                     </td>
                   </tr>
@@ -249,11 +249,11 @@ export function TreasuryPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-800 text-slate-400">
-                <th className="py-2 text-right font-medium">النوع</th>
-                <th className="py-2 text-right font-medium">الفئة</th>
-                <th className="py-2 text-left font-medium">المبلغ</th>
-                <th className="py-2 text-left font-medium">بعد</th>
-                <th className="py-2 text-right font-medium">التاريخ</th>
+                <th className="px-3 py-2.5 text-right font-medium">النوع</th>
+                <th className="px-3 py-2.5 text-right font-medium">الفئة</th>
+                <th className="px-3 py-2.5 text-left font-medium">المبلغ</th>
+                <th className="px-3 py-2.5 text-left font-medium">بعد</th>
+                <th className="px-3 py-2.5 text-right font-medium">التاريخ</th>
               </tr>
             </thead>
             <tbody>
@@ -271,10 +271,10 @@ export function TreasuryPage() {
                     </span>
                   </td>
                   <td className="py-2 text-slate-300">{CATEGORY_LABEL[m.category] ?? m.category}</td>
-                  <td dir="ltr" className="py-2 text-left font-mono text-slate-100">
+                  <td dir="ltr" className="px-3 py-2.5 text-left font-mono text-slate-100">
                     {Number(m.amount).toFixed(2)}
                   </td>
-                  <td dir="ltr" className="py-2 text-left font-mono text-slate-300">
+                  <td dir="ltr" className="px-3 py-2.5 text-left font-mono text-slate-300">
                     {Number(m.balanceAfter).toFixed(2)}
                   </td>
                   <td className="py-2 text-xs text-slate-500">{new Date(m.createdAt).toLocaleString('ar-DZ')}</td>

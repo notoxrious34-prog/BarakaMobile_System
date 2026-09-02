@@ -44,7 +44,7 @@ export function Dashboard() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="flex items-center justify-center py-16">
         <p className="text-slate-400 font-sans">جاري التحميل...</p>
       </div>
     );
@@ -52,15 +52,14 @@ export function Dashboard() {
 
   if (isError) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="flex items-center justify-center py-16">
         <p className="text-rose-400 font-sans">تعذر تحميل البيانات</p>
       </div>
     );
   }
 
   return (
-    <div dir="rtl" className="min-h-screen bg-slate-950 p-4 font-sans">
-      {/* Zone B — Header bar */}
+    <div dir="rtl" className="font-sans space-y-4">
       <div className="flex flex-row items-center justify-between">
         <h1 className="text-xl font-bold text-slate-100">لوحة التحكم</h1>
         <span className="text-sm text-slate-400">
@@ -68,7 +67,6 @@ export function Dashboard() {
         </span>
       </div>
 
-      {/* Zone C — KPI strip */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
         <div className="bg-slate-900 rounded-xl border border-slate-800 p-4">
           <div className="flex items-center justify-between">
@@ -112,7 +110,6 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* Zone D — Active Repairs Status card */}
       <div className="bg-slate-900 rounded-xl border border-amber-500/20 p-4 mt-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-amber-400">تذاكر الورشة النشطة</h2>
@@ -145,51 +142,48 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* Zone D+ — Flexy Express (UI-only, no operator API) */}
       <div className="mt-4">
         <FlexyExpressWidget />
       </div>
 
-      {/* Zone E — Quick Actions bar */}
       <div className="flex flex-wrap gap-2 mt-4">
         <button
           type="button"
           onClick={() => navigate('/repairs')}
-          className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/30"
+          className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
         >
           تذكرة صيانة جديدة
         </button>
         <button
           type="button"
           onClick={() => navigate('/transactions')}
-          className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/30"
+          className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
         >
           بيع جديد
         </button>
         <button
           type="button"
           onClick={() => navigate('/expenses')}
-          className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/30"
+          className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
         >
           مصروف جديد
         </button>
         <button
           type="button"
           onClick={() => navigate('/inventory')}
-          className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700"
+          className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
         >
           المخزون
         </button>
         <button
           type="button"
           onClick={() => navigate('/reports')}
-          className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700"
+          className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
         >
           التقارير
         </button>
       </div>
 
-      {/* Zone F — Recent Transactions table */}
       <div className="bg-slate-900 rounded-xl border border-slate-800 p-4 mt-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-slate-300">آخر المعاملات</h2>
@@ -212,13 +206,13 @@ export function Dashboard() {
             ) : (
               recentTransactions.map((tx) => (
                 <tr key={tx.id} className="border-t border-slate-800">
-                  <td className="py-2 text-slate-200">{TRANSACTION_TYPE_LABEL[tx.type] ?? tx.type}</td>
-                  <td className="py-2">
+                  <td className="py-2.5 px-3 text-slate-200">{TRANSACTION_TYPE_LABEL[tx.type] ?? tx.type}</td>
+                  <td className="py-2.5 px-3">
                     <span dir="ltr" className="font-mono text-slate-200">
                       {tx.amount}
                     </span>
                   </td>
-                  <td className="py-2 text-slate-400">{new Date(tx.createdAt).toLocaleDateString('ar-DZ')}</td>
+                  <td className="py-2.5 px-3 text-slate-400">{new Date(tx.createdAt).toLocaleDateString('ar-DZ')}</td>
                 </tr>
               ))
             )}

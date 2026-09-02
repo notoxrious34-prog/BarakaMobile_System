@@ -58,12 +58,12 @@ export function TransactionsList({
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-slate-800 text-slate-400">
-              <th className="px-4 py-3 text-right font-semibold">التاريخ</th>
-              <th className="px-4 py-3 text-right font-semibold">النوع</th>
-              <th className="px-4 py-3 text-right font-semibold">جهة الاتصال</th>
-              <th className="px-4 py-3 text-right font-semibold">المبلغ</th>
-              <th className="px-4 py-3 text-right font-semibold">ملاحظة</th>
-              <th className="px-4 py-3 text-center font-semibold">إجراءات</th>
+              <th className="px-3 py-2.5 text-right font-semibold">التاريخ</th>
+              <th className="px-3 py-2.5 text-right font-semibold">النوع</th>
+              <th className="px-3 py-2.5 text-right font-semibold">جهة الاتصال</th>
+              <th className="px-3 py-2.5 text-right font-semibold">المبلغ</th>
+              <th className="px-3 py-2.5 text-right font-semibold">ملاحظة</th>
+              <th className="px-3 py-2.5 text-center font-semibold">إجراءات</th>
             </tr>
           </thead>
           <tbody>
@@ -76,18 +76,18 @@ export function TransactionsList({
                   onClick={() => onSelect(tx.id)}
                   className={`cursor-pointer border-b border-slate-800 hover:bg-slate-800/50 ${isSelected ? 'bg-slate-800/80 ring-1 ring-emerald-500/30' : ''}`}
                 >
-                  <td className="px-4 py-3 text-slate-300" dir="ltr">
+                  <td className="px-3 py-2.5 text-slate-300" dir="ltr">
                     {formatArabicDate(tx.createdAt)}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2.5">
                     <TransactionTypeBadge type={tx.type} />
                   </td>
-                  <td className="px-4 py-3 text-slate-100">{getContactName(tx, contactNameMap)}</td>
-                  <td className="px-4 py-3 font-mono text-slate-100" dir="ltr">
+                  <td className="px-3 py-2.5 text-slate-100">{getContactName(tx, contactNameMap)}</td>
+                  <td className="px-3 py-2.5 font-mono text-slate-100" dir="ltr">
                     {Number(tx.amount).toFixed(2)} {currencySymbol}
                   </td>
-                  <td className="max-w-[14rem] truncate px-4 py-3 text-slate-400">{tx.note ?? '—'}</td>
-                  <td className="px-4 py-3 text-center">
+                  <td className="max-w-[14rem] truncate px-3 py-2.5 text-slate-400">{tx.note ?? '—'}</td>
+                  <td className="px-3 py-2.5 text-center">
                     <div className="flex items-center justify-center gap-1">
                       {hasInvoice ? (
                         <>

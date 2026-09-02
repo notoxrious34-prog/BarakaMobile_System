@@ -31,20 +31,20 @@ function ItemRow({
     <tr
       className={`border-t border-slate-800/80 ${isInactive ? 'opacity-50' : 'hover:bg-slate-800/40'}`}
     >
-      <td className="px-4 py-3 font-medium text-slate-100">{item.name}</td>
-      <td className="px-4 py-3 font-mono text-slate-300" dir="ltr">
+      <td className="px-3 py-2.5 font-medium text-slate-100">{item.name}</td>
+      <td className="px-3 py-2.5 font-mono text-slate-300" dir="ltr">
         {item.sku ?? '—'}
       </td>
-      <td className="px-4 py-3 text-slate-300" dir="ltr">
+      <td className="px-3 py-2.5 font-mono text-slate-300" dir="ltr">
         {Number(item.costPrice).toFixed(2)} {currencySymbol}
       </td>
-      <td className="px-4 py-3 text-slate-300" dir="ltr">
+      <td className="px-3 py-2.5 font-mono text-slate-300" dir="ltr">
         {Number(item.sellingPrice).toFixed(2)} {currencySymbol}
       </td>
-      <td className="px-4 py-3">
+      <td className="px-3 py-2.5">
         <StockBadge currentStock={stock} minStock={minStock} />
       </td>
-      <td className="px-4 py-3">
+      <td className="px-3 py-2.5">
         {item.isActive ? (
           <span className="inline-flex rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-400">
             نشط
@@ -55,7 +55,7 @@ function ItemRow({
           </span>
         )}
       </td>
-      <td className="px-4 py-3">
+      <td className="px-3 py-2.5">
         <div className="flex items-center justify-center gap-1">
           <button
             type="button"
@@ -99,13 +99,13 @@ export function ItemsTable({ items, onEdit, onStock, onDeactivate }: Props) {
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-slate-800 text-slate-400">
-              <th className="px-4 py-3 text-right font-semibold">الاسم</th>
-              <th className="px-4 py-3 text-right font-semibold">SKU</th>
-              <th className="px-4 py-3 text-right font-semibold">سعر التكلفة</th>
-              <th className="px-4 py-3 text-right font-semibold">سعر البيع</th>
-              <th className="px-4 py-3 text-right font-semibold">المخزون الحالي</th>
-              <th className="px-4 py-3 text-right font-semibold">الحالة</th>
-              <th className="px-4 py-3 text-center font-semibold">الإجراءات</th>
+              <th className="px-3 py-2.5 text-right font-semibold">الاسم</th>
+              <th className="px-3 py-2.5 text-right font-semibold">SKU</th>
+              <th className="px-3 py-2.5 text-right font-semibold">سعر التكلفة</th>
+              <th className="px-3 py-2.5 text-right font-semibold">سعر البيع</th>
+              <th className="px-3 py-2.5 text-right font-semibold">المخزون الحالي</th>
+              <th className="px-3 py-2.5 text-right font-semibold">الحالة</th>
+              <th className="px-3 py-2.5 text-center font-semibold">الإجراءات</th>
             </tr>
           </thead>
           <tbody>

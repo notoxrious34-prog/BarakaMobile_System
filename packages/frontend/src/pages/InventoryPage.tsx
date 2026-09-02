@@ -94,7 +94,7 @@ export function InventoryPage() {
   }
 
   return (
-    <div dir="rtl" className="min-h-screen bg-slate-950 p-4 font-sans space-y-4 text-slate-100">
+    <div dir="rtl" className="font-sans space-y-4 text-slate-100">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-bold text-slate-100">المخزون</h1>
@@ -107,7 +107,7 @@ export function InventoryPage() {
         <button
           type="button"
           onClick={openCreate}
-          className="inline-flex items-center gap-2 rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500"
+          className="inline-flex items-center gap-2 rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
         >
           <Plus className="h-4 w-4" aria-hidden="true" />
           إضافة منتج
@@ -122,13 +122,13 @@ export function InventoryPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="بحث بالاسم أو SKU"
-            className="w-full rounded-md border border-slate-700 bg-slate-800/60 py-2 pe-3 ps-9 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600"
+            className="w-full rounded-md border border-slate-700 bg-slate-800/60 py-2 pe-3 ps-9 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
           />
         </div>
         <select
           value={stockFilter}
           onChange={(e) => setStockFilter(e.target.value as StockFilter)}
-          className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600 sm:w-48"
+          className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600 sm:w-48 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
         >
           {STOCK_FILTER_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>

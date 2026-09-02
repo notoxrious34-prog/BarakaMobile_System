@@ -69,7 +69,7 @@ export function RepairsPage() {
   });
 
   return (
-    <div dir="rtl" className="min-h-screen bg-slate-950 p-4 font-sans space-y-4">
+    <div dir="rtl" className="font-sans space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-slate-100">الإصلاحات</h1>
         <button
@@ -144,41 +144,41 @@ export function RepairsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-800 text-slate-400">
-                  <th className="px-3 py-2 text-right">التذكرة</th>
-                  <th className="px-3 py-2 text-right">الجهاز</th>
-                  <th className="px-3 py-2 text-right">العميل</th>
-                  <th className="px-3 py-2 text-right">الحالة</th>
-                  <th className="px-3 py-2 text-right">النوع</th>
-                  <th className="px-3 py-2 text-left">التكلفة المقدرة</th>
-                  <th className="px-3 py-2 text-right">إجراء</th>
+                  <th className="px-3 py-2.5 text-right">التذكرة</th>
+                  <th className="px-3 py-2.5 text-right">الجهاز</th>
+                  <th className="px-3 py-2.5 text-right">العميل</th>
+                  <th className="px-3 py-2.5 text-right">الحالة</th>
+                  <th className="px-3 py-2.5 text-right">النوع</th>
+                  <th className="px-3 py-2.5 text-left">التكلفة المقدرة</th>
+                  <th className="px-3 py-2.5 text-right">إجراء</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((t) => (
                   <tr key={t.id} className="border-b border-slate-800">
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-2.5">
                       <span className="bg-amber-500/10 text-amber-400 font-mono border border-amber-500/30 rounded px-2 py-1 text-xs">
                         {t.ticketNumber}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-slate-300">
+                    <td className="px-3 py-2.5 text-slate-300">
                       {t.deviceBrand} {t.deviceModel}
                     </td>
-                    <td className="px-3 py-2 text-slate-300">{t.contact?.name ?? t.contactId}</td>
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-2.5 text-slate-300">{t.contact?.name ?? t.contactId}</td>
+                    <td className="px-3 py-2.5">
                       <span className="rounded px-2 py-0.5 text-xs bg-slate-800 text-slate-300 border border-slate-700">
                         {STATUS_LABEL[t.status] ?? t.status}
                       </span>
                     </td>
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-2.5">
                       <span className="rounded px-2 py-0.5 text-xs bg-slate-800 text-slate-300 border border-slate-700">
                         {t.repairType === 'INTERNAL' ? 'داخلي' : t.repairType === 'EXTERNAL' ? 'خارجي' : t.repairType}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-left font-mono text-slate-100" dir="ltr">
+                    <td className="px-3 py-2.5 text-left font-mono text-slate-100" dir="ltr">
                       {Number(t.estimatedCost).toFixed(2)} د.ج
                     </td>
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-2.5">
                       <button
                         type="button"
                         onClick={() => setSelectedId(t.id)}

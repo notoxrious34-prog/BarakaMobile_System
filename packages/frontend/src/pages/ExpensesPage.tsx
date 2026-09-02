@@ -67,7 +67,7 @@ export function ExpensesPage() {
   });
 
   return (
-    <div dir="rtl" className="min-h-screen bg-slate-950 p-4 font-sans space-y-4">
+    <div dir="rtl" className="font-sans space-y-4">
       <h1 className="text-xl font-bold text-slate-100">المصاريف</h1>
 
       <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
@@ -77,7 +77,7 @@ export function ExpensesPage() {
           <select
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
-            className="rounded-md border border-slate-700 bg-slate-800/60 px-3 py-2 text-sm text-slate-100 focus:border-rose-600 focus:outline-none focus:ring-1 focus:ring-rose-600"
+            className="rounded-md border border-slate-700 bg-slate-800/60 px-3 py-2.5 text-sm text-slate-100 focus:border-rose-600 focus:outline-none focus:ring-1 focus:ring-rose-600"
           >
             <option value="">اختر الفئة</option>
             {categoriesQ.data?.map((c) => (
@@ -91,28 +91,28 @@ export function ExpensesPage() {
             placeholder="المبلغ"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="rounded-md border border-slate-700 bg-slate-800/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-rose-600 focus:outline-none focus:ring-1 focus:ring-rose-600"
+            className="rounded-md border border-slate-700 bg-slate-800/60 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-rose-600 focus:outline-none focus:ring-1 focus:ring-rose-600"
             dir="ltr"
           />
           <input
             type="date"
             value={expenseDate}
             onChange={(e) => setExpenseDate(e.target.value)}
-            className="rounded-md border border-slate-700 bg-slate-800/60 px-3 py-2 text-sm text-slate-100 focus:border-rose-600 focus:outline-none focus:ring-1 focus:ring-rose-600"
+            className="rounded-md border border-slate-700 bg-slate-800/60 px-3 py-2.5 text-sm text-slate-100 focus:border-rose-600 focus:outline-none focus:ring-1 focus:ring-rose-600"
           />
           <input
             type="text"
             placeholder="الوصف (اختياري)"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="rounded-md border border-slate-700 bg-slate-800/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-rose-600 focus:outline-none focus:ring-1 focus:ring-rose-600"
+            className="rounded-md border border-slate-700 bg-slate-800/60 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-rose-600 focus:outline-none focus:ring-1 focus:ring-rose-600"
           />
         </div>
         <button
           type="button"
           onClick={() => createMut.mutate({ categoryId, amount, description: description || undefined, expenseDate })}
           disabled={createMut.isPending || !categoryId || !amount}
-          className="mt-3 rounded-md bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-500 disabled:opacity-50"
+          className="mt-3 rounded-md bg-rose-600 px-4 px-3 py-2.5 text-sm font-medium text-white hover:bg-rose-500 disabled:opacity-50"
         >
           {createMut.isPending ? 'جاري الإضافة...' : 'إضافة المصروف'}
         </button>
@@ -122,7 +122,7 @@ export function ExpensesPage() {
             placeholder="فئة جديدة"
             value={newCatName}
             onChange={(e) => setNewCatName(e.target.value)}
-            className="flex-1 rounded-md border border-slate-700 bg-slate-800/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-rose-600 focus:outline-none focus:ring-1 focus:ring-rose-600"
+            className="flex-1 rounded-md border border-slate-700 bg-slate-800/60 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-rose-600 focus:outline-none focus:ring-1 focus:ring-rose-600"
           />
           <button
             type="button"
@@ -132,7 +132,7 @@ export function ExpensesPage() {
                 setNewCatName('');
               }
             }}
-            className="rounded-md border border-slate-700 bg-slate-800 px-4 py-2 text-sm text-slate-200 hover:bg-slate-700"
+            className="rounded-md border border-slate-700 bg-slate-800 px-4 px-3 py-2.5 text-sm text-slate-200 hover:bg-slate-700"
           >
             إضافة فئة
           </button>
@@ -177,19 +177,19 @@ export function ExpensesPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-800 text-slate-400">
-                  <th className="py-2 text-right font-medium">الفئة</th>
-                  <th className="py-2 text-left font-medium">الإجمالي</th>
-                  <th className="py-2 text-left font-medium">النسبة</th>
+                  <th className="px-3 py-2.5 text-right font-medium">الفئة</th>
+                  <th className="px-3 py-2.5 text-left font-medium">الإجمالي</th>
+                  <th className="px-3 py-2.5 text-left font-medium">النسبة</th>
                 </tr>
               </thead>
               <tbody>
                 {breakdownQ.data.map((b) => (
                   <tr key={b.categoryId} className="border-b border-slate-800">
-                    <td className="py-2 text-slate-200">{b.categoryName}</td>
-                    <td dir="ltr" className="py-2 text-left font-mono text-rose-400">
+                    <td className="px-3 py-2.5 text-slate-200">{b.categoryName}</td>
+                    <td dir="ltr" className="px-3 py-2.5 text-left font-mono text-rose-400">
                       {Number(b.totalAmount).toFixed(2)} {currencySymbol}
                     </td>
-                    <td dir="ltr" className="py-2 text-left font-mono text-slate-300">
+                    <td dir="ltr" className="px-3 py-2.5 text-left font-mono text-slate-300">
                       {b.percentage}%
                     </td>
                   </tr>
@@ -227,21 +227,21 @@ export function ExpensesPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-800 text-slate-400">
-                  <th className="py-2 text-right font-medium">الفئة</th>
-                  <th className="py-2 text-left font-medium">المبلغ</th>
-                  <th className="py-2 text-right font-medium">الوصف</th>
-                  <th className="py-2 text-right font-medium">التاريخ</th>
+                  <th className="px-3 py-2.5 text-right font-medium">الفئة</th>
+                  <th className="px-3 py-2.5 text-left font-medium">المبلغ</th>
+                  <th className="px-3 py-2.5 text-right font-medium">الوصف</th>
+                  <th className="px-3 py-2.5 text-right font-medium">التاريخ</th>
                 </tr>
               </thead>
               <tbody>
                 {expensesQ.data.map((e) => (
                   <tr key={e.id} className="border-b border-slate-800 hover:bg-slate-800/40">
-                    <td className="py-2 text-slate-200">{e.category?.name ?? e.categoryId}</td>
-                    <td dir="ltr" className="py-2 text-left font-mono text-rose-400">
+                    <td className="px-3 py-2.5 text-slate-200">{e.category?.name ?? e.categoryId}</td>
+                    <td dir="ltr" className="px-3 py-2.5 text-left font-mono text-rose-400">
                       {Number(e.amount).toFixed(2)} {currencySymbol}
                     </td>
-                    <td className="py-2 text-xs text-slate-400">{e.description ?? '—'}</td>
-                    <td className="py-2 text-xs text-slate-400">{new Date(e.expenseDate).toLocaleDateString('ar-DZ')}</td>
+                    <td className="px-3 py-2.5 text-xs text-slate-400">{e.description ?? '—'}</td>
+                    <td className="px-3 py-2.5 text-xs text-slate-400">{new Date(e.expenseDate).toLocaleDateString('ar-DZ')}</td>
                   </tr>
                 ))}
               </tbody>

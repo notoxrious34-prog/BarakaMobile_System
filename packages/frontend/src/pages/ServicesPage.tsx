@@ -80,7 +80,7 @@ export function ServicesPage() {
   }
 
   return (
-    <div dir="rtl" className="min-h-screen bg-slate-950 p-4 font-sans space-y-4">
+    <div dir="rtl" className="font-sans space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-bold text-slate-100">الخدمات</h1>
@@ -93,7 +93,7 @@ export function ServicesPage() {
         <button
           type="button"
           onClick={openCreate}
-          className="inline-flex items-center gap-2 rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500"
+          className="inline-flex items-center gap-2 rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
         >
           <Plus className="h-4 w-4" aria-hidden="true" />
           إضافة خدمة
@@ -108,13 +108,13 @@ export function ServicesPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="بحث: اسم الخدمة أو المورد..."
-            className="w-full rounded-md border border-slate-700 bg-slate-800 py-2 pr-9 pl-3 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+            className="w-full rounded-md border border-slate-700 bg-slate-800 py-2 pr-9 pl-3 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
           />
         </div>
         <select
           value={pricingFilter}
           onChange={(e) => setPricingFilter(e.target.value as '' | 'FIXED' | 'COMMISSION')}
-          className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+          className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
         >
           <option value="">كل الأنواع</option>
           <option value="FIXED">ربح ثابت</option>
@@ -127,7 +127,7 @@ export function ServicesPage() {
               setSearch('');
               setPricingFilter('');
             }}
-            className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700"
+            className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
           >
             مسح
           </button>

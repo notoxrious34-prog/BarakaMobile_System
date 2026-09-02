@@ -101,29 +101,29 @@ export function DebtSummaryTable({ data, onViewLedger }: Props) {
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="bg-slate-800/60 text-slate-400">
-                <th className="px-4 py-3 text-right font-semibold">جهة الاتصال</th>
-                <th className="px-4 py-3 text-right font-semibold">الدور</th>
-                <th className="px-4 py-3 text-right font-semibold">رصيد المورد</th>
-                <th className="px-4 py-3 text-right font-semibold">رصيد العميل</th>
-                <th className="px-4 py-3 text-right font-semibold">المركز الصافي</th>
-                <th className="px-4 py-3 text-center font-semibold">الإجراءات</th>
+                <th className="px-3 py-2.5 text-right font-semibold">جهة الاتصال</th>
+                <th className="px-3 py-2.5 text-right font-semibold">الدور</th>
+                <th className="px-3 py-2.5 text-right font-semibold">رصيد المورد</th>
+                <th className="px-3 py-2.5 text-right font-semibold">رصيد العميل</th>
+                <th className="px-3 py-2.5 text-right font-semibold">المركز الصافي</th>
+                <th className="px-3 py-2.5 text-center font-semibold">الإجراءات</th>
               </tr>
             </thead>
             <tbody>
               {data.contacts.map((c) => (
                 <tr key={c.contactId} className="border-t border-slate-800 bg-slate-900 hover:bg-slate-800/40">
-                  <td className="px-4 py-3 font-medium text-slate-100">{c.contactName}</td>
-                  <td className="px-4 py-3 text-slate-300">{ROLE_LABEL[c.contactRole] ?? c.contactRole}</td>
-                  <td className="px-4 py-3 font-mono text-slate-300" dir="ltr">
+                  <td className="px-3 py-2.5 font-medium text-slate-100">{c.contactName}</td>
+                  <td className="px-3 py-2.5 text-slate-300">{ROLE_LABEL[c.contactRole] ?? c.contactRole}</td>
+                  <td className="px-3 py-2.5 font-mono text-slate-300" dir="ltr">
                     {c.supplierAccount ? `${Number(c.supplierAccount.currentBalance).toFixed(2)} ${currencySymbol}` : '—'}
                   </td>
-                  <td className="px-4 py-3 font-mono text-slate-300" dir="ltr">
+                  <td className="px-3 py-2.5 font-mono text-slate-300" dir="ltr">
                     {c.customerAccount ? `${Number(c.customerAccount.currentBalance).toFixed(2)} ${currencySymbol}` : '—'}
                   </td>
-                  <td className={`px-4 py-3 font-medium font-mono ${getNetPositionTone(c.netPosition)}`} dir="ltr">
+                  <td className={`px-3 py-2.5 font-medium font-mono ${getNetPositionTone(c.netPosition)}`} dir="ltr">
                     {Number(c.netPosition).toFixed(2)} {currencySymbol}
                   </td>
-                  <td className="px-4 py-3 text-center">
+                  <td className="px-3 py-2.5 text-center">
                     <div className="flex items-center justify-center gap-1">
                       {c.customerAccount && (
                         <button

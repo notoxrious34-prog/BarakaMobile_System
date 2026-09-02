@@ -34,13 +34,13 @@ export function ContactsTable({ contacts, onEdit, onDeactivate, onQuickPay }: Pr
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-slate-800 text-slate-400">
-              <th className="px-4 py-3 text-right font-semibold">الاسم</th>
-              <th className="px-4 py-3 text-right font-semibold">الهاتف</th>
-              <th className="px-4 py-3 text-right font-semibold">الدور</th>
-              <th className="px-4 py-3 text-right font-semibold">رصيد المورد</th>
-              <th className="px-4 py-3 text-right font-semibold">رصيد العميل</th>
-              <th className="px-4 py-3 text-right font-semibold">الحالة</th>
-              <th className="px-4 py-3 text-center font-semibold">الإجراءات</th>
+              <th className="px-3 py-2.5 text-right font-semibold">الاسم</th>
+              <th className="px-3 py-2.5 text-right font-semibold">الهاتف</th>
+              <th className="px-3 py-2.5 text-right font-semibold">الدور</th>
+              <th className="px-3 py-2.5 text-right font-semibold">رصيد المورد</th>
+              <th className="px-3 py-2.5 text-right font-semibold">رصيد العميل</th>
+              <th className="px-3 py-2.5 text-right font-semibold">الحالة</th>
+              <th className="px-3 py-2.5 text-center font-semibold">الإجراءات</th>
             </tr>
           </thead>
           <tbody>
@@ -61,26 +61,26 @@ export function ContactsTable({ contacts, onEdit, onDeactivate, onQuickPay }: Pr
                   key={c.id}
                   className={`border-t border-slate-800/80 ${isInactive ? 'opacity-50' : 'hover:bg-slate-800/40'}`}
                 >
-                  <td className="px-4 py-3 font-medium text-slate-100">{c.name}</td>
-                  <td className="px-4 py-3 font-mono text-slate-300" dir="ltr">
+                  <td className="px-3 py-2.5 font-medium text-slate-100">{c.name}</td>
+                  <td className="px-3 py-2.5 font-mono text-slate-300" dir="ltr">
                     {c.phone ?? '—'}
                   </td>
-                  <td className="px-4 py-3 text-slate-300">{ROLE_LABEL[c.role]}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2.5 text-slate-300">{ROLE_LABEL[c.role]}</td>
+                  <td className="px-3 py-2.5">
                     {supplierAcc ? (
                       <ContactBalanceBadge balance={supplierAcc.currentBalance} role="SUPPLIER" />
                     ) : (
                       <span className="text-slate-500">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2.5">
                     {customerAcc ? (
                       <ContactBalanceBadge balance={customerAcc.currentBalance} role="CUSTOMER" />
                     ) : (
                       <span className="text-slate-500">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2.5">
                     {c.isActive ? (
                       <span className="inline-flex rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-400">
                         نشط
@@ -91,7 +91,7 @@ export function ContactsTable({ contacts, onEdit, onDeactivate, onQuickPay }: Pr
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2.5">
                     <div className="flex items-center justify-center gap-1">
                       <button
                         type="button"

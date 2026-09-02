@@ -31,12 +31,12 @@ export function ServicesTable({ services, onEdit, onDeactivate }: Props) {
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-slate-800 text-slate-400">
-              <th className="px-4 py-3 text-right font-semibold">اسم الخدمة</th>
-              <th className="px-4 py-3 text-right font-semibold">المورد</th>
-              <th className="px-4 py-3 text-right font-semibold">نوع التسعير</th>
-              <th className="px-4 py-3 text-right font-semibold">القيمة</th>
-              <th className="px-4 py-3 text-right font-semibold">الحالة</th>
-              <th className="px-4 py-3 text-center font-semibold">الإجراءات</th>
+              <th className="px-3 py-2.5 text-right font-semibold">اسم الخدمة</th>
+              <th className="px-3 py-2.5 text-right font-semibold">المورد</th>
+              <th className="px-3 py-2.5 text-right font-semibold">نوع التسعير</th>
+              <th className="px-3 py-2.5 text-right font-semibold">القيمة</th>
+              <th className="px-3 py-2.5 text-right font-semibold">الحالة</th>
+              <th className="px-3 py-2.5 text-center font-semibold">الإجراءات</th>
             </tr>
           </thead>
           <tbody>
@@ -49,17 +49,17 @@ export function ServicesTable({ services, onEdit, onDeactivate }: Props) {
                   key={svc.id}
                   className={`border-b border-slate-800 ${isInactive ? 'opacity-60' : 'hover:bg-slate-800/50'}`}
                 >
-                  <td className="px-4 py-3 font-medium text-slate-100">{svc.name}</td>
-                  <td className="px-4 py-3 text-slate-300">{svc.supplier?.name ?? '—'}</td>
-                  <td className="px-4 py-3 text-slate-300">{PRICING_LABEL[svc.pricingType] ?? svc.pricingType}</td>
-                  <td className="px-4 py-3" dir="ltr">
+                  <td className="px-3 py-2.5 font-medium text-slate-100">{svc.name}</td>
+                  <td className="px-3 py-2.5 text-slate-300">{svc.supplier?.name ?? '—'}</td>
+                  <td className="px-3 py-2.5 text-slate-300">{PRICING_LABEL[svc.pricingType] ?? svc.pricingType}</td>
+                  <td className="px-3 py-2.5" dir="ltr">
                     {hasValue ? (
                       <PricingBadge pricingType={svc.pricingType} value={value} />
                     ) : (
                       <span className="text-slate-500">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2.5">
                     {svc.isActive ? (
                       <span className="inline-flex rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-400">
                         نشط
@@ -70,7 +70,7 @@ export function ServicesTable({ services, onEdit, onDeactivate }: Props) {
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2.5">
                     <div className="flex items-center justify-center gap-1">
                       <button
                         type="button"
