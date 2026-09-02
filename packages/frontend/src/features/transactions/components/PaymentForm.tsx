@@ -10,13 +10,16 @@ type Contact = { id: string; name: string; role: string };
 type Props = {
   open: boolean;
   onClose: () => void;
+  presetContactId?: string;
+  presetPaymentType?: 'PAYMENT_IN' | 'PAYMENT_OUT';
+  onPaid?: () => void;
 };
 
 function isPositiveNumeric(v: string): boolean {
   return /^\d+(\.\d{1,2})?$/.test(v.trim()) && Number(v) > 0;
 }
 
-export function PaymentForm({ open, onClose }: Props) {
+export function PaymentForm({ open, onClose, presetContactId, presetPaymentType, onPaid }: Props) {
   const createMut = useCreatePaymentMutation();
 
   const { data: contacts } = useQuery<Contact[]>({
@@ -36,14 +39,14 @@ export function PaymentForm({ open, onClose }: Props) {
 
   useEffect(() => {
     if (open) {
-      setPaymentType('PAYMENT_IN');
-      setContactId('');
+      setPaymentType(presetPaymentType ?? 'PAYMENT_IN');
+      setContactId(presetContactId ?? '');
       setAmount('');
       setNote('');
       setFieldErrors({});
       setApiError(null);
     }
-  }, [open]);
+  }, [open, presetPaymentType, presetContactId]);
 
   // Reset contact when payment type changes if current contact doesn't match new filter
   useEffect(() => {
@@ -96,6 +99,7 @@ export function PaymentForm({ open, onClose }: Props) {
         note: note.trim() || undefined,
         accountId: account.id,
       } as never);
+      onPaid?.();
       onClose();
     } catch (err) {
       const msg = err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'حدث خطأ غير متوقع';
