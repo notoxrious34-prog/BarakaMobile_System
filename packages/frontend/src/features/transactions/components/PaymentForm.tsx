@@ -107,18 +107,25 @@ export function PaymentForm({ open, onClose, presetContactId, presetPaymentType,
     }
   }
 
+  const headerTitle = paymentType === 'PAYMENT_IN' ? 'قبض مبلغ من زبون' : 'تسديد مبلغ لمورّد';
+  const submitLabel = isSubmitting ? 'جاري الحفظ...' : paymentType === 'PAYMENT_IN' ? 'تأكيد قبض المبلغ' : 'تأكيد دفع المبلغ';
+  const submitClass =
+    paymentType === 'PAYMENT_IN'
+      ? 'rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50'
+      : 'rounded-md bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-500 disabled:opacity-50';
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" dir="rtl">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} aria-hidden="true" />
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="عملية دفع/تحصيل"
+        aria-label={headerTitle}
         className="relative z-10 w-full max-w-md rounded-lg border border-slate-800 bg-slate-900 p-6 text-slate-100 shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-slate-100">دفع / تحصيل</h2>
+          <h2 className="text-base font-semibold text-slate-100">{headerTitle}</h2>
           <button type="button" onClick={onClose} aria-label="إغلاق" className="rounded-md p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-100">
             <X className="h-5 w-5" />
           </button>
@@ -206,8 +213,8 @@ export function PaymentForm({ open, onClose, presetContactId, presetPaymentType,
             <button type="button" onClick={onClose} disabled={isSubmitting} className="rounded-md border border-slate-700 bg-slate-800 px-4 py-2 text-sm text-slate-300 hover:bg-slate-700">
               إلغاء
             </button>
-            <button type="submit" disabled={isSubmitting} className="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-500 disabled:opacity-50">
-              {isSubmitting ? 'جاري الحفظ...' : 'تأكيد الدفع'}
+            <button type="submit" disabled={isSubmitting} className={submitClass}>
+              {submitLabel}
             </button>
           </div>
         </form>

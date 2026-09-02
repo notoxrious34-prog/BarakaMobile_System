@@ -15,6 +15,18 @@ const ROLE_LABEL: Record<Contact['role'], string> = {
   BOTH: 'مورد وعميل',
 };
 
+function getQuickPayPreset(contact: Contact): 'PAYMENT_IN' | 'PAYMENT_OUT' {
+  const supplierAcc = contact.accounts.find((a) => a.role === 'SUPPLIER');
+  const customerAcc = contact.accounts.find((a) => a.role === 'CUSTOMER');
+  const supplierNonZero = supplierAcc ? Math.abs(Number(supplierAcc.currentBalance)) >= 0.005 : false;
+  const customerNonZero = customerAcc ? Math.abs(Number(customerAcc.currentBalance)) >= 0.005 : false;
+  if (customerNonZero && !supplierNonZero) return 'PAYMENT_IN';
+  if (supplierNonZero && !customerNonZero) return 'PAYMENT_OUT';
+  if (customerNonZero && supplierNonZero) return 'PAYMENT_IN';
+  if (supplierNonZero) return 'PAYMENT_OUT';
+  return 'PAYMENT_IN';
+}
+
 export function ContactsTable({ contacts, onEdit, onDeactivate, onQuickPay }: Props) {
   return (
     <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900">
@@ -38,6 +50,12 @@ export function ContactsTable({ contacts, onEdit, onDeactivate, onQuickPay }: Pr
               const isInactive = !c.isActive;
               const hasNonZeroBalance = c.accounts.some((a) => Math.abs(Number(a.currentBalance)) >= 0.005);
               const showQuickPay = c.isActive && hasNonZeroBalance;
+              const preset = getQuickPayPreset(c);
+              const quickPayLabel = preset === 'PAYMENT_IN' ? 'تحصيل مالي' : 'دفـع مالي';
+              const quickPayClass =
+                preset === 'PAYMENT_IN'
+                  ? 'inline-flex items-center gap-1 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-400 hover:bg-emerald-500/20'
+                  : 'inline-flex items-center gap-1 rounded-md border border-rose-500/20 bg-rose-500/10 px-2 py-1 text-xs font-medium text-rose-400 hover:bg-rose-500/20';
               return (
                 <tr
                   key={c.id}
@@ -99,12 +117,12 @@ export function ContactsTable({ contacts, onEdit, onDeactivate, onQuickPay }: Pr
                         <button
                           type="button"
                           onClick={() => onQuickPay(c)}
-                          aria-label={`دفع سريع ${c.name}`}
-                          title="دفع سريع"
-                          className="inline-flex items-center gap-1 rounded-md p-2 text-emerald-400 hover:bg-emerald-500/10"
+                          aria-label={`${quickPayLabel} ${c.name}`}
+                          title={quickPayLabel}
+                          className={quickPayClass}
                         >
                           <Banknote className="h-4 w-4" aria-hidden="true" />
-                          <span className="text-xs">تحصيل</span>
+                          <span className="text-xs">{quickPayLabel}</span>
                         </button>
                       )}
                     </div>

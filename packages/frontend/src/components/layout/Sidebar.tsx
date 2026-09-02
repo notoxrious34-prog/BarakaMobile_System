@@ -3,6 +3,7 @@ import {
   LayoutDashboard,
   Users,
   Package,
+  Zap,
   Wrench,
   Receipt,
   Wallet,
@@ -24,7 +25,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'الرئيسية', icon: LayoutDashboard },
   { to: '/contacts', label: 'جهات الاتصال', icon: Users },
   { to: '/inventory', label: 'المخزون', icon: Package },
-  { to: '/services', label: 'الخدمات', icon: Wrench },
+  { to: '/services', label: 'الخدمات', icon: Zap },
   { to: '/transactions', label: 'المعاملات', icon: Receipt },
   { to: '/repairs', label: 'الإصلاحات', icon: Wrench },
   { to: '/treasury', label: 'الخزينة', icon: Wallet },
@@ -44,7 +45,6 @@ export function Sidebar() {
       } border-l`}
       aria-label="الشريط الجانبي"
     >
-      {/* Brand */}
       <div className="flex h-14 items-center gap-3 border-b border-slate-800 bg-slate-900 px-3">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-cyan-600 text-sm font-bold text-white">
           ب
@@ -54,7 +54,6 @@ export function Sidebar() {
         )}
       </div>
 
-      {/* Navigation */}
       <nav className="flex flex-1 flex-col gap-1 p-2" aria-label="التنقل الرئيسي">
         {NAV_ITEMS.map((item) => (
           <NavLink
@@ -66,7 +65,7 @@ export function Sidebar() {
             className={({ isActive }) =>
               `flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
                 isActive
-                  ? 'bg-cyan-600 text-white shadow-sm'
+                  ? 'bg-cyan-500/10 text-cyan-400 border-r-2 border-cyan-500'
                   : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-100'
               } ${collapsed ? 'justify-center' : ''}`
             }
@@ -77,7 +76,6 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* Collapse control */}
       <div className="border-t border-slate-800 p-2">
         <button
           type="button"
