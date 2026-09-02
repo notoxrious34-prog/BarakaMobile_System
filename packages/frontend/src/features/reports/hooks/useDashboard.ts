@@ -34,6 +34,20 @@ export type DashboardSummary = {
     contactName: string;
     createdAt: string;
   }>;
+  // nested (backend also returns these grouped)
+  profit?: {
+    todayProfit: { totalProfit: string; serviceProfit: string; itemProfit: string };
+    monthProfit: { totalProfit: string; serviceProfit: string; itemProfit: string };
+  };
+  sales?: { salesCount: number; salesVolume: string };
+  repairStats?: { openTickets: number; deliveredToday: number };
+  // flat aliases
+  salesCount: number;
+  salesVolume: string;
+  totalSales: string;
+  totalExpenses: string;
+  repairProfit: string;
+  cashBalance: string;
 };
 
 export function useDashboard() {

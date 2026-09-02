@@ -14,16 +14,16 @@ const ROLE_LABEL: Record<string, string> = {
 
 function getNetPositionTone(value: string): string {
   const n = Number(value);
-  if (n > 0) return 'text-emerald-700';
-  if (n < 0) return 'text-red-700';
-  return 'text-zinc-600';
+  if (n > 0) return 'text-emerald-400';
+  if (n < 0) return 'text-rose-400';
+  return 'text-slate-400';
 }
 
 function getNetDebtTone(value: string): string {
   const n = Number(value);
-  if (n > 0) return 'text-emerald-700';
-  if (n < 0) return 'text-red-700';
-  return 'text-zinc-600';
+  if (n > 0) return 'text-emerald-400';
+  if (n < 0) return 'text-rose-400';
+  return 'text-slate-400';
 }
 
 export function DebtSummaryTable({ data, onViewLedger }: Props) {
@@ -34,37 +34,39 @@ export function DebtSummaryTable({ data, onViewLedger }: Props) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-medium text-zinc-500">إجمالي المستحقات</p>
-          <p className="mt-1 text-lg font-bold text-zinc-900" dir="ltr">
+        <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+          <p className="text-xs font-medium text-slate-400">إجمالي المستحقات</p>
+          <p className="mt-1 text-lg font-bold font-mono text-emerald-400" dir="ltr">
             {Number(data.totalReceivables).toFixed(2)} {currencySymbol}
           </p>
         </div>
-        <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-medium text-zinc-500">إجمالي الالتزامات</p>
-          <p className="mt-1 text-lg font-bold text-zinc-900" dir="ltr">
+        <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+          <p className="text-xs font-medium text-slate-400">إجمالي الالتزامات</p>
+          <p className="mt-1 text-lg font-bold font-mono text-amber-400" dir="ltr">
             {Number(data.totalPayables).toFixed(2)} {currencySymbol}
           </p>
         </div>
-        <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-medium text-zinc-500">صافي المركز المالي</p>
-          <p className={`mt-1 text-lg font-bold ${netDebtTone}`} dir="ltr">
+        <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+          <p className="text-xs font-medium text-slate-400">صافي المركز المالي</p>
+          <p className={`mt-1 text-lg font-bold font-mono ${netDebtTone}`} dir="ltr">
             {Number(data.netDebtPosition).toFixed(2)} {currencySymbol}
           </p>
         </div>
       </div>
 
       {data.topDebtors && data.topDebtors.length > 0 && (
-        <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
-          <h3 className="mb-3 text-sm font-semibold text-zinc-900">أكبر المدينين (العملاء)</h3>
+        <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+          <h3 className="mb-3 text-sm font-semibold text-slate-100">أكبر المدينين (العملاء)</h3>
           <ol className="space-y-2">
             {data.topDebtors.map((d, idx) => (
-              <li key={d.contactId} className="flex items-center justify-between rounded-md bg-zinc-50 px-3 py-2">
+              <li key={d.contactId} className="flex items-center justify-between rounded-lg bg-slate-800/60 px-3 py-2">
                 <span className="flex items-center gap-2">
-                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700">{idx + 1}</span>
-                  <span className="text-sm font-medium text-zinc-900">{d.contactName}</span>
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/10 text-xs font-bold text-emerald-400 border border-emerald-500/20">
+                    {idx + 1}
+                  </span>
+                  <span className="text-sm font-medium text-slate-100">{d.contactName}</span>
                 </span>
-                <span className="text-sm font-bold text-zinc-900" dir="ltr">
+                <span className="text-sm font-bold font-mono text-slate-100" dir="ltr">
                   {Number(d.currentBalance).toFixed(2)} {currencySymbol}
                 </span>
               </li>
@@ -74,16 +76,18 @@ export function DebtSummaryTable({ data, onViewLedger }: Props) {
       )}
 
       {data.topCreditors && data.topCreditors.length > 0 && (
-        <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
-          <h3 className="mb-3 text-sm font-semibold text-zinc-900">أكبر الدائنين (الموردين)</h3>
+        <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+          <h3 className="mb-3 text-sm font-semibold text-slate-100">أكبر الدائنين (الموردين)</h3>
           <ol className="space-y-2">
             {data.topCreditors.map((d, idx) => (
-              <li key={d.contactId} className="flex items-center justify-between rounded-md bg-zinc-50 px-3 py-2">
+              <li key={d.contactId} className="flex items-center justify-between rounded-lg bg-slate-800/60 px-3 py-2">
                 <span className="flex items-center gap-2">
-                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-700">{idx + 1}</span>
-                  <span className="text-sm font-medium text-zinc-900">{d.contactName}</span>
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-500/10 text-xs font-bold text-amber-400 border border-amber-500/20">
+                    {idx + 1}
+                  </span>
+                  <span className="text-sm font-medium text-slate-100">{d.contactName}</span>
                 </span>
-                <span className="text-sm font-bold text-zinc-900" dir="ltr">
+                <span className="text-sm font-bold font-mono text-slate-100" dir="ltr">
                   {Number(d.currentBalance).toFixed(2)} {currencySymbol}
                 </span>
               </li>
@@ -92,11 +96,11 @@ export function DebtSummaryTable({ data, onViewLedger }: Props) {
         </div>
       )}
 
-      <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-sm">
             <thead>
-              <tr className="bg-zinc-50 text-zinc-600">
+              <tr className="bg-slate-800/60 text-slate-400">
                 <th className="px-4 py-3 text-right font-semibold">جهة الاتصال</th>
                 <th className="px-4 py-3 text-right font-semibold">الدور</th>
                 <th className="px-4 py-3 text-right font-semibold">رصيد المورد</th>
@@ -107,16 +111,16 @@ export function DebtSummaryTable({ data, onViewLedger }: Props) {
             </thead>
             <tbody>
               {data.contacts.map((c) => (
-                <tr key={c.contactId} className="border-t border-zinc-100 bg-white hover:bg-zinc-50">
-                  <td className="px-4 py-3 font-medium text-zinc-900">{c.contactName}</td>
-                  <td className="px-4 py-3 text-zinc-700">{ROLE_LABEL[c.contactRole] ?? c.contactRole}</td>
-                  <td className="px-4 py-3 text-zinc-700" dir="ltr">
+                <tr key={c.contactId} className="border-t border-slate-800 bg-slate-900 hover:bg-slate-800/40">
+                  <td className="px-4 py-3 font-medium text-slate-100">{c.contactName}</td>
+                  <td className="px-4 py-3 text-slate-300">{ROLE_LABEL[c.contactRole] ?? c.contactRole}</td>
+                  <td className="px-4 py-3 font-mono text-slate-300" dir="ltr">
                     {c.supplierAccount ? `${Number(c.supplierAccount.currentBalance).toFixed(2)} ${currencySymbol}` : '—'}
                   </td>
-                  <td className="px-4 py-3 text-zinc-700" dir="ltr">
+                  <td className="px-4 py-3 font-mono text-slate-300" dir="ltr">
                     {c.customerAccount ? `${Number(c.customerAccount.currentBalance).toFixed(2)} ${currencySymbol}` : '—'}
                   </td>
-                  <td className={`px-4 py-3 font-medium ${getNetPositionTone(c.netPosition)}`} dir="ltr">
+                  <td className={`px-4 py-3 font-medium font-mono ${getNetPositionTone(c.netPosition)}`} dir="ltr">
                     {Number(c.netPosition).toFixed(2)} {currencySymbol}
                   </td>
                   <td className="px-4 py-3 text-center">
@@ -127,7 +131,7 @@ export function DebtSummaryTable({ data, onViewLedger }: Props) {
                           onClick={() => onViewLedger(c.customerAccount!.accountId, c.contactName, 'CUSTOMER')}
                           aria-label={`عرض كشف ${c.contactName} عميل`}
                           title="عرض كشف العميل"
-                          className="rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                          className="rounded-md border border-cyan-500/20 bg-cyan-500/10 px-2 py-1 text-xs font-medium text-cyan-400 hover:bg-cyan-500/20"
                         >
                           كشف العميل
                         </button>
@@ -138,7 +142,7 @@ export function DebtSummaryTable({ data, onViewLedger }: Props) {
                           onClick={() => onViewLedger(c.supplierAccount!.accountId, c.contactName, 'SUPPLIER')}
                           aria-label={`عرض كشف ${c.contactName} مورد`}
                           title="عرض كشف المورد"
-                          className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100"
+                          className="rounded-md border border-amber-500/20 bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-400 hover:bg-amber-500/20"
                         >
                           كشف المورد
                         </button>

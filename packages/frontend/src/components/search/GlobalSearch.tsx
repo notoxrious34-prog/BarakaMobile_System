@@ -79,9 +79,9 @@ export function GlobalSearch() {
       <div className="relative">
         <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
           {showSpinner ? (
-            <Loader2 className="h-4 w-4 animate-spin text-zinc-400" aria-hidden="true" />
+            <Loader2 className="h-4 w-4 animate-spin text-slate-400" aria-hidden="true" />
           ) : (
-            <Search className="h-4 w-4 text-zinc-400" aria-hidden="true" />
+            <Search className="h-4 w-4 text-slate-400" aria-hidden="true" />
           )}
         </div>
         <input
@@ -90,29 +90,29 @@ export function GlobalSearch() {
           onChange={(e) => handleInputChange(e.target.value)}
           onFocus={handleFocus}
           placeholder="ابحث عن جهة اتصال، صنف، خدمة..."
-          className="w-full rounded-md border border-zinc-300 bg-white py-2 pr-10 pl-4 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+          className="w-full rounded-md border border-slate-700 bg-slate-800/60 py-2 pr-10 pl-4 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-600 focus:outline-none focus:ring-1 focus:ring-cyan-600"
           aria-label="بحث شامل"
         />
       </div>
 
       {isOpen && trimmedInput.length >= 1 && (
-        <div className="absolute z-50 mt-2 max-h-96 w-full overflow-auto rounded-md border border-zinc-200 bg-white shadow-lg">
+        <div className="absolute z-50 mt-2 max-h-96 w-full overflow-auto rounded-md border border-slate-700 bg-slate-900 shadow-xl">
           {isError ? (
-            <div className="px-4 py-6 text-center text-sm text-zinc-600">حدث خطأ، حاول مرة أخرى</div>
+            <div className="px-4 py-6 text-center text-sm text-rose-400">حدث خطأ، حاول مرة أخرى</div>
           ) : isLoading ? (
-            <div className="flex items-center justify-center gap-2 px-4 py-6 text-sm text-zinc-500">
+            <div className="flex items-center justify-center gap-2 px-4 py-6 text-sm text-slate-400">
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               <span>جاري البحث...</span>
             </div>
           ) : data && data.totalCount === 0 ? (
-            <div className="px-4 py-6 text-center text-sm text-zinc-600">
+            <div className="px-4 py-6 text-center text-sm text-slate-400">
               لا توجد نتائج لـ «{data.query}»
             </div>
           ) : data ? (
-            <div className="divide-y divide-zinc-100">
+            <div className="divide-y divide-slate-800">
               {data.contacts.length > 0 && (
                 <div className="py-2">
-                  <div className="px-4 py-1 text-xs font-semibold text-zinc-500">
+                  <div className="px-4 py-1 text-xs font-semibold text-slate-400">
                     جهات الاتصال ({data.contacts.length})
                   </div>
                   <ul>
@@ -121,15 +121,15 @@ export function GlobalSearch() {
                         <button
                           type="button"
                           onClick={() => handleSelect('/contacts')}
-                          className="flex w-full items-center gap-2 px-4 py-2 text-right text-sm text-zinc-800 hover:bg-zinc-50 focus:bg-zinc-50 focus:outline-none"
+                          className="flex w-full items-center gap-2 px-4 py-2 text-right text-sm text-slate-200 hover:bg-slate-800 focus:bg-slate-800 focus:outline-none"
                         >
-                          <span className="font-medium">{contact.name}</span>
-                          <span className="text-zinc-400">—</span>
-                          <span className="text-zinc-600">{ROLE_LABEL[contact.role] ?? contact.role}</span>
+                          <span className="font-medium text-slate-100">{contact.name}</span>
+                          <span className="text-slate-500">—</span>
+                          <span className="text-slate-400">{ROLE_LABEL[contact.role] ?? contact.role}</span>
                           {contact.phone && (
                             <>
-                              <span className="text-zinc-400">—</span>
-                              <span className="text-zinc-500">{contact.phone}</span>
+                              <span className="text-slate-500">—</span>
+                              <span className="text-slate-400">{contact.phone}</span>
                             </>
                           )}
                         </button>
@@ -141,7 +141,7 @@ export function GlobalSearch() {
 
               {data.items.length > 0 && (
                 <div className="py-2">
-                  <div className="px-4 py-1 text-xs font-semibold text-zinc-500">
+                  <div className="px-4 py-1 text-xs font-semibold text-slate-400">
                     المخزون ({data.items.length})
                   </div>
                   <ul>
@@ -150,17 +150,17 @@ export function GlobalSearch() {
                         <button
                           type="button"
                           onClick={() => handleSelect('/inventory')}
-                          className="flex w-full items-center gap-2 px-4 py-2 text-right text-sm text-zinc-800 hover:bg-zinc-50 focus:bg-zinc-50 focus:outline-none"
+                          className="flex w-full items-center gap-2 px-4 py-2 text-right text-sm text-slate-200 hover:bg-slate-800 focus:bg-slate-800 focus:outline-none"
                         >
-                          <span className="font-medium">{item.name}</span>
+                          <span className="font-medium text-slate-100">{item.name}</span>
                           {item.sku && (
                             <>
-                              <span className="text-zinc-400">—</span>
-                              <span className="text-zinc-500">{item.sku}</span>
+                              <span className="text-slate-500">—</span>
+                              <span className="text-slate-400">{item.sku}</span>
                             </>
                           )}
-                          <span className="text-zinc-400">—</span>
-                          <span className="text-zinc-600">{item.sellingPrice} {currencySymbol}</span>
+                          <span className="text-slate-500">—</span>
+                          <span className="font-mono text-slate-300">{item.sellingPrice} {currencySymbol}</span>
                         </button>
                       </li>
                     ))}
@@ -170,7 +170,7 @@ export function GlobalSearch() {
 
               {data.services.length > 0 && (
                 <div className="py-2">
-                  <div className="px-4 py-1 text-xs font-semibold text-zinc-500">
+                  <div className="px-4 py-1 text-xs font-semibold text-slate-400">
                     الخدمات ({data.services.length})
                   </div>
                   <ul>
@@ -179,11 +179,11 @@ export function GlobalSearch() {
                         <button
                           type="button"
                           onClick={() => handleSelect('/services')}
-                          className="flex w-full items-center gap-2 px-4 py-2 text-right text-sm text-zinc-800 hover:bg-zinc-50 focus:bg-zinc-50 focus:outline-none"
+                          className="flex w-full items-center gap-2 px-4 py-2 text-right text-sm text-slate-200 hover:bg-slate-800 focus:bg-slate-800 focus:outline-none"
                         >
-                          <span className="font-medium">{service.name}</span>
-                          <span className="text-zinc-400">—</span>
-                          <span className="text-zinc-600">
+                          <span className="font-medium text-slate-100">{service.name}</span>
+                          <span className="text-slate-500">—</span>
+                          <span className="text-slate-400">
                             {PRICING_LABEL[service.pricingType] ?? service.pricingType}
                           </span>
                         </button>

@@ -39,18 +39,18 @@ export function Sidebar() {
 
   return (
     <aside
-      className={`flex shrink-0 flex-col border-zinc-200 bg-white transition-all duration-200 ${
+      className={`flex shrink-0 flex-col bg-slate-900 border-slate-800 transition-all duration-200 ${
         collapsed ? 'w-16' : 'w-64'
       } border-l`}
       aria-label="الشريط الجانبي"
     >
       {/* Brand */}
-      <div className="flex h-14 items-center gap-3 border-b border-zinc-200 px-3">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-zinc-900 text-sm font-bold text-white">
+      <div className="flex h-14 items-center gap-3 border-b border-slate-800 bg-slate-900 px-3">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-cyan-600 text-sm font-bold text-white">
           ب
         </div>
         {!collapsed && (
-          <span className="truncate text-sm font-semibold tracking-tight text-zinc-900">BarakaMobile</span>
+          <span className="truncate text-sm font-semibold tracking-tight text-slate-100">BarakaMobile</span>
         )}
       </div>
 
@@ -66,8 +66,8 @@ export function Sidebar() {
             className={({ isActive }) =>
               `flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
                 isActive
-                  ? 'bg-zinc-900 text-white'
-                  : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'
+                  ? 'bg-cyan-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-100'
               } ${collapsed ? 'justify-center' : ''}`
             }
           >
@@ -78,13 +78,13 @@ export function Sidebar() {
       </nav>
 
       {/* Collapse control */}
-      <div className="border-t border-zinc-200 p-2">
+      <div className="border-t border-slate-800 p-2">
         <button
           type="button"
           onClick={toggleSidebar}
           aria-label={collapsed ? 'توسيع الشريط الجانبي' : 'طي الشريط الجانبي'}
           title={collapsed ? 'توسيع' : 'طي'}
-          className="flex w-full items-center justify-center rounded-md px-3 py-2 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+          className="flex w-full items-center justify-center rounded-md px-3 py-2 text-slate-400 hover:bg-slate-800/60 hover:text-slate-100"
         >
           {collapsed ? (
             <PanelRightClose className="h-5 w-5" aria-hidden="true" />

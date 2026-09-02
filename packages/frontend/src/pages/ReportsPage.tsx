@@ -110,14 +110,14 @@ export function ReportsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div dir="rtl" className="min-h-screen bg-slate-950 p-4 font-sans space-y-4">
       <div className="flex items-center justify-between no-print">
-        <h1 className="text-xl font-bold text-zinc-900">التقارير</h1>
+        <h1 className="text-xl font-bold text-slate-100">التقارير</h1>
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={handleExportPDF}
-            className="inline-flex items-center gap-2 rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+            className="inline-flex items-center gap-2 rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500"
           >
             <FileDown className="h-4 w-4" aria-hidden="true" />
             تصدير PDF
@@ -125,7 +125,7 @@ export function ReportsPage() {
           <button
             type="button"
             onClick={() => window.print()}
-            className="inline-flex items-center gap-2 rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+            className="inline-flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800"
           >
             <Printer className="h-4 w-4" aria-hidden="true" />
             طباعة
@@ -133,7 +133,7 @@ export function ReportsPage() {
           <button
             type="button"
             onClick={handleRefresh}
-            className="inline-flex items-center gap-2 rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+            className="inline-flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800"
           >
             <RefreshCw className="h-4 w-4" aria-hidden="true" />
             تحديث
@@ -141,7 +141,7 @@ export function ReportsPage() {
         </div>
       </div>
 
-      <div className="flex gap-2 border-b border-zinc-200 no-print">
+      <div className="flex gap-2 border-b border-slate-800 no-print">
         {(Object.keys(TAB_LABELS) as TabKey[]).map((key) => (
           <button
             key={key}
@@ -149,8 +149,8 @@ export function ReportsPage() {
             onClick={() => setActiveTab(key)}
             className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
               activeTab === key
-                ? 'border-zinc-900 text-zinc-900'
-                : 'border-transparent text-zinc-500 hover:text-zinc-700'
+                ? 'border-cyan-500 text-cyan-400'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
             {TAB_LABELS[key]}
@@ -162,7 +162,7 @@ export function ReportsPage() {
         {activeTab === 'summary' && (
           <>
             <section className="space-y-3">
-              <h2 className="text-base font-semibold text-zinc-900">رأس المال</h2>
+              <h2 className="text-base font-semibold text-slate-100">رأس المال</h2>
               {capitalQ.isLoading ? (
                 <Loading text="جاري تحميل رأس المال..." />
               ) : capitalQ.isError ? (
@@ -177,7 +177,7 @@ export function ReportsPage() {
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-base font-semibold text-zinc-900">الملخص التنفيذي</h2>
+              <h2 className="text-base font-semibold text-slate-100">الملخص التنفيذي</h2>
               {summaryQ.isLoading ? (
                 <Loading text="جاري تحميل الملخص..." />
               ) : summaryQ.isError ? (
@@ -188,35 +188,35 @@ export function ReportsPage() {
                 />
               ) : summaryQ.data ? (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
-                    <p className="text-xs font-medium text-zinc-500">إجمالي المبيعات (عدد)</p>
-                    <p className="mt-1 text-lg font-bold text-zinc-900">{summaryQ.data.salesCount}</p>
+                  <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+                    <p className="text-xs font-medium text-slate-400">إجمالي المبيعات (عدد)</p>
+                    <p className="mt-1 text-lg font-bold font-mono text-slate-100">{summaryQ.data.salesCount}</p>
                   </div>
-                  <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
-                    <p className="text-xs font-medium text-zinc-500">حجم المبيعات</p>
-                    <p className="mt-1 text-lg font-bold text-zinc-900" dir="ltr">
+                  <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+                    <p className="text-xs font-medium text-slate-400">حجم المبيعات</p>
+                    <p className="mt-1 text-lg font-bold font-mono text-emerald-400" dir="ltr">
                       {Number(summaryQ.data.salesVolume).toFixed(2)} {currencySymbol}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
-                    <p className="text-xs font-medium text-zinc-500">ربح اليوم</p>
-                    <p className="mt-1 text-lg font-bold text-emerald-700" dir="ltr">
+                  <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+                    <p className="text-xs font-medium text-slate-400">ربح اليوم</p>
+                    <p className="mt-1 text-lg font-bold font-mono text-emerald-400" dir="ltr">
                       {Number(summaryQ.data.todayProfit.totalProfit).toFixed(2)} {currencySymbol}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
-                    <p className="text-xs font-medium text-zinc-500">ربح الشهر</p>
-                    <p className="mt-1 text-lg font-bold text-emerald-700" dir="ltr">
+                  <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+                    <p className="text-xs font-medium text-slate-400">ربح الشهر</p>
+                    <p className="mt-1 text-lg font-bold font-mono text-emerald-400" dir="ltr">
                       {Number(summaryQ.data.monthProfit.totalProfit).toFixed(2)} {currencySymbol}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
-                    <p className="text-xs font-medium text-zinc-500">إجمالي المخزون</p>
-                    <p className="mt-1 text-lg font-bold text-zinc-900">{summaryQ.data.inventory.totalItems} صنف</p>
+                  <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+                    <p className="text-xs font-medium text-slate-400">إجمالي المخزون</p>
+                    <p className="mt-1 text-lg font-bold font-mono text-slate-100">{summaryQ.data.inventory.totalItems} صنف</p>
                   </div>
-                  <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
-                    <p className="text-xs font-medium text-zinc-500">أصناف منخفضة</p>
-                    <p className="mt-1 text-lg font-bold text-amber-600">{summaryQ.data.inventory.lowStockItems}</p>
+                  <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+                    <p className="text-xs font-medium text-slate-400">أصناف منخفضة</p>
+                    <p className="mt-1 text-lg font-bold font-mono text-amber-400">{summaryQ.data.inventory.lowStockItems}</p>
                   </div>
                 </div>
               ) : null}
@@ -227,15 +227,15 @@ export function ReportsPage() {
         {activeTab === 'profit' && (
           <section className="space-y-4">
             <div className="flex flex-wrap items-center gap-2 no-print">
-              <span className="text-sm font-medium text-zinc-700">الفترة:</span>
-              <div className="flex gap-1 rounded-lg border border-zinc-200 bg-zinc-50 p-1">
+              <span className="text-sm font-medium text-slate-300">الفترة:</span>
+              <div className="flex gap-1 rounded-lg border border-slate-800 bg-slate-900 p-1">
                 {(['today', 'week', 'month', 'custom'] as DatePreset[]).map((p) => (
                   <button
                     key={p}
                     type="button"
                     onClick={() => setPreset(p)}
                     className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${
-                      preset === p ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-600 hover:text-zinc-900'
+                      preset === p ? 'bg-slate-800 text-slate-100 shadow-sm' : 'text-slate-400 hover:text-slate-200'
                     }`}
                   >
                     {p === 'today' ? 'اليوم' : p === 'week' ? 'هذا الأسبوع' : p === 'month' ? 'هذا الشهر' : 'مخصص'}
@@ -248,19 +248,19 @@ export function ReportsPage() {
                     type="date"
                     value={customStart}
                     onChange={(e) => setCustomStart(e.target.value)}
-                    className="rounded-md border border-zinc-300 px-3 py-1 text-sm"
+                    className="rounded-md border border-slate-700 bg-slate-800/60 px-3 py-1 text-sm text-slate-100 focus:border-cyan-600 focus:outline-none focus:ring-1 focus:ring-cyan-600"
                   />
-                  <span className="text-zinc-500">إلى</span>
+                  <span className="text-slate-500">إلى</span>
                   <input
                     type="date"
                     value={customEnd}
                     onChange={(e) => setCustomEnd(e.target.value)}
-                    className="rounded-md border border-zinc-300 px-3 py-1 text-sm"
+                    className="rounded-md border border-slate-700 bg-slate-800/60 px-3 py-1 text-sm text-slate-100 focus:border-cyan-600 focus:outline-none focus:ring-1 focus:ring-cyan-600"
                   />
                 </div>
               )}
             </div>
-            <h2 className="text-base font-semibold text-zinc-900">الأرباح والخسائر</h2>
+            <h2 className="text-base font-semibold text-slate-100">الأرباح والخسائر</h2>
             {profitQ.isLoading ? (
               <Loading text="جاري تحميل الأرباح..." />
             ) : profitQ.isError ? (
@@ -277,7 +277,7 @@ export function ReportsPage() {
 
         {activeTab === 'debts' && (
           <section className="space-y-3">
-            <h2 className="text-base font-semibold text-zinc-900">ملخص الديون</h2>
+            <h2 className="text-base font-semibold text-slate-100">ملخص الديون</h2>
             {debtQ.isLoading ? (
               <Loading text="جاري تحميل ملخص الديون..." />
             ) : debtQ.isError ? (
@@ -294,23 +294,42 @@ export function ReportsPage() {
 
         {activeTab === 'treasury' && (
           <section className="space-y-4">
-            <h2 className="text-base font-semibold text-zinc-900">الخزينة والمصاريف — ملخص</h2>
+            <h2 className="text-base font-semibold text-slate-100">الخزينة والمصاريف — ملخص</h2>
             {capitalQ.data && (
-              <div className="rounded-lg border border-zinc-200 bg-white p-4">
-                <p className="text-sm text-zinc-500">السيولة في الصندوق</p>
-                <p className="mt-1 text-2xl font-bold" dir="ltr">{Number(capitalQ.data.cashInHand ?? '0.00').toFixed(2)} {currencySymbol}</p>
-                <p className="mt-1 text-xs text-zinc-500">مضمنة في حساب رأس المال: inventory + receivables + cash − payables</p>
+              <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+                <p className="text-sm text-slate-400">السيولة في الصندوق</p>
+                <p className="mt-1 text-2xl font-bold font-mono text-slate-100" dir="ltr">
+                  {Number(capitalQ.data.cashInHand ?? '0.00').toFixed(2)} {currencySymbol}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">مضمنة في حساب رأس المال: inventory + receivables + cash − payables</p>
               </div>
             )}
             {profitQ.data && (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="rounded-lg border border-zinc-200 bg-white p-4"><p className="text-xs text-zinc-500">إجمالي المصاريف (للفترة)</p><p className="mt-1 text-lg font-bold" dir="ltr">{Number(profitQ.data.totalExpenses ?? '0.00').toFixed(2)} {currencySymbol}</p></div>
-                <div className="rounded-lg border-2 border-zinc-900 bg-white p-4"><p className="text-xs font-bold">صافي الربح بعد المصاريف</p><p className="mt-1 text-xl font-extrabold text-emerald-700" dir="ltr">{Number(profitQ.data.netProfitAfterExpenses ?? '0.00').toFixed(2)} {currencySymbol}</p></div>
+                <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+                  <p className="text-xs text-slate-400">إجمالي المصاريف (للفترة)</p>
+                  <p className="mt-1 text-lg font-bold font-mono text-amber-400" dir="ltr">
+                    {Number(profitQ.data.totalExpenses ?? '0.00').toFixed(2)} {currencySymbol}
+                  </p>
+                </div>
+                <div className="rounded-xl border-2 border-slate-700 bg-slate-900 p-4">
+                  <p className="text-xs font-bold text-slate-100">صافي الربح بعد المصاريف</p>
+                  <p className="mt-1 text-xl font-extrabold font-mono text-emerald-400" dir="ltr">
+                    {Number(profitQ.data.netProfitAfterExpenses ?? '0.00').toFixed(2)} {currencySymbol}
+                  </p>
+                </div>
               </div>
             )}
             <div className="flex gap-2">
-              <Link to="/treasury" className="rounded-md bg-zinc-900 px-4 py-2 text-sm text-white">فتح الخزينة</Link>
-              <Link to="/expenses" className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm">فتح المصاريف</Link>
+              <Link to="/treasury" className="rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500">
+                فتح الخزينة
+              </Link>
+              <Link
+                to="/expenses"
+                className="rounded-md border border-slate-700 bg-slate-800 px-4 py-2 text-sm text-slate-200 hover:bg-slate-700"
+              >
+                فتح المصاريف
+              </Link>
             </div>
           </section>
         )}

@@ -524,6 +524,26 @@ export class ReportsService {
       where: { isActive: true, status: 'DELIVERED', deliveredAt: { gte: todayStartForRepair, lte: todayEndForRepair } },
     });
 
+    const flatTodayProfit = {
+      totalProfit: this.to2dp(todayProfitData.totalProfit),
+      serviceProfit: this.to2dp(todayProfitData.serviceProfit),
+      itemProfit: this.to2dp(todayProfitData.itemProfit),
+    };
+    const flatMonthProfit = {
+      totalProfit: this.to2dp(monthProfitData.totalProfit),
+      serviceProfit: this.to2dp(monthProfitData.serviceProfit),
+      itemProfit: this.to2dp(monthProfitData.itemProfit),
+    };
+    const flatSalesVolume = this.to2dp(salesVolume);
+    const repairProfitData = await this.repairService.getRepairProfit(startDate, endDate);
+    const flatRepairProfit = this.to2dp(new Decimal(repairProfitData.totalRepairProfit));
+    const expenseBreakdown = await this.expensesService.getExpenseBreakdown(startDate, endDate);
+    let flatTotalExpenses = new Decimal(0);
+    for (const b of expenseBreakdown) {
+      flatTotalExpenses = flatTotalExpenses.plus(new Decimal(b.totalAmount));
+    }
+    const flatCashBalance = this.to2dp(capitalData.cashInHand);
+
     return {
       capital: {
         totalCapital: this.to2dp(totalCapital),
@@ -531,20 +551,12 @@ export class ReportsService {
         stockValue: this.to2dp(stockValue),
       },
       profit: {
-        todayProfit: {
-          totalProfit: this.to2dp(todayProfitData.totalProfit),
-          serviceProfit: this.to2dp(todayProfitData.serviceProfit),
-          itemProfit: this.to2dp(todayProfitData.itemProfit),
-        },
-        monthProfit: {
-          totalProfit: this.to2dp(monthProfitData.totalProfit),
-          serviceProfit: this.to2dp(monthProfitData.serviceProfit),
-          itemProfit: this.to2dp(monthProfitData.itemProfit),
-        },
+        todayProfit: flatTodayProfit,
+        monthProfit: flatMonthProfit,
       },
       sales: {
         salesCount,
-        salesVolume: this.to2dp(salesVolume),
+        salesVolume: flatSalesVolume,
       },
       debts: {
         totalCustomerDebt: this.to2dp(totalCustomerDebt),
@@ -561,6 +573,15 @@ export class ReportsService {
         openTickets,
         deliveredToday,
       },
+      // flat aliases for Dashboard/Reports hooks expecting top-level shape
+      todayProfit: flatTodayProfit,
+      monthProfit: flatMonthProfit,
+      salesCount,
+      salesVolume: flatSalesVolume,
+      totalSales: flatSalesVolume,
+      totalExpenses: this.to2dp(flatTotalExpenses),
+      repairProfit: flatRepairProfit,
+      cashBalance: flatCashBalance,
     };
   }
 

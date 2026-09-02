@@ -8,10 +8,10 @@ type Props = {
 };
 
 const TONE_CLASSES: Record<string, string> = {
-  neutral: 'border-zinc-200 bg-white text-zinc-900',
-  positive: 'border-emerald-200 bg-emerald-50 text-emerald-900',
-  negative: 'border-red-200 bg-red-50 text-red-900',
-  warning: 'border-amber-200 bg-amber-50 text-amber-900',
+  neutral: 'border-slate-800 bg-slate-900 text-slate-100',
+  positive: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400',
+  negative: 'border-rose-500/30 bg-rose-500/10 text-rose-400',
+  warning: 'border-amber-500/30 bg-amber-500/10 text-amber-400',
 };
 
 export function StatCard({ label, value, suffix, tone = 'neutral' }: Props) {
@@ -26,9 +26,9 @@ export function StatCard({ label, value, suffix, tone = 'neutral' }: Props) {
   })();
 
   return (
-    <div className={`rounded-lg border p-4 shadow-sm ${toneClass}`}>
-      <p className="text-xs font-medium opacity-70">{label}</p>
-      <p className="mt-1 text-lg font-bold" dir="ltr">
+    <div className={`rounded-xl border p-4 ${toneClass}`}>
+      <p className="text-xs font-medium text-slate-400">{label}</p>
+      <p className="mt-1 text-lg font-bold font-mono" dir="ltr">
         {displayValue} {resolvedSuffix}
       </p>
     </div>

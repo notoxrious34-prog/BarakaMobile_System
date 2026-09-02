@@ -26,9 +26,11 @@ export function ProfitCard({ data }: Props) {
       <StatCard label="إجمالي الربح" value={data.grossProfit} suffix={currencySymbol} tone="positive" />
       <StatCard label="صافي الربح" value={data.netProfit} suffix={currencySymbol} tone={netTone} />
       <StatCard label="إجمالي المصاريف" value={data.totalExpenses} suffix={currencySymbol} tone="warning" />
-      <div className="rounded-lg border-2 border-zinc-900 bg-white p-4 shadow-md">
-        <p className="text-xs font-bold text-zinc-900">صافي الربح بعد المصاريف (الحقيقة النهائية)</p>
-        <p className={`mt-1 text-xl font-extrabold ${afterTone === 'positive' ? 'text-emerald-700' : 'text-red-600'}`} dir="ltr">{Number(data.netProfitAfterExpenses).toFixed(2)} {currencySymbol}</p>
+      <div className="rounded-xl border-2 border-slate-700 bg-slate-900 p-4">
+        <p className="text-xs font-bold text-slate-100">صافي الربح بعد المصاريف (الحقيقة النهائية)</p>
+        <p className={`mt-1 text-xl font-extrabold font-mono ${afterTone === 'positive' ? 'text-emerald-400' : 'text-rose-400'}`} dir="ltr">
+          {Number(data.netProfitAfterExpenses).toFixed(2)} {currencySymbol}
+        </p>
       </div>
       <StatCard label="هامش الربح الإجمالي" value={data.grossMarginPct} suffix="%" tone={netTone} />
     </div>

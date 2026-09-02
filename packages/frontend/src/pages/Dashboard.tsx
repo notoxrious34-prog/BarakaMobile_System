@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useDashboard } from '@/features/reports/hooks/useDashboard';
+import { FlexyExpressWidget } from '@/features/dashboard/components/FlexyExpressWidget';
 import { api } from '@/lib/api';
 import type { RepairTicket } from '@/features/repairs/hooks/useRepairs';
 
@@ -20,8 +21,7 @@ type Transaction = {
 };
 
 export function Dashboard() {
-  const { data: summaryRaw, isLoading, isError } = useDashboard();
-  const summary = summaryRaw as unknown as Record<string, string | undefined>;
+  const { data: summary, isLoading, isError } = useDashboard();
 
   const { data: repairsData } = useQuery<RepairTicket[]>({
     queryKey: ['repairs', null],
@@ -143,6 +143,11 @@ export function Dashboard() {
             <p className="text-xs text-slate-400 mt-0.5">ملغى</p>
           </div>
         </div>
+      </div>
+
+      {/* Zone D+ — Flexy Express (UI-only, no operator API) */}
+      <div className="mt-4">
+        <FlexyExpressWidget />
       </div>
 
       {/* Zone E — Quick Actions bar */}
