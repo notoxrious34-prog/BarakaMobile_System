@@ -26,18 +26,20 @@ export type StockMovement = {
   reference?: string | null;
 };
 
-type CreateItemPayload = {
+export type CreateItemPayload = {
   name: string;
   sku?: string;
   costPrice: string;
   sellingPrice: string;
+  minStock?: number;
 };
 
-type UpdateItemPayload = {
+export type UpdateItemPayload = {
   name?: string;
   sku?: string;
   costPrice?: string;
   sellingPrice?: string;
+  minStock?: number;
 };
 
 type CreateMovementPayload = {
@@ -51,30 +53,6 @@ export function useItemsQuery() {
   return useQuery<Item[]>({
     queryKey: ['items'],
     queryFn: () => api.get<Item[]>('/inventory/items'),
-  });
-}
-
-export function useItemStockQuery(itemId: string) {
-  return useQuery<{ itemId: string; currentStock: number }>({
-    queryKey: ['item-stock', itemId],
-    queryFn: async () => {
-      // Backend does not expose /items/:id/stock; the single-item endpoint
-      // returns the item with currentStock. Adapt here to keep the hook
-      // contract while staying compatible with the actual API.
-      try {
-        const res = await api.get<{ currentStock: number; id: string }>(
-          `/inventory/items/${itemId}`,
-        );
-        return { itemId, currentStock: res.currentStock ?? 0 };
-      } catch {
-        // Fallback: try dedicated stock endpoint if it ever exists
-        const stock = await api.get<{ itemId: string; currentStock: number }>(
-          `/inventory/items/${itemId}/stock`,
-        );
-        return stock;
-      }
-    },
-    enabled: !!itemId && itemId.length > 0,
   });
 }
 

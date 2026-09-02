@@ -5,6 +5,8 @@ import {
   useCreateItemMutation,
   useUpdateItemMutation,
   type Item,
+  type CreateItemPayload,
+  type UpdateItemPayload,
 } from '../hooks/useInventory';
 
 type Props = {
@@ -15,7 +17,6 @@ type Props = {
 
 function isPositiveNumeric(value: string): boolean {
   if (!value.trim()) return false;
-  // allow decimal with up to 2dp, positive only
   if (!/^\d+(\.\d{1,2})?$/.test(value.trim())) return false;
   const num = Number(value);
   return !Number.isNaN(num) && num > 0;
@@ -37,10 +38,12 @@ export function ItemFormModal({ open, onClose, item }: Props) {
   const [sku, setSku] = useState('');
   const [costPrice, setCostPrice] = useState('');
   const [sellingPrice, setSellingPrice] = useState('');
+  const [minStock, setMinStock] = useState('');
   const [fieldErrors, setFieldErrors] = useState<{
     name?: string;
     costPrice?: string;
     sellingPrice?: string;
+    minStock?: string;
   }>({});
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -51,11 +54,13 @@ export function ItemFormModal({ open, onClose, item }: Props) {
         setSku(item.sku ?? '');
         setCostPrice(toDisplayPrice(item.costPrice));
         setSellingPrice(toDisplayPrice(item.sellingPrice));
+        setMinStock(item.minStock !== undefined && item.minStock !== null ? String(item.minStock) : '');
       } else {
         setName('');
         setSku('');
         setCostPrice('');
         setSellingPrice('');
+        setMinStock('');
       }
       setFieldErrors({});
       setApiError(null);
@@ -73,6 +78,10 @@ export function ItemFormModal({ open, onClose, item }: Props) {
     else if (!isPositiveNumeric(costPrice)) errs.costPrice = 'سعر التكلفة يجب أن يكون رقمًا موجبًا';
     if (!sellingPrice.trim()) errs.sellingPrice = 'سعر البيع مطلوب';
     else if (!isPositiveNumeric(sellingPrice)) errs.sellingPrice = 'سعر البيع يجب أن يكون رقمًا موجبًا';
+    if (minStock.trim() !== '') {
+      const n = Number(minStock.trim());
+      if (!Number.isInteger(n) || n < 0) errs.minStock = 'الحد الأدنى يجب أن يكون عددًا صحيحًا غير سالب';
+    }
     setFieldErrors(errs);
     return Object.keys(errs).length === 0;
   }
@@ -83,23 +92,27 @@ export function ItemFormModal({ open, onClose, item }: Props) {
     if (!validate()) return;
     try {
       if (isEdit && item) {
-        const payload: Record<string, string> = {};
-        payload.name = name.trim();
-        if (sku.trim()) payload.sku = sku.trim();
-        else payload.sku = sku.trim(); // allow empty to clear? backend accepts optional
-        payload.costPrice = costPrice.trim();
-        payload.sellingPrice = sellingPrice.trim();
-        // Remove empty sku if needed
-        if (!sku.trim()) delete payload.sku;
-        await updateMut.mutateAsync({ id: item.id, payload });
-      } else {
-        const payload: Record<string, string> = {
+        const payload: UpdateItemPayload = {
           name: name.trim(),
           costPrice: costPrice.trim(),
           sellingPrice: sellingPrice.trim(),
         };
         if (sku.trim()) payload.sku = sku.trim();
-        await createMut.mutateAsync(payload as never);
+        if (minStock.trim() !== '') {
+          payload.minStock = Number(minStock.trim());
+        }
+        await updateMut.mutateAsync({ id: item.id, payload });
+      } else {
+        const payload: CreateItemPayload = {
+          name: name.trim(),
+          costPrice: costPrice.trim(),
+          sellingPrice: sellingPrice.trim(),
+        };
+        if (sku.trim()) payload.sku = sku.trim();
+        if (minStock.trim() !== '') {
+          payload.minStock = Number(minStock.trim());
+        }
+        await createMut.mutateAsync(payload);
       }
       onClose();
     } catch (err) {
@@ -114,39 +127,39 @@ export function ItemFormModal({ open, onClose, item }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" dir="rtl">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" dir="rtl">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} aria-hidden="true" />
       <div
         role="dialog"
         aria-modal="true"
         aria-label={isEdit ? 'تعديل المنتج' : 'إضافة منتج'}
-        className="relative z-10 w-full max-w-md rounded-lg border border-zinc-200 bg-white p-6 shadow-lg"
+        className="relative z-10 w-full max-w-md rounded-xl border border-slate-800 bg-slate-900 p-6 text-slate-100 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-zinc-900">
+          <h2 className="text-base font-semibold text-slate-100">
             {isEdit ? 'تعديل المنتج' : 'إضافة منتج'}
           </h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="إغلاق"
-            className="rounded-md p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
+            className="rounded-md p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-100"
           >
             <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
 
         {apiError && (
-          <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+          <div className="mb-4 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-400" role="alert">
             {apiError}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <div>
-            <label htmlFor="item-name" className="mb-1 block text-sm font-medium text-zinc-700">
-              الاسم <span className="text-red-500">*</span>
+            <label htmlFor="item-name" className="mb-1 block text-sm font-medium text-slate-300">
+              الاسم <span className="text-rose-400">*</span>
             </label>
             <input
               id="item-name"
@@ -154,16 +167,16 @@ export function ItemFormModal({ open, onClose, item }: Props) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               disabled={isSubmitting}
-              className={`w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-zinc-900 focus:border-zinc-900 ${
-                fieldErrors.name ? 'border-red-500' : 'border-zinc-300'
+              className={`w-full rounded-md border bg-slate-800/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600 ${
+                fieldErrors.name ? 'border-rose-500/40' : 'border-slate-700'
               }`}
               placeholder="أدخل اسم المنتج"
             />
-            {fieldErrors.name && <p className="mt-1 text-xs text-red-600">{fieldErrors.name}</p>}
+            {fieldErrors.name && <p className="mt-1 text-xs text-rose-400">{fieldErrors.name}</p>}
           </div>
 
           <div>
-            <label htmlFor="item-sku" className="mb-1 block text-sm font-medium text-zinc-700">
+            <label htmlFor="item-sku" className="mb-1 block text-sm font-medium text-slate-300">
               SKU
             </label>
             <input
@@ -172,15 +185,15 @@ export function ItemFormModal({ open, onClose, item }: Props) {
               value={sku}
               onChange={(e) => setSku(e.target.value)}
               disabled={isSubmitting}
-              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-zinc-900 focus:border-zinc-900"
+              className="w-full rounded-md border border-slate-700 bg-slate-800/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600"
               placeholder="رمز المنتج (اختياري)"
               dir="ltr"
             />
           </div>
 
           <div>
-            <label htmlFor="item-cost" className="mb-1 block text-sm font-medium text-zinc-700">
-              سعر التكلفة <span className="text-red-500">*</span>
+            <label htmlFor="item-cost" className="mb-1 block text-sm font-medium text-slate-300">
+              سعر التكلفة <span className="text-rose-400">*</span>
             </label>
             <input
               id="item-cost"
@@ -189,18 +202,18 @@ export function ItemFormModal({ open, onClose, item }: Props) {
               value={costPrice}
               onChange={(e) => setCostPrice(e.target.value)}
               disabled={isSubmitting}
-              className={`w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-zinc-900 focus:border-zinc-900 ${
-                fieldErrors.costPrice ? 'border-red-500' : 'border-zinc-300'
+              className={`w-full rounded-md border bg-slate-800/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600 ${
+                fieldErrors.costPrice ? 'border-rose-500/40' : 'border-slate-700'
               }`}
               placeholder="مثال: 50.50"
               dir="ltr"
             />
-            {fieldErrors.costPrice && <p className="mt-1 text-xs text-red-600">{fieldErrors.costPrice}</p>}
+            {fieldErrors.costPrice && <p className="mt-1 text-xs text-rose-400">{fieldErrors.costPrice}</p>}
           </div>
 
           <div>
-            <label htmlFor="item-selling" className="mb-1 block text-sm font-medium text-zinc-700">
-              سعر البيع <span className="text-red-500">*</span>
+            <label htmlFor="item-selling" className="mb-1 block text-sm font-medium text-slate-300">
+              سعر البيع <span className="text-rose-400">*</span>
             </label>
             <input
               id="item-selling"
@@ -209,13 +222,33 @@ export function ItemFormModal({ open, onClose, item }: Props) {
               value={sellingPrice}
               onChange={(e) => setSellingPrice(e.target.value)}
               disabled={isSubmitting}
-              className={`w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-zinc-900 focus:border-zinc-900 ${
-                fieldErrors.sellingPrice ? 'border-red-500' : 'border-zinc-300'
+              className={`w-full rounded-md border bg-slate-800/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600 ${
+                fieldErrors.sellingPrice ? 'border-rose-500/40' : 'border-slate-700'
               }`}
               placeholder="مثال: 85.00"
               dir="ltr"
             />
-            {fieldErrors.sellingPrice && <p className="mt-1 text-xs text-red-600">{fieldErrors.sellingPrice}</p>}
+            {fieldErrors.sellingPrice && <p className="mt-1 text-xs text-rose-400">{fieldErrors.sellingPrice}</p>}
+          </div>
+
+          <div>
+            <label htmlFor="item-minStock" className="mb-1 block text-sm font-medium text-slate-300">
+              الحد الأدنى للمخزون
+            </label>
+            <input
+              id="item-minStock"
+              type="text"
+              inputMode="numeric"
+              value={minStock}
+              onChange={(e) => setMinStock(e.target.value)}
+              disabled={isSubmitting}
+              className={`w-full rounded-md border bg-slate-800/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600 ${
+                fieldErrors.minStock ? 'border-rose-500/40' : 'border-slate-700'
+              }`}
+              placeholder="مثال: 5 (اختياري)"
+              dir="ltr"
+            />
+            {fieldErrors.minStock && <p className="mt-1 text-xs text-rose-400">{fieldErrors.minStock}</p>}
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
@@ -223,14 +256,14 @@ export function ItemFormModal({ open, onClose, item }: Props) {
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+              className="rounded-md border border-slate-700 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 disabled:opacity-50"
             >
               إلغاء
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="inline-flex items-center justify-center rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+              className="inline-flex items-center justify-center rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500 disabled:opacity-50"
             >
               {isSubmitting ? 'جاري الحفظ...' : isEdit ? 'حفظ التغييرات' : 'إضافة'}
             </button>

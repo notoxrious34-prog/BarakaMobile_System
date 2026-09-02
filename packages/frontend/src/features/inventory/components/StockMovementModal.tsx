@@ -75,49 +75,49 @@ export function StockMovementModal({ open, onClose, item }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" dir="rtl">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" dir="rtl">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} aria-hidden="true" />
       <div
         role="dialog"
         aria-modal="true"
         aria-label="حركة مخزون"
-        className="relative z-10 w-full max-w-md rounded-lg border border-zinc-200 bg-white p-6 shadow-lg"
+        className="relative z-10 w-full max-w-md rounded-xl border border-slate-800 bg-slate-900 p-6 text-slate-100 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-zinc-900">حركة مخزون</h2>
+          <h2 className="text-base font-semibold text-slate-100">حركة مخزون</h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="إغلاق"
-            className="rounded-md p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
+            className="rounded-md p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-100"
           >
             <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
 
-        <div className="mb-4 rounded-md bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
-          <span className="text-zinc-500">المنتج:</span> {item.name}
+        <div className="mb-4 rounded-md border border-slate-700 bg-slate-800/60 px-3 py-2 text-sm text-slate-300">
+          <span className="text-slate-400">المنتج:</span> {item.name}
         </div>
 
         {apiError && (
-          <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+          <div className="mb-4 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-400" role="alert">
             {apiError}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <div>
-            <label htmlFor="movement-type" className="mb-1 block text-sm font-medium text-zinc-700">
-              النوع <span className="text-red-500">*</span>
+            <label htmlFor="movement-type" className="mb-1 block text-sm font-medium text-slate-300">
+              النوع <span className="text-rose-400">*</span>
             </label>
             <select
               id="movement-type"
               value={type}
               onChange={(e) => setType(e.target.value as never)}
               disabled={isSubmitting}
-              className={`w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-zinc-900 focus:border-zinc-900 ${
-                fieldErrors.type ? 'border-red-500' : 'border-zinc-300'
+              className={`w-full rounded-md border bg-slate-800 px-3 py-2 text-sm text-slate-100 outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600 ${
+                fieldErrors.type ? 'border-rose-500/40' : 'border-slate-700'
               }`}
             >
               {TYPE_OPTIONS.map((opt) => (
@@ -126,12 +126,12 @@ export function StockMovementModal({ open, onClose, item }: Props) {
                 </option>
               ))}
             </select>
-            {fieldErrors.type && <p className="mt-1 text-xs text-red-600">{fieldErrors.type}</p>}
+            {fieldErrors.type && <p className="mt-1 text-xs text-rose-400">{fieldErrors.type}</p>}
           </div>
 
           <div>
-            <label htmlFor="movement-qty" className="mb-1 block text-sm font-medium text-zinc-700">
-              الكمية <span className="text-red-500">*</span>
+            <label htmlFor="movement-qty" className="mb-1 block text-sm font-medium text-slate-300">
+              الكمية <span className="text-rose-400">*</span>
             </label>
             <input
               id="movement-qty"
@@ -140,17 +140,17 @@ export function StockMovementModal({ open, onClose, item }: Props) {
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
               disabled={isSubmitting}
-              className={`w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-zinc-900 focus:border-zinc-900 ${
-                fieldErrors.quantity ? 'border-red-500' : 'border-zinc-300'
+              className={`w-full rounded-md border bg-slate-800/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600 ${
+                fieldErrors.quantity ? 'border-rose-500/40' : 'border-slate-700'
               }`}
               placeholder="مثال: 5"
               dir="ltr"
             />
-            {fieldErrors.quantity && <p className="mt-1 text-xs text-red-600">{fieldErrors.quantity}</p>}
+            {fieldErrors.quantity && <p className="mt-1 text-xs text-rose-400">{fieldErrors.quantity}</p>}
           </div>
 
           <div>
-            <label htmlFor="movement-note" className="mb-1 block text-sm font-medium text-zinc-700">
+            <label htmlFor="movement-note" className="mb-1 block text-sm font-medium text-slate-300">
               ملاحظة
             </label>
             <textarea
@@ -159,7 +159,7 @@ export function StockMovementModal({ open, onClose, item }: Props) {
               onChange={(e) => setNote(e.target.value)}
               disabled={isSubmitting}
               rows={2}
-              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-zinc-900 focus:border-zinc-900"
+              className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600"
               placeholder="ملاحظة اختيارية"
             />
           </div>
@@ -169,14 +169,14 @@ export function StockMovementModal({ open, onClose, item }: Props) {
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+              className="rounded-md border border-slate-700 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 disabled:opacity-50"
             >
               إلغاء
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="inline-flex items-center justify-center rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+              className="inline-flex items-center justify-center rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500 disabled:opacity-50"
             >
               {isSubmitting ? 'جاري الحفظ...' : 'تسجيل الحركة'}
             </button>

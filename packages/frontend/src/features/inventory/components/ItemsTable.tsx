@@ -1,6 +1,5 @@
 import { Pencil, Trash2, ArrowUpDown } from 'lucide-react';
 import type { Item } from '../hooks/useInventory';
-import { useItemStockQuery } from '../hooks/useInventory';
 import { useInvoiceSettings } from '@/features/settings/hooks/useInvoiceSettings';
 import { StockBadge } from './StockBadge';
 
@@ -22,40 +21,36 @@ function ItemRow({
   onStock: (i: Item) => void;
   onDeactivate: (id: string) => void;
 }) {
-  const { data: stockData, isLoading } = useItemStockQuery(item.id);
   const { data: settingsData } = useInvoiceSettings();
   const currencySymbol = settingsData?.currency_symbol ?? 'د.ج';
-  const stock = stockData?.currentStock ?? item.currentStock ?? 0;
+  const stock = item.currentStock ?? 0;
+  const minStock = item.minStock ?? 0;
   const isInactive = !item.isActive;
 
   return (
     <tr
-      className={`border-t border-zinc-100 ${isInactive ? 'bg-zinc-50 opacity-60' : 'bg-white hover:bg-zinc-50'}`}
+      className={`border-t border-slate-800/80 ${isInactive ? 'opacity-50' : 'hover:bg-slate-800/40'}`}
     >
-      <td className="px-4 py-3 font-medium text-zinc-900">{item.name}</td>
-      <td className="px-4 py-3 text-zinc-600" dir="ltr">
+      <td className="px-4 py-3 font-medium text-slate-100">{item.name}</td>
+      <td className="px-4 py-3 font-mono text-slate-300" dir="ltr">
         {item.sku ?? '—'}
       </td>
-      <td className="px-4 py-3 text-zinc-700" dir="ltr">
+      <td className="px-4 py-3 text-slate-300" dir="ltr">
         {Number(item.costPrice).toFixed(2)} {currencySymbol}
       </td>
-      <td className="px-4 py-3 text-zinc-700" dir="ltr">
+      <td className="px-4 py-3 text-slate-300" dir="ltr">
         {Number(item.sellingPrice).toFixed(2)} {currencySymbol}
       </td>
       <td className="px-4 py-3">
-        {isLoading ? (
-          <span className="text-xs text-zinc-400">…</span>
-        ) : (
-          <StockBadge stock={stock} />
-        )}
+        <StockBadge currentStock={stock} minStock={minStock} />
       </td>
       <td className="px-4 py-3">
         {item.isActive ? (
-          <span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
+          <span className="inline-flex rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-400">
             نشط
           </span>
         ) : (
-          <span className="inline-flex rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-600 ring-1 ring-inset ring-zinc-500/20">
+          <span className="inline-flex rounded-full border border-slate-700 bg-slate-800 px-2.5 py-0.5 text-xs font-medium text-slate-400">
             غير نشط
           </span>
         )}
@@ -67,7 +62,7 @@ function ItemRow({
             onClick={() => onEdit(item)}
             aria-label={`تعديل ${item.name}`}
             title="تعديل"
-            className="rounded-md p-2 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
+            className="rounded-md p-2 text-slate-400 hover:bg-slate-800 hover:text-slate-100"
           >
             <Pencil className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -76,7 +71,7 @@ function ItemRow({
             onClick={() => onStock(item)}
             aria-label={`حركة ${item.name}`}
             title="حركة مخزون"
-            className="rounded-md p-2 text-blue-600 hover:bg-blue-50 hover:text-blue-800"
+            className="rounded-md p-2 text-cyan-400 hover:bg-cyan-500/10 hover:text-cyan-300"
           >
             <ArrowUpDown className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -86,7 +81,7 @@ function ItemRow({
               onClick={() => onDeactivate(item.id)}
               aria-label={`تعطيل ${item.name}`}
               title="تعطيل"
-              className="rounded-md p-2 text-red-500 hover:bg-red-50 hover:text-red-700"
+              className="rounded-md p-2 text-rose-400 hover:bg-rose-500/10"
             >
               <Trash2 className="h-4 w-4" aria-hidden="true" />
             </button>
@@ -99,11 +94,11 @@ function ItemRow({
 
 export function ItemsTable({ items, onEdit, onStock, onDeactivate }: Props) {
   return (
-    <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm">
+    <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900">
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="bg-zinc-50 text-zinc-600">
+            <tr className="border-b border-slate-800 text-slate-400">
               <th className="px-4 py-3 text-right font-semibold">الاسم</th>
               <th className="px-4 py-3 text-right font-semibold">SKU</th>
               <th className="px-4 py-3 text-right font-semibold">سعر التكلفة</th>
