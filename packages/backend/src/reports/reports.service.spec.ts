@@ -238,6 +238,115 @@ describe('ReportsService', () => {
       expect(result.sales.salesCount).toBe(2);
       expect(result.sales.salesVolume).toBe('300.00');
     });
+
+    it('flat aliases exist and match canonical values when data present', async () => {
+      mockPrisma.account.findMany
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+      mockCashService.getCurrentBalance.mockResolvedValue({ currentBalance: '500.00' });
+      mockPrisma.item.findMany.mockResolvedValue([]);
+      mockPrisma.stockMovement.findFirst.mockResolvedValue(null);
+      mockPrisma.stockMovement.aggregate.mockResolvedValue({ _sum: { quantity: 0 } });
+      mockPrisma.transactionService.findMany.mockResolvedValue([{ profit: '20.00' } as any]);
+      mockPrisma.transactionItem.findMany.mockResolvedValue([
+        { quantity: 1, unitPrice: '100.00', unitCost: '40.00', totalPrice: '100.00' } as any,
+      ]);
+      mockPrisma.transaction.findMany
+        .mockResolvedValueOnce([{ id: 't1', amount: '100.00' }, { id: 't2', amount: '200.00' }] as any)
+        .mockResolvedValueOnce([]);
+      mockPrisma.setting.findUnique.mockResolvedValue(null);
+      mockExpensesService.getExpenseBreakdown.mockResolvedValue([
+        { categoryId: 'c1', categoryName: 'إيجار', totalAmount: '30.00', percentage: '60.00' },
+        { categoryId: 'c2', categoryName: 'كهرباء', totalAmount: '20.00', percentage: '40.00' },
+      ]);
+      mockRepairService.getRepairProfit.mockResolvedValue({ totalRepairRevenue: '80.00', totalExternalCost: '30.00', totalRepairProfit: '50.00', ticketCount: 1 } as any);
+
+      const result: any = await service.getSummary();
+
+      expect(result.todayProfit.totalProfit).toBe(result.profit.todayProfit.totalProfit);
+      expect(result.todayProfit.serviceProfit).toBe(result.profit.todayProfit.serviceProfit);
+      expect(result.todayProfit.itemProfit).toBe(result.profit.todayProfit.itemProfit);
+      expect(result.monthProfit.totalProfit).toBe(result.profit.monthProfit.totalProfit);
+      expect(result.salesCount).toBe(result.sales.salesCount);
+      expect(result.salesVolume).toBe(result.sales.salesVolume);
+      expect(result.totalSales).toBe(result.salesVolume);
+      expect(result.totalSales).toBe(result.sales.salesVolume);
+      expect(typeof result.totalSales).toBe('string');
+      expect(typeof result.totalExpenses).toBe('string');
+      expect(typeof result.repairProfit).toBe('string');
+      expect(typeof result.cashBalance).toBe('string');
+      expect(typeof result.salesVolume).toBe('string');
+      expect(typeof result.todayProfit.totalProfit).toBe('string');
+      expect(result.totalExpenses).toBe('50.00');
+      expect(result.repairProfit).toBe('50.00');
+      expect(result.cashBalance).toBe('500.00');
+    });
+
+    it('flat aliases are zero strings on empty data', async () => {
+      mockPrisma.account.findMany
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+      mockCashService.getCurrentBalance.mockResolvedValue({ currentBalance: '0.00' });
+      mockPrisma.item.findMany.mockResolvedValue([]);
+      mockPrisma.stockMovement.findFirst.mockResolvedValue(null);
+      mockPrisma.stockMovement.aggregate.mockResolvedValue({ _sum: { quantity: 0 } });
+      mockPrisma.transactionService.findMany.mockResolvedValue([]);
+      mockPrisma.transactionItem.findMany.mockResolvedValue([]);
+      mockPrisma.transaction.findMany
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+      mockPrisma.setting.findUnique.mockResolvedValue(null);
+      mockExpensesService.getExpenseBreakdown.mockResolvedValue([]);
+      mockRepairService.getRepairProfit.mockResolvedValue({ totalRepairRevenue: '0.00', totalExternalCost: '0.00', totalRepairProfit: '0.00', ticketCount: 0 } as any);
+
+      const result: any = await service.getSummary();
+
+      expect(result.salesCount).toBe(0);
+      expect(result.salesVolume).toBe('0.00');
+      expect(result.totalSales).toBe('0.00');
+      expect(result.totalExpenses).toBe('0.00');
+      expect(result.repairProfit).toBe('0.00');
+      expect(result.cashBalance).toBe('0.00');
+      expect(result.todayProfit.totalProfit).toBe('0.00');
+      expect(result.monthProfit.totalProfit).toBe('0.00');
+      expect(result.profit.todayProfit.totalProfit).toBe('0.00');
+      expect(result.profit.monthProfit.totalProfit).toBe('0.00');
+      expect(typeof result.totalSales).toBe('string');
+      expect(typeof result.cashBalance).toBe('string');
+    });
+
+    it('all flat monetary aliases are 2-decimal strings', async () => {
+      mockPrisma.account.findMany
+        .mockResolvedValueOnce([{ currentBalance: '123.456', role: 'CUSTOMER', contact: { isActive: true } }] as any)
+        .mockResolvedValueOnce([{ currentBalance: '45.004', role: 'SUPPLIER', contact: { isActive: true } }] as any);
+      mockCashService.getCurrentBalance.mockResolvedValue({ currentBalance: '7.1' });
+      mockPrisma.item.findMany.mockResolvedValue([{ id: 'item1', costPrice: '10.10', isActive: true } as any]);
+      mockPrisma.stockMovement.findFirst.mockResolvedValue(null);
+      mockPrisma.stockMovement.aggregate.mockResolvedValue({ _sum: { quantity: 0 } } as any);
+      mockPrisma.transactionService.findMany.mockResolvedValue([{ profit: '0.005' } as any]);
+      mockPrisma.transactionItem.findMany.mockResolvedValue([
+        { quantity: 1, unitPrice: '10.004', unitCost: '5.002', totalPrice: '10.004' } as any,
+      ]);
+      mockPrisma.transaction.findMany
+        .mockResolvedValueOnce([{ id: 't1', amount: '10.004' }] as any)
+        .mockResolvedValueOnce([]);
+      mockPrisma.setting.findUnique.mockResolvedValue(null);
+      mockExpensesService.getExpenseBreakdown.mockResolvedValue([
+        { categoryId: 'c1', categoryName: 'x', totalAmount: '1.005', percentage: '100.00' },
+      ]);
+      mockRepairService.getRepairProfit.mockResolvedValue({ totalRepairRevenue: '2.005', totalExternalCost: '0.00', totalRepairProfit: '2.005', ticketCount: 1 } as any);
+
+      const result: any = await service.getSummary();
+
+      const twoDp = /^-?\d+\.\d{2}$/;
+      expect(result.totalSales).toMatch(twoDp);
+      expect(result.salesVolume).toMatch(twoDp);
+      expect(result.totalExpenses).toMatch(twoDp);
+      expect(result.repairProfit).toMatch(twoDp);
+      expect(result.cashBalance).toMatch(twoDp);
+      expect(result.todayProfit.totalProfit).toMatch(twoDp);
+      expect(result.monthProfit.totalProfit).toMatch(twoDp);
+    });
   });
 
   describe('getExpenseReport()', () => {

@@ -1,6 +1,7 @@
 import { Pencil, Trash2, Banknote } from 'lucide-react';
 import type { Contact } from '../hooks/useContacts';
 import { ContactBalanceBadge } from './ContactBalanceBadge';
+import { getQuickPayPreset } from '../utils/getQuickPayPreset';
 
 type Props = {
   contacts: Contact[];
@@ -14,18 +15,6 @@ const ROLE_LABEL: Record<Contact['role'], string> = {
   CUSTOMER: 'عميل',
   BOTH: 'مورد وعميل',
 };
-
-function getQuickPayPreset(contact: Contact): 'PAYMENT_IN' | 'PAYMENT_OUT' {
-  const supplierAcc = contact.accounts.find((a) => a.role === 'SUPPLIER');
-  const customerAcc = contact.accounts.find((a) => a.role === 'CUSTOMER');
-  const supplierNonZero = supplierAcc ? Math.abs(Number(supplierAcc.currentBalance)) >= 0.005 : false;
-  const customerNonZero = customerAcc ? Math.abs(Number(customerAcc.currentBalance)) >= 0.005 : false;
-  if (customerNonZero && !supplierNonZero) return 'PAYMENT_IN';
-  if (supplierNonZero && !customerNonZero) return 'PAYMENT_OUT';
-  if (customerNonZero && supplierNonZero) return 'PAYMENT_IN';
-  if (supplierNonZero) return 'PAYMENT_OUT';
-  return 'PAYMENT_IN';
-}
 
 export function ContactsTable({ contacts, onEdit, onDeactivate, onQuickPay }: Props) {
   return (
