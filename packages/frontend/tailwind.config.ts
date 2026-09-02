@@ -4,6 +4,9 @@ const config: Config = {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
+      colors: {
+        'slate-850': '#162032',
+      },
       fontFamily: {
         sans: [
           'Tajawal',
