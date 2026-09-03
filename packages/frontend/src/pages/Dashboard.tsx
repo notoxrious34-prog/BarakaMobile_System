@@ -32,6 +32,13 @@ function formatMoney(v: string | number | undefined | null): string {
   return n.toFixed(2);
 }
 
+// DRY — shared micro-interaction + entrance utilities
+const CARD_HOVER =
+  'transition-all duration-200 hover:-translate-y-1 hover:scale-[1.01] hover:shadow-xl hover:border-navy-border/50 focus-within:ring-2 focus-within:ring-cyan-500/20 motion-reduce:transform-none motion-reduce:transition-none';
+const ROW_HOVER =
+  'transition-all duration-200 hover:-translate-y-0.5 hover:bg-navy-900/80 hover:border-navy-border/40 hover:shadow-md cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/30 motion-reduce:transform-none';
+const ENTRANCE = 'motion-reduce:animate-none animate-fade-in-up';
+
 function KpiCard({
   title,
   value,
@@ -74,7 +81,8 @@ function KpiCard({
   const a = accentMap[accent];
   return (
     <div
-      className={`rounded-2xl border bg-gradient-to-br from-navy-900 to-navy-950 p-5 ${a.border} ${a.glow} shadow-xl shadow-navy-950/40`}
+      className={`rounded-2xl border bg-gradient-to-br from-navy-900 to-navy-950 p-5 ${a.border} ${a.glow} shadow-xl shadow-navy-950/40 ${CARD_HOVER} ${ENTRANCE} focus-visible:outline-none`}
+      tabIndex={0}
     >
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium tracking-wide text-slate-400">{title}</span>
@@ -244,7 +252,7 @@ export function Dashboard() {
       ) : null}
 
       {/* Top 4 KPI metric cards — Deep Navy gradients */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className={`grid gap-4 sm:grid-cols-2 lg:grid-cols-4 ${ENTRANCE}`} style={{ animationDelay: '60ms' }}>
         <KpiCard
           title="مبيعات اليوم"
           value={formatMoney(dailySales)}
@@ -276,9 +284,9 @@ export function Dashboard() {
       </div>
 
       {/* Middle row: Pipeline + Flexy */}
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className={`grid gap-4 lg:grid-cols-3 ${ENTRANCE}`} style={{ animationDelay: '120ms' }}>
         {/* Active Repairs Pipeline widget — stage-chip grid */}
-        <div className="lg:col-span-2 rounded-2xl border border-navy-border/30 bg-gradient-to-br from-navy-900 to-navy-950 p-5 shadow-xl shadow-navy-950/30">
+        <div className={`lg:col-span-2 rounded-2xl border border-navy-border/30 bg-gradient-to-br from-navy-900 to-navy-950 p-5 shadow-xl shadow-navy-950/30 ${CARD_HOVER}`}>
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold tracking-wide text-slate-100">مسار الإصلاحات النشطة</h2>
             <NavLink to="/repairs" className="text-xs font-medium text-cyan-400 hover:text-cyan-300">
@@ -363,7 +371,7 @@ export function Dashboard() {
         </div>
 
         {/* Flexy Express widget — navy card */}
-        <div className="rounded-2xl border border-navy-border/30 bg-gradient-to-br from-navy-900 to-navy-950 p-5 shadow-xl shadow-navy-950/30">
+        <div className={`rounded-2xl border border-navy-border/30 bg-gradient-to-br from-navy-900 to-navy-950 p-5 shadow-xl shadow-navy-950/30 ${CARD_HOVER}`}>
           <h2 className="text-sm font-semibold tracking-wide text-slate-100">فليكسي إكسبرس</h2>
           <p className="mt-1 text-xs text-slate-500">محاكاة — غير مرتبط بواجهة دفع حقيقية</p>
           <div className="mt-4 rounded-xl border border-navy-border/20 bg-navy-950/40 p-3">
@@ -372,8 +380,8 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* Recent Transactions feed — navy table */}
-      <div className="rounded-2xl border border-navy-border/30 bg-gradient-to-br from-navy-900 to-navy-950 p-5 shadow-xl shadow-navy-950/30">
+      {/* Recent Transactions feed — navy wrapper */}
+      <div className={`rounded-2xl border border-navy-border/30 bg-gradient-to-br from-navy-900 to-navy-950 p-5 shadow-xl shadow-navy-950/30 ${CARD_HOVER} ${ENTRANCE}`} style={{ animationDelay: '180ms' }}>
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold tracking-wide text-slate-100">آخر المعاملات</h2>
           <NavLink to="/pos" className="text-xs font-medium text-cyan-400 hover:text-cyan-300">
@@ -409,7 +417,8 @@ export function Dashboard() {
             {recentTx.map((tx) => (
               <li
                 key={tx.id}
-                className={`flex items-center justify-between rounded-xl border bg-navy-950/60 px-3 py-3 backdrop-blur-sm border-l-2 ${TYPE_LEFT_BORDER[tx.type] ?? 'border-l-navy-border/30'} border-y-navy-border/20 border-r-navy-border/20`}
+                className={`flex items-center justify-between rounded-xl border bg-navy-950/60 px-3 py-3 backdrop-blur-sm border-l-2 ${TYPE_LEFT_BORDER[tx.type] ?? 'border-l-navy-border/30'} border-y-navy-border/20 border-r-navy-border/20 ${ROW_HOVER}`}
+                tabIndex={0}
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <span

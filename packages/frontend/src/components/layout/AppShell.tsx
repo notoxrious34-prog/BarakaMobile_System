@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Outlet, useLocation, NavLink, useNavigate } from 'react-router-dom';
 import { Menu, X, Search, Plus } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import Decimal from 'decimal.js';
 import { Sidebar } from './Sidebar';
 import { AdminSubNav } from './AdminSubNav';
 import { GlobalSearch } from '../search/GlobalSearch';
@@ -50,6 +51,34 @@ export function AppShell() {
 
   const cashBalance = cashQ.data?.currentBalance ?? null;
 
+  // Flash/glow when cash balance changes (decimal.js comparison)
+  const prevCashRef = useRef<string | null>(null);
+  const [cashFlash, setCashFlash] = useState(false);
+  useEffect(() => {
+    if (cashBalance === null || cashQ.isLoading) return;
+    const prev = prevCashRef.current;
+    if (prev !== null) {
+      try {
+        const changed = !new Decimal(prev).equals(new Decimal(cashBalance));
+        if (changed) {
+          setCashFlash(true);
+          const t = window.setTimeout(() => setCashFlash(false), 900);
+          return () => window.clearTimeout(t);
+        }
+      } catch {
+        if (prev !== cashBalance) {
+          setCashFlash(true);
+          const t = window.setTimeout(() => setCashFlash(false), 900);
+          return () => window.clearTimeout(t);
+        }
+      }
+    }
+    prevCashRef.current = cashBalance;
+  }, [cashBalance, cashQ.isLoading]);
+  useEffect(() => {
+    if (cashBalance !== null) prevCashRef.current = cashBalance;
+  }, [cashBalance]);
+
   // Close drawer on route change
   useEffect(() => {
     closeMobile();
@@ -96,24 +125,20 @@ export function AppShell() {
       <div className="flex min-h-screen flex-1 flex-col min-w-0 bg-navy-950">
         {/* TopBar h-16 — Deep Navy */}
         <header className="hidden md:flex h-16 items-center justify-between border-b border-cyan-500/10 bg-navy-900/95 backdrop-blur-md px-4 shrink-0 gap-4">
-          {/* Brand + Search */}
-          <div className="flex items-center gap-4 flex-1 min-w-0">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-cyan-600 text-sm font-bold text-white shadow-lg shadow-cyan-500/20 shrink-0">
-              ب
-            </div>
-            <span className="hidden lg:block text-sm font-semibold text-slate-100 shrink-0">
-              BarakaMobile
-            </span>
-            <div className="w-full max-w-md">
-              <GlobalSearch />
-            </div>
+          {/* Search — brand lives in Sidebar on desktop */}
+          <div className="flex items-center flex-1 min-w-0 max-w-md">
+            <GlobalSearch />
           </div>
 
           {/* Live indicators + CTA */}
           <div className="flex items-center gap-3 shrink-0">
             {/* Cash Balance pill — emerald navy */}
             <div
-              className="hidden lg:inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-950/55 px-3 py-1.5 text-xs font-medium text-emerald-400 shadow-lg shadow-emerald-500/10"
+              className={`hidden lg:inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium shadow-lg transition-all duration-300 ${
+                cashFlash
+                  ? 'border-emerald-400/40 bg-emerald-500/20 text-emerald-300 shadow-emerald-400/30 ring-2 ring-emerald-400/20'
+                  : 'border-emerald-400/25 bg-emerald-950/55 text-emerald-400 shadow-emerald-500/10'
+              }`}
               title="الرصيد النقدي الحالي"
               aria-live="polite"
             >
