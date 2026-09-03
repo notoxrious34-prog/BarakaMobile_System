@@ -8,7 +8,7 @@ export function AdminSubNav() {
   if (!pathname.startsWith('/admin')) return null;
 
   return (
-    <div className="border-b border-slate-800 bg-slate-900 px-4" dir="rtl">
+    <div className="border-b border-navy-border/30 bg-navy-900/80 backdrop-blur-md px-4" dir="rtl">
       <nav className="flex items-center gap-1 overflow-x-auto" aria-label="التنقل الإداري">
         {ADMIN_NAV_ITEMS.map((item) => {
           const isActive =
@@ -21,7 +21,7 @@ export function AdminSubNav() {
               className={`inline-flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
                 isActive
                   ? 'border-cyan-500 text-cyan-400'
-                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-navy-border/30'
               }`}
             >
               <item.icon className="h-4 w-4 shrink-0" aria-hidden="true" />

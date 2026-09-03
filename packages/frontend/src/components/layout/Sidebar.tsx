@@ -10,13 +10,13 @@ export function Sidebar() {
 
   return (
     <aside
-      className={`hidden md:flex shrink-0 flex-col bg-slate-900 border-slate-800 transition-all duration-200 ${
-        collapsed ? 'md:w-16 lg:w-16' : 'md:w-16 lg:w-64'
+      className={`hidden md:flex shrink-0 flex-col bg-gradient-to-b from-navy-900 to-navy-950 border-navy-border/40 transition-all duration-200 font-sans ${
+        collapsed ? 'md:w-16 lg:w-16' : 'md:w-16 lg:w-60'
       } border-l ${collapsed ? '' : 'lg:border-l'}`}
       aria-label="الشريط الجانبي"
     >
-      <div className="flex h-16 items-center gap-3 border-b border-slate-800 bg-slate-900 px-3">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-cyan-600 text-sm font-bold text-white">
+      <div className="flex h-16 items-center gap-3 border-b border-navy-border/40 bg-navy-900 px-3">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-cyan-600 text-sm font-bold text-white shadow-lg shadow-cyan-500/20">
           ب
         </div>
         {!collapsed && (
@@ -39,10 +39,10 @@ export function Sidebar() {
               end={item.to === '/'}
               title={item.label}
               aria-label={item.label}
-              className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors min-h-11 ${
+              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all min-h-11 border ${
                 isActive
-                  ? 'bg-cyan-500/10 text-cyan-400 border-r-2 border-cyan-500'
-                  : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-100'
+                  ? 'bg-gradient-to-r from-cyan-500/15 to-cyan-500/5 text-cyan-400 border-cyan-500/30 border-r-2 border-r-cyan-500 shadow-lg shadow-cyan-500/10'
+                  : 'text-slate-400 border-transparent hover:bg-white/[0.04] hover:text-slate-100 hover:border-navy-border/30'
               } ${collapsed ? 'justify-center lg:justify-start' : 'lg:justify-start justify-center'}`}
             >
               <item.icon className="h-5 w-5 shrink-0" aria-hidden="true" />
@@ -55,23 +55,25 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="hidden lg:block border-t border-slate-800 p-2">
-        <button
-          type="button"
-          onClick={toggleSidebar}
-          aria-label={collapsed ? 'توسيع الشريط الجانبي' : 'طي الشريط الجانبي'}
-          title={collapsed ? 'توسيع' : 'طي'}
-          className="flex w-full items-center justify-center rounded-md px-3 py-2 text-slate-400 hover:bg-slate-800/60 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 min-h-11"
-        >
-          {collapsed ? (
-            <PanelRightClose className="h-5 w-5" aria-hidden="true" />
-          ) : (
-            <>
-              <PanelRightOpen className="h-5 w-5" aria-hidden="true" />
-              <span className="ms-3 flex-1 text-right text-sm">طي الشريط</span>
-            </>
-          )}
-        </button>
+      <div className="hidden lg:block border-t border-navy-border/40 p-2">
+        <div className="rounded-2xl border border-navy-border/30 bg-white/[0.03] p-1.5">
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            aria-label={collapsed ? 'توسيع الشريط الجانبي' : 'طي الشريط الجانبي'}
+            title={collapsed ? 'توسيع' : 'طي'}
+            className="flex w-full items-center justify-center rounded-xl px-3 py-2 text-slate-400 hover:bg-white/[0.06] hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-navy-950 min-h-11 transition-colors border border-transparent hover:border-navy-border/20"
+          >
+            {collapsed ? (
+              <PanelRightClose className="h-5 w-5" aria-hidden="true" />
+            ) : (
+              <>
+                <PanelRightOpen className="h-5 w-5" aria-hidden="true" />
+                <span className="ms-3 flex-1 text-right text-sm">طي الشريط</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </aside>
   );

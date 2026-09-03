@@ -91,14 +91,14 @@ export function AppShell() {
   const showAdminSubNav = location.pathname.startsWith('/admin');
 
   return (
-    <div className="flex min-h-screen bg-slate-950 text-slate-100">
+    <div className="flex min-h-screen bg-navy-950 text-slate-100">
       <Sidebar />
-      <div className="flex min-h-screen flex-1 flex-col min-w-0 bg-slate-950">
-        {/* TopBar h-16 — desktop + mobile unified height */}
-        <header className="hidden md:flex h-16 items-center justify-between border-b border-slate-800 bg-slate-900 px-4 shrink-0 gap-4">
+      <div className="flex min-h-screen flex-1 flex-col min-w-0 bg-navy-950">
+        {/* TopBar h-16 — Deep Navy */}
+        <header className="hidden md:flex h-16 items-center justify-between border-b border-cyan-500/10 bg-navy-900/95 backdrop-blur-md px-4 shrink-0 gap-4">
           {/* Brand + Search */}
           <div className="flex items-center gap-4 flex-1 min-w-0">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-cyan-600 text-sm font-bold text-white shrink-0">
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-cyan-600 text-sm font-bold text-white shadow-lg shadow-cyan-500/20 shrink-0">
               ب
             </div>
             <span className="hidden lg:block text-sm font-semibold text-slate-100 shrink-0">
@@ -111,61 +111,61 @@ export function AppShell() {
 
           {/* Live indicators + CTA */}
           <div className="flex items-center gap-3 shrink-0">
-            {/* Cash Balance pill — live */}
+            {/* Cash Balance pill — emerald navy */}
             <div
-              className="hidden lg:inline-flex items-center gap-2 rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-400"
+              className="hidden lg:inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-950/55 px-3 py-1.5 text-xs font-medium text-emerald-400 shadow-lg shadow-emerald-500/10"
               title="الرصيد النقدي الحالي"
               aria-live="polite"
             >
-              <span className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse" aria-hidden="true" />
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse shadow shadow-emerald-400/50" aria-hidden="true" />
               <span>الصندوق:</span>
               <span dir="ltr" className="font-mono">
                 {cashQ.isLoading ? '...' : cashBalance !== null ? `${Number(cashBalance).toFixed(2)} د.ج` : '--'}
               </span>
             </div>
 
-            {/* Active Repairs badge */}
+            {/* Active Repairs badge — amber navy */}
             <div
-              className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-400"
+              className="inline-flex items-center gap-2 rounded-full border border-amber-400/25 bg-amber-950/55 px-3 py-1.5 text-xs font-medium text-amber-400 shadow-lg shadow-amber-500/10"
               title="الإصلاحات النشطة"
             >
-              <span className="h-2 w-2 rounded-full bg-amber-400" aria-hidden="true" />
+              <span className="h-2 w-2 rounded-full bg-amber-400 shadow shadow-amber-400/50" aria-hidden="true" />
               <span className="hidden sm:inline">الإصلاحات النشطة</span>
               <span dir="ltr" className="font-mono">
                 {repairsQ.isLoading ? '...' : String(activeRepairsCount)}
               </span>
             </div>
 
-            {/* CTA */}
+            {/* CTA — cyan gradient */}
             <button
               type="button"
               onClick={() => navigate('/pos')}
-              className="inline-flex items-center gap-2 rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+              className="inline-flex items-center gap-2 rounded-xl bg-cyan-600 px-4 py-2 text-sm font-extrabold text-navy-950 hover:bg-cyan-500 shadow-lg shadow-cyan-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-navy-950 transition-colors"
             >
               <Plus className="h-4 w-4" aria-hidden="true" />
               عملية جديدة
-              <span className="hidden lg:inline rounded bg-cyan-700 px-1.5 py-0.5 text-xs font-mono">F2</span>
+              <span className="hidden lg:inline rounded bg-navy-950/20 px-1.5 py-0.5 text-xs font-mono text-navy-950">F2</span>
             </button>
           </div>
         </header>
 
-        {/* Mobile TopBar — h-16 too */}
-        <header className="flex md:hidden h-16 items-center justify-between border-b border-slate-800 bg-slate-900 px-3 shrink-0">
+        {/* Mobile TopBar — h-16 navy */}
+        <header className="flex md:hidden h-16 items-center justify-between border-b border-cyan-500/10 bg-navy-900/95 backdrop-blur-md px-3 shrink-0">
           <button
             type="button"
             onClick={openMobile}
             aria-label="فتح القائمة"
-            className="inline-flex items-center justify-center rounded-md p-2 text-slate-300 hover:bg-slate-800 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 min-h-11 min-w-11"
+            className="inline-flex items-center justify-center rounded-md p-2 text-slate-300 hover:bg-white/[0.06] hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-navy-950 min-h-11 min-w-11"
           >
             <Menu className="h-5 w-5" aria-hidden="true" />
           </button>
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-cyan-600 text-sm font-bold text-white">ب</div>
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-cyan-600 text-sm font-bold text-white shadow-lg shadow-cyan-500/20">ب</div>
             <span className="text-sm font-semibold text-slate-100">BarakaMobile</span>
           </div>
           <div className="flex items-center gap-2">
             <span
-              className="inline-flex items-center rounded-full bg-cyan-500/10 px-2 py-1 text-xs font-mono text-cyan-400 border border-cyan-500/20"
+              className="inline-flex items-center rounded-full border border-emerald-400/25 bg-emerald-950/55 px-2 py-1 text-xs font-mono text-emerald-400"
               dir="ltr"
             >
               {cashQ.isLoading ? '...' : cashBalance !== null ? Number(cashBalance).toFixed(2) : '--'}
@@ -177,7 +177,7 @@ export function AppShell() {
                 el?.click();
               }}
               aria-label="بحث"
-              className="inline-flex items-center justify-center rounded-md p-2 text-slate-400 hover:bg-slate-800 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 min-h-11 min-w-11"
+              className="inline-flex items-center justify-center rounded-md p-2 text-slate-400 hover:bg-white/[0.06] hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 min-h-11 min-w-11"
             >
               <Search className="h-5 w-5" aria-hidden="true" />
             </button>
@@ -187,7 +187,7 @@ export function AppShell() {
         {/* Admin Sub-Navigation */}
         {showAdminSubNav && <AdminSubNav />}
 
-        <main className="flex-1 min-w-0 bg-slate-950 p-4 lg:p-6 overflow-y-auto">
+        <main className="flex-1 min-w-0 bg-navy-950 p-4 lg:p-6 overflow-y-auto">
           <Outlet />
         </main>
       </div>
@@ -195,18 +195,18 @@ export function AppShell() {
       {/* Mobile drawer overlay */}
       {mobileOpen && (
         <div className="fixed inset-0 z-40 flex md:hidden" dir="rtl" aria-modal="true" role="dialog">
-          <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={closeMobile} aria-hidden="true" />
-          <div className="relative z-50 flex max-w-xs w-full flex-col bg-slate-900 border-l border-slate-800 shadow-2xl">
-            <div className="flex h-16 items-center justify-between border-b border-slate-800 px-3">
+          <div className="absolute inset-0 bg-navy-950/80 backdrop-blur-sm" onClick={closeMobile} aria-hidden="true" />
+          <div className="relative z-50 flex max-w-xs w-full flex-col bg-gradient-to-b from-navy-900 to-navy-950 border-l border-navy-border/40 shadow-2xl">
+            <div className="flex h-16 items-center justify-between border-b border-navy-border/40 px-3">
               <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-md bg-cyan-600 text-sm font-bold text-white">ب</div>
+                <div className="flex h-8 w-8 items-center justify-center rounded-md bg-cyan-600 text-sm font-bold text-white shadow-lg shadow-cyan-500/20">ب</div>
                 <span className="text-sm font-semibold text-slate-100">BarakaMobile</span>
               </div>
               <button
                 type="button"
                 onClick={closeMobile}
                 aria-label="إغلاق القائمة"
-                className="inline-flex items-center justify-center rounded-md p-2 text-slate-400 hover:bg-slate-800 hover:text-slate-100 min-h-11 min-w-11"
+                className="inline-flex items-center justify-center rounded-md p-2 text-slate-400 hover:bg-white/[0.06] hover:text-slate-100 min-h-11 min-w-11"
               >
                 <X className="h-5 w-5" aria-hidden="true" />
               </button>
@@ -223,10 +223,10 @@ export function AppShell() {
                     to={item.to}
                     end={item.to === '/'}
                     aria-label={item.label}
-                    className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors min-h-11 ${
+                    className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors min-h-11 border ${
                       isActive
-                        ? 'bg-cyan-500/10 text-cyan-400 border-r-2 border-cyan-500'
-                        : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-100'
+                        ? 'bg-gradient-to-r from-cyan-500/15 to-cyan-500/5 text-cyan-400 border-cyan-500/30 border-r-2 border-r-cyan-500 shadow-lg shadow-cyan-500/10'
+                        : 'text-slate-400 border-transparent hover:bg-white/[0.04] hover:text-slate-100'
                     }`}
                     onClick={closeMobile}
                   >
@@ -236,18 +236,18 @@ export function AppShell() {
                 );
               })}
             </nav>
-            <div className="border-t border-slate-800 p-3">
+            <div className="border-t border-navy-border/40 p-3">
               <button
                 type="button"
                 onClick={() => {
                   closeMobile();
                   navigate('/pos');
                 }}
-                className="flex w-full items-center justify-center gap-2 rounded-md bg-cyan-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-cyan-500"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-600 px-4 py-2.5 text-sm font-extrabold text-navy-950 hover:bg-cyan-500 shadow-lg shadow-cyan-500/25"
               >
                 <Plus className="h-4 w-4" aria-hidden="true" />
                 عملية جديدة
-                <span className="rounded bg-cyan-700 px-1.5 py-0.5 text-xs font-mono">F2</span>
+                <span className="rounded bg-navy-950/20 px-1.5 py-0.5 text-xs font-mono">F2</span>
               </button>
             </div>
           </div>

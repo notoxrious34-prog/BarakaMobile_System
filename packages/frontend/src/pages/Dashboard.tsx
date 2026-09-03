@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { NavLink } from 'react-router-dom';
-import { Wallet, TrendingUp, CreditCard, Wrench, Receipt, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Wallet, TrendingUp, CreditCard, Wrench, AlertTriangle, RefreshCw } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useDashboard } from '@/features/reports/hooks/useDashboard';
 import { FlexyExpressWidget } from '@/features/dashboard/components/FlexyExpressWidget';
@@ -45,22 +45,46 @@ function KpiCard({
   icon: React.ComponentType<{ className?: string }>;
   accent: 'emerald' | 'rose' | 'amber' | 'cyan';
 }) {
-  const map: Record<string, string> = {
-    emerald: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400',
-    rose: 'border-rose-500/20 bg-rose-500/10 text-rose-400',
-    amber: 'border-amber-500/20 bg-amber-500/10 text-amber-400',
-    cyan: 'border-cyan-500/20 bg-cyan-500/10 text-cyan-400',
+  const accentMap: Record<string, { border: string; iconWrap: string; glow: string; value: string }> = {
+    emerald: {
+      border: 'border-emerald-400/20',
+      iconWrap: 'border-emerald-400/20 bg-emerald-950/60 text-emerald-400',
+      glow: 'shadow-lg shadow-emerald-500/10',
+      value: 'text-emerald-400',
+    },
+    rose: {
+      border: 'border-rose-400/20',
+      iconWrap: 'border-rose-400/20 bg-rose-950/60 text-rose-400',
+      glow: 'shadow-lg shadow-rose-500/10',
+      value: 'text-rose-400',
+    },
+    amber: {
+      border: 'border-amber-400/20',
+      iconWrap: 'border-amber-400/20 bg-amber-950/60 text-amber-400',
+      glow: 'shadow-lg shadow-amber-500/10',
+      value: 'text-amber-400',
+    },
+    cyan: {
+      border: 'border-cyan-400/20',
+      iconWrap: 'border-cyan-400/20 bg-cyan-950/60 text-cyan-400',
+      glow: 'shadow-lg shadow-cyan-500/10',
+      value: 'text-cyan-400',
+    },
   };
-  const iconWrap = map[accent];
+  const a = accentMap[accent];
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900 p-4 shadow-sm">
+    <div
+      className={`rounded-2xl border bg-gradient-to-br from-navy-900 to-navy-950 p-5 ${a.border} ${a.glow} shadow-xl shadow-navy-950/40`}
+    >
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-slate-400">{title}</span>
-        <span className={`inline-flex h-8 w-8 items-center justify-center rounded-md border ${iconWrap}`}>
+        <span className="text-xs font-medium tracking-wide text-slate-400">{title}</span>
+        <span
+          className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border backdrop-blur-sm ${a.iconWrap}`}
+        >
           <Icon className="h-4 w-4" aria-hidden="true" />
         </span>
       </div>
-      <p dir="ltr" className="mt-3 font-mono text-2xl font-bold text-slate-100">
+      <p dir="ltr" className={`mt-3 font-mono text-2xl font-bold ${a.value}`}>
         {value} <span className="text-sm font-sans font-medium text-slate-400">د.ج</span>
       </p>
       {sub && <p className="mt-1 text-xs text-slate-500">{sub}</p>}
@@ -70,10 +94,10 @@ function KpiCard({
 
 function KpiSkeleton() {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
-      <Skeleton className="h-4 w-24" />
-      <Skeleton className="mt-3 h-7 w-32" />
-      <Skeleton className="mt-2 h-3 w-20" />
+    <div className="rounded-2xl border border-navy-border/30 bg-navy-900 p-5">
+      <Skeleton className="h-4 w-24 bg-navy-800" />
+      <Skeleton className="mt-3 h-7 w-32 bg-navy-800" />
+      <Skeleton className="mt-2 h-3 w-20 bg-navy-800" />
     </div>
   );
 }
@@ -96,11 +120,19 @@ const TYPE_LABEL: Record<string, string> = {
 };
 
 const TYPE_BADGE: Record<string, string> = {
-  SALE: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400',
-  PURCHASE: 'border-rose-500/20 bg-rose-500/10 text-rose-400',
-  PAYMENT_IN: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400',
-  PAYMENT_OUT: 'border-rose-500/20 bg-rose-500/10 text-rose-400',
-  OFFSET: 'border-amber-500/20 bg-amber-500/10 text-amber-400',
+  SALE: 'border-emerald-400/20 bg-emerald-950/50 text-emerald-400',
+  PURCHASE: 'border-rose-400/20 bg-rose-950/50 text-rose-400',
+  PAYMENT_IN: 'border-emerald-400/20 bg-emerald-950/50 text-emerald-400',
+  PAYMENT_OUT: 'border-rose-400/20 bg-rose-950/50 text-rose-400',
+  OFFSET: 'border-amber-400/20 bg-amber-950/50 text-amber-400',
+};
+
+const TYPE_LEFT_BORDER: Record<string, string> = {
+  SALE: 'border-l-emerald-500/50',
+  PURCHASE: 'border-l-rose-500/50',
+  PAYMENT_IN: 'border-l-emerald-500/50',
+  PAYMENT_OUT: 'border-l-rose-500/50',
+  OFFSET: 'border-l-amber-500/50',
 };
 
 export function Dashboard() {
@@ -139,9 +171,9 @@ export function Dashboard() {
     qc.invalidateQueries({ queryKey: ['transactions'] });
   }
 
-  // Derived KPIs
+  // Derived KPIs — approved opportunistic cleanup: removed dead `s.todayProfit?.totalProfit` branch
   const s = summaryQ.data;
-  const dailySales = s ? (s.todayProfit?.totalProfit ?? s.totalSales ?? s.salesVolume ?? '0') : '0';
+  const dailySales = s ? (s.totalSales ?? s.salesVolume ?? '0') : '0';
   const dailyExpenses = s?.totalExpenses ?? '0';
   const repairProfit = s?.repairProfit ?? '0';
   const liveCash = cashQ.data?.currentBalance ?? s?.cashBalance ?? '0';
@@ -163,17 +195,17 @@ export function Dashboard() {
           <KpiSkeleton />
         </div>
         <div className="grid gap-4 lg:grid-cols-3">
-          <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
-            <Skeleton className="h-5 w-32" />
-            <Skeleton className="mt-4 h-20 w-full" />
+          <div className="rounded-2xl border border-navy-border/30 bg-navy-900 p-4">
+            <Skeleton className="h-5 w-32 bg-navy-800" />
+            <Skeleton className="mt-4 h-20 w-full bg-navy-800" />
           </div>
-          <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
-            <Skeleton className="h-5 w-32" />
-            <Skeleton className="mt-4 h-20 w-full" />
+          <div className="rounded-2xl border border-navy-border/30 bg-navy-900 p-4">
+            <Skeleton className="h-5 w-32 bg-navy-800" />
+            <Skeleton className="mt-4 h-20 w-full bg-navy-800" />
           </div>
-          <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
-            <Skeleton className="h-5 w-32" />
-            <Skeleton className="mt-4 h-20 w-full" />
+          <div className="rounded-2xl border border-navy-border/30 bg-navy-900 p-4">
+            <Skeleton className="h-5 w-32 bg-navy-800" />
+            <Skeleton className="mt-4 h-20 w-full bg-navy-800" />
           </div>
         </div>
         <p className="text-sm text-slate-400" role="status" aria-busy="true" aria-live="polite">
@@ -186,11 +218,9 @@ export function Dashboard() {
   if (isError) {
     return (
       <div dir="rtl" className="font-sans space-y-4">
-        <ErrorState
-          title="تعذر تحميل لوحة التحكم"
-          message={errorMsg}
-          onRetry={retryAll}
-        />
+        <div className="rounded-2xl border border-rose-500/20 bg-navy-900 p-6">
+          <ErrorState title="تعذر تحميل لوحة التحكم" message={errorMsg} onRetry={retryAll} />
+        </div>
       </div>
     );
   }
@@ -201,17 +231,19 @@ export function Dashboard() {
     <div dir="rtl" className="font-sans space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-100">لوحة التحكم</h1>
+        <h1 className="text-xl font-bold tracking-tight text-slate-100">لوحة التحكم</h1>
         <span className="text-xs text-slate-500">
           {new Date().toLocaleDateString('ar-DZ', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </span>
       </div>
 
       {isEmpty ? (
-        <EmptyState title="لا توجد بيانات بعد" message="ابدأ بإنشاء عملية بيع أو تذكرة صيانة لعرض الإحصائيات هنا." />
+        <div className="rounded-2xl border border-navy-border/30 bg-navy-900 px-6 py-8">
+          <EmptyState title="لا توجد بيانات بعد" message="ابدأ بإنشاء عملية بيع أو تذكرة صيانة لعرض الإحصائيات هنا." />
+        </div>
       ) : null}
 
-      {/* Top 4 KPI metric cards */}
+      {/* Top 4 KPI metric cards — Deep Navy gradients */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           title="مبيعات اليوم"
@@ -245,73 +277,82 @@ export function Dashboard() {
 
       {/* Middle row: Pipeline + Flexy */}
       <div className="grid gap-4 lg:grid-cols-3">
-        {/* Active Repairs Pipeline widget */}
-        <div className="lg:col-span-2 rounded-xl border border-slate-800 bg-slate-900 p-4 shadow-sm">
+        {/* Active Repairs Pipeline widget — stage-chip grid */}
+        <div className="lg:col-span-2 rounded-2xl border border-navy-border/30 bg-gradient-to-br from-navy-900 to-navy-950 p-5 shadow-xl shadow-navy-950/30">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-slate-100">مسار الإصلاحات النشطة</h2>
-            <NavLink to="/repairs" className="text-xs text-cyan-400 hover:text-cyan-300">
+            <h2 className="text-sm font-semibold tracking-wide text-slate-100">مسار الإصلاحات النشطة</h2>
+            <NavLink to="/repairs" className="text-xs font-medium text-cyan-400 hover:text-cyan-300">
               عرض الكل
             </NavLink>
           </div>
 
-          {/* Status distribution badges */}
-          <div className="mt-3 flex flex-wrap gap-2">
+          {/* Status distribution — chip grid */}
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
             {(['RECEIVED', 'DIAGNOSING', 'IN_REPAIR', 'READY'] as const).map((st) => (
               <span
                 key={st}
-                className="inline-flex items-center gap-1.5 rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs font-medium text-slate-300"
+                className="inline-flex items-center justify-between gap-2 rounded-xl border border-navy-border/30 bg-white/[0.04] px-3 py-2 text-xs font-medium text-slate-300 backdrop-blur-sm"
               >
                 {REPAIR_STATUS_LABEL[st]}
-                <span dir="ltr" className="font-mono rounded-full bg-slate-700 px-1.5 py-0.5 text-xs">
+                <span
+                  dir="ltr"
+                  className="font-mono rounded-full bg-navy-800 border border-navy-border/20 px-2 py-0.5 text-xs text-slate-200"
+                >
                   {byStatus(st)}
                 </span>
               </span>
             ))}
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1 text-xs font-medium text-cyan-400">
+            <span className="col-span-2 inline-flex items-center justify-between gap-2 rounded-xl border border-cyan-400/20 bg-cyan-950/40 px-3 py-2 text-xs font-medium text-cyan-400 sm:w-auto">
               الإجمالي النشط
-              <span dir="ltr" className="font-mono rounded-full bg-cyan-500/20 px-1.5 py-0.5 text-xs">
+              <span
+                dir="ltr"
+                className="font-mono rounded-full bg-cyan-500/20 border border-cyan-400/20 px-2 py-0.5 text-xs"
+              >
                 {activeTickets.length}
               </span>
             </span>
           </div>
 
-          {/* Ticket list */}
+          {/* Ticket list — navy rows with left accent */}
           <div className="mt-4">
             {repairsQ.isLoading ? (
               <div className="space-y-2">
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full bg-navy-800" />
+                <Skeleton className="h-12 w-full bg-navy-800" />
+                <Skeleton className="h-12 w-full bg-navy-800" />
               </div>
             ) : repairsQ.isError ? (
-              <div className="flex items-center justify-between rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+              <div className="flex items-center justify-between rounded-xl border border-rose-500/20 bg-rose-950/30 px-3 py-2.5">
                 <span className="text-xs text-rose-300">تعذر تحميل التذاكر</span>
                 <button
                   type="button"
                   onClick={() => qc.invalidateQueries({ queryKey: ['repairs'] })}
-                  className="inline-flex items-center gap-1 rounded bg-rose-600 px-2 py-1 text-xs text-white hover:bg-rose-500"
+                  className="inline-flex items-center gap-1 rounded-lg bg-rose-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-rose-500"
                 >
                   <RefreshCw className="h-3 w-3" /> إعادة المحاولة
                 </button>
               </div>
             ) : activeTickets.length === 0 ? (
-              <p className="rounded-md border border-dashed border-slate-700 bg-slate-900/50 px-3 py-6 text-center text-sm text-slate-400">
+              <p className="rounded-xl border border-dashed border-navy-border/30 bg-navy-950/40 px-3 py-8 text-center text-sm text-slate-400">
                 لا توجد إصلاحات نشطة حالياً
               </p>
             ) : (
-              <ul className="divide-y divide-slate-800">
+              <ul className="space-y-2">
                 {activeTickets.slice(0, 5).map((t) => (
-                  <li key={t.id} className="flex items-center justify-between py-2.5">
+                  <li
+                    key={t.id}
+                    className="flex items-center justify-between rounded-xl border border-navy-border/20 bg-navy-950/60 px-3 py-3 backdrop-blur-sm"
+                  >
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-slate-200 truncate">
-                        <span dir="ltr" className="font-mono text-slate-400">
+                        <span dir="ltr" className="font-mono text-xs text-slate-400">
                           {t.ticketNumber}
                         </span>{' '}
                         — {t.deviceBrand} {t.deviceModel}
                       </p>
                       <p className="text-xs text-slate-500 truncate">{t.contact?.name ?? '--'}</p>
                     </div>
-                    <span className="shrink-0 rounded-full border border-slate-700 bg-slate-800 px-2.5 py-1 text-xs text-slate-300">
+                    <span className="shrink-0 rounded-full border border-navy-border/30 bg-white/[0.05] px-2.5 py-1 text-xs text-slate-300">
                       {REPAIR_STATUS_LABEL[t.status] ?? t.status}
                     </span>
                   </li>
@@ -321,66 +362,67 @@ export function Dashboard() {
           </div>
         </div>
 
-        {/* Flexy Express widget */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900 p-4 shadow-sm">
-          <h2 className="text-sm font-semibold text-slate-100">فليكسي إكسبرس</h2>
+        {/* Flexy Express widget — navy card */}
+        <div className="rounded-2xl border border-navy-border/30 bg-gradient-to-br from-navy-900 to-navy-950 p-5 shadow-xl shadow-navy-950/30">
+          <h2 className="text-sm font-semibold tracking-wide text-slate-100">فليكسي إكسبرس</h2>
           <p className="mt-1 text-xs text-slate-500">محاكاة — غير مرتبط بواجهة دفع حقيقية</p>
-          <div className="mt-3">
+          <div className="mt-4 rounded-xl border border-navy-border/20 bg-navy-950/40 p-3">
             <FlexyExpressWidget />
           </div>
         </div>
       </div>
 
-      {/* Recent Transactions feed */}
-      <div className="rounded-xl border border-slate-800 bg-slate-900 p-4 shadow-sm">
+      {/* Recent Transactions feed — navy table */}
+      <div className="rounded-2xl border border-navy-border/30 bg-gradient-to-br from-navy-900 to-navy-950 p-5 shadow-xl shadow-navy-950/30">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-100">آخر المعاملات</h2>
-          <NavLink to="/pos" className="text-xs text-cyan-400 hover:text-cyan-300">
+          <h2 className="text-sm font-semibold tracking-wide text-slate-100">آخر المعاملات</h2>
+          <NavLink to="/pos" className="text-xs font-medium text-cyan-400 hover:text-cyan-300">
             فتح نقطة البيع
           </NavLink>
         </div>
 
         {txQ.isLoading ? (
           <div className="mt-4 space-y-2">
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full bg-navy-800" />
+            <Skeleton className="h-12 w-full bg-navy-800" />
+            <Skeleton className="h-12 w-full bg-navy-800" />
           </div>
         ) : txQ.isError ? (
-          <div className="mt-4 flex items-center justify-between rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+          <div className="mt-4 flex items-center justify-between rounded-xl border border-rose-500/20 bg-rose-950/30 px-3 py-2.5">
             <span className="inline-flex items-center gap-2 text-xs text-rose-300">
               <AlertTriangle className="h-4 w-4" /> تعذر تحميل المعاملات
             </span>
             <button
               type="button"
               onClick={() => qc.invalidateQueries({ queryKey: ['transactions'] })}
-              className="inline-flex items-center gap-1 rounded bg-rose-600 px-2 py-1 text-xs text-white hover:bg-rose-500"
+              className="inline-flex items-center gap-1 rounded-lg bg-rose-600 px-2 py-1 text-xs font-medium text-white hover:bg-rose-500"
             >
               <RefreshCw className="h-3 w-3" /> إعادة المحاولة
             </button>
           </div>
         ) : recentTx.length === 0 ? (
-          <p className="mt-4 rounded-md border border-dashed border-slate-700 bg-slate-900/50 px-3 py-6 text-center text-sm text-slate-400">
+          <p className="mt-4 rounded-xl border border-dashed border-navy-border/30 bg-navy-950/40 px-3 py-8 text-center text-sm text-slate-400">
             لا توجد معاملات بعد
           </p>
         ) : (
-          <ul className="mt-3 divide-y divide-slate-800">
+          <ul className="mt-4 space-y-2">
             {recentTx.map((tx) => (
-              <li key={tx.id} className="flex items-center justify-between py-3">
+              <li
+                key={tx.id}
+                className={`flex items-center justify-between rounded-xl border bg-navy-950/60 px-3 py-3 backdrop-blur-sm border-l-2 ${TYPE_LEFT_BORDER[tx.type] ?? 'border-l-navy-border/30'} border-y-navy-border/20 border-r-navy-border/20`}
+              >
                 <div className="flex items-center gap-3 min-w-0">
                   <span
-                    className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${TYPE_BADGE[tx.type] ?? 'border-slate-700 bg-slate-800 text-slate-300'}`}
+                    className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${TYPE_BADGE[tx.type] ?? 'border-navy-border/30 bg-white/[0.05] text-slate-300'}`}
                   >
                     {TYPE_LABEL[tx.type] ?? tx.type}
                   </span>
                   <div className="min-w-0">
                     <p className="text-sm text-slate-200 truncate">{tx.account?.contact?.name ?? '—'}</p>
-                    <p className="text-xs text-slate-500">
-                      {new Date(tx.createdAt).toLocaleString('ar-DZ')}
-                    </p>
+                    <p className="text-xs text-slate-500">{new Date(tx.createdAt).toLocaleString('ar-DZ')}</p>
                   </div>
                 </div>
-                <span dir="ltr" className="font-mono text-sm font-medium text-slate-100 shrink-0">
+                <span dir="ltr" className="font-mono text-sm font-bold text-slate-100 shrink-0">
                   {formatMoney(tx.amount)} د.ج
                 </span>
               </li>

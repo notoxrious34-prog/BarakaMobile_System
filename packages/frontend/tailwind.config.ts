@@ -5,7 +5,15 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // DEPRECATED — pending removal after full navy migration
         'slate-850': '#162032',
+        navy: {
+          950: '#080D1A',
+          900: '#0C1426',
+          800: '#101C30',
+          700: '#142544',
+          border: '#1E3A5F',
+        },
       },
       fontFamily: {
         sans: [
