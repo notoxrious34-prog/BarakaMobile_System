@@ -187,7 +187,9 @@ export function AppShell() {
             >
               <Plus className="h-4 w-4" aria-hidden="true" />
               عملية جديدة
-              <span className="hidden lg:inline rounded bg-navy-950/20 px-1.5 py-0.5 text-xs font-mono text-navy-950">F2</span>
+              {location.pathname !== '/pos' && (
+                <span className="hidden lg:inline rounded bg-navy-950/20 px-1.5 py-0.5 text-xs font-mono text-navy-950">F2</span>
+              )}
             </button>
           </div>
         </header>
@@ -287,7 +289,9 @@ export function AppShell() {
               >
                 <Plus className="h-4 w-4" aria-hidden="true" />
                 عملية جديدة
-                <span className="rounded bg-navy-950/20 px-1.5 py-0.5 text-xs font-mono">F2</span>
+                {location.pathname !== '/pos' && (
+                  <span className="rounded bg-navy-950/20 px-1.5 py-0.5 text-xs font-mono">F2</span>
+                )}
               </button>
             </div>
           </div>

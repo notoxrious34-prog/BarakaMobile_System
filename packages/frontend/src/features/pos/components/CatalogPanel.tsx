@@ -74,10 +74,10 @@ export function CatalogPanel({ items, isLoading, onAdd, searchRef }: Props) {
   return (
     <section
       aria-label="كتالوج الأصناف"
-      className="flex h-full min-h-0 flex-col rounded-2xl border border-navy-border/40 bg-navy-900/60 backdrop-blur-md"
+      className="flex flex-col rounded-2xl border border-navy-border/40 bg-navy-900/60 backdrop-blur-md"
     >
       {/* Search / barcode bar */}
-      <div className="shrink-0 border-b border-navy-border/30 p-3">
+      <div className="shrink-0 border-b border-navy-border/30 p-2">
         <div className="relative">
           <ScanBarcode
             className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-cyan-400"
@@ -112,16 +112,25 @@ export function CatalogPanel({ items, isLoading, onAdd, searchRef }: Props) {
               <X className="h-4 w-4" aria-hidden="true" />
             </button>
           )}
+          {query === '' && (
+            <kbd
+              dir="ltr"
+              aria-hidden="true"
+              className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 rounded border border-navy-border bg-navy-950 px-1.5 py-0.5 font-mono text-[10px] text-amber-400"
+            >
+              F1
+            </kbd>
+          )}
         </div>
-        <p className="mt-1.5 text-[11px] text-slate-500">
+        <p className="mt-1 text-[10px] text-slate-500">
           مسح دقيق لـ SKU يضيف الصنف فوراً · صيغة الكمية: <span dir="ltr" className="font-mono">3*SKU</span>
         </p>
       </div>
 
-      {/* Product grid */}
-      <div className="scrollbar-premium min-h-0 flex-1 overflow-y-auto p-3">
+      {/* Product grid — expansive, breathes with the page */}
+      <div className="min-h-[200px] p-3">
         {isLoading ? (
-          <div className="grid grid-cols-2 gap-2 xl:grid-cols-3">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
             {Array.from({ length: 9 }).map((_, i) => (
               <div
                 key={i}
@@ -135,7 +144,7 @@ export function CatalogPanel({ items, isLoading, onAdd, searchRef }: Props) {
             <p className="text-sm text-slate-400">لا توجد أصناف مطابقة</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-2 xl:grid-cols-3">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
             {filtered.map((it) => {
               const stock = typeof it.currentStock === 'number' ? it.currentStock : 999999;
               const out = stock <= 0;
@@ -161,11 +170,13 @@ export function CatalogPanel({ items, isLoading, onAdd, searchRef }: Props) {
                   <span className="block truncate text-[13px] font-semibold text-slate-100">
                     {it.name}
                   </span>
-                  <span className="block truncate font-mono text-[11px] text-slate-500" dir="ltr">
-                    {it.sku ?? '—'}
-                  </span>
+                  {it.sku && (
+                    <span className="block truncate font-mono text-[11px] text-slate-500" dir="ltr">
+                      {it.sku}
+                    </span>
+                  )}
                   <span className="flex items-center justify-between gap-1">
-                    <span dir="ltr" className="font-mono text-sm font-bold text-emerald-400">
+                    <span dir="ltr" className="font-mono text-base font-extrabold text-emerald-400">
                       {to2dp(it.sellingPrice ?? '0')}
                     </span>
                     <span
@@ -177,7 +188,7 @@ export function CatalogPanel({ items, isLoading, onAdd, searchRef }: Props) {
                             : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400'
                       }`}
                     >
-                      {out ? 'نفذ' : stock > 9999 ? 'متوفر' : stock}
+                      {out ? 'نفذ' : stock > 9999 ? 'متوفر' : low ? `${stock} منخفض` : `${stock} متوفر`}
                     </span>
                   </span>
                 </button>

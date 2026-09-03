@@ -118,6 +118,19 @@ export function usePosTicket() {
     setReceived('');
   }
 
+  /** Restore a parked ticket snapshot (lines + discount + received) */
+  function loadState(s: {
+    lines: TicketLine[];
+    discountType: DiscountType;
+    discountValue: string;
+    received: string;
+  }): void {
+    setLines(s.lines.map((l) => ({ ...l })));
+    setDiscountType(s.discountType);
+    setDiscountValue(s.discountValue);
+    setReceived(s.received);
+  }
+
   const lineTotals: string[] = useMemo(
     () =>
       lines.map((l) => {
@@ -240,6 +253,7 @@ export function usePosTicket() {
     decrement,
     removeLine,
     clear,
+    loadState,
   };
 }
 
