@@ -1,7 +1,19 @@
 import { Pencil, Trash2, ArrowUpDown } from 'lucide-react';
+import Decimal from 'decimal.js';
 import type { Item } from '../hooks/useInventory';
 import { useInvoiceSettings } from '@/features/settings/hooks/useInvoiceSettings';
 import { StockBadge } from './StockBadge';
+
+/** Decimal-compliant display: 2dp + thousand separators (string grouping only). */
+function formatPrice(v: string | number | undefined | null): string {
+  try {
+    const fixed = new Decimal(v ?? 0).toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2);
+    const parts = fixed.split('.');
+    return `${(parts[0] ?? '0').replace(/\B(?=(\d{3})+(?!\d))/g, ',')}.${parts[1] ?? '00'}`;
+  } catch {
+    return '0.00';
+  }
+}
 
 type Props = {
   items: Item[];
@@ -29,17 +41,17 @@ function ItemRow({
 
   return (
     <tr
-      className={`border-t border-slate-800/80 ${isInactive ? 'opacity-50' : 'hover:bg-slate-800/40'}`}
+      className={`border-t border-navy-border/30 ${isInactive ? 'opacity-50' : 'hover:bg-navy-800/40'}`}
     >
       <td className="px-3 py-2.5 font-medium text-slate-100">{item.name}</td>
       <td className="px-3 py-2.5 font-mono text-slate-300" dir="ltr">
         {item.sku ?? '—'}
       </td>
-      <td className="px-3 py-2.5 font-mono text-slate-300" dir="ltr">
-        {Number(item.costPrice).toFixed(2)} {currencySymbol}
+      <td className="px-3 py-2.5 font-mono font-bold text-white" dir="ltr">
+        {formatPrice(item.costPrice)} {currencySymbol}
       </td>
-      <td className="px-3 py-2.5 font-mono text-slate-300" dir="ltr">
-        {Number(item.sellingPrice).toFixed(2)} {currencySymbol}
+      <td className="px-3 py-2.5 font-mono font-bold text-white" dir="ltr">
+        {formatPrice(item.sellingPrice)} {currencySymbol}
       </td>
       <td className="px-3 py-2.5">
         <StockBadge currentStock={stock} minStock={minStock} />
@@ -94,11 +106,11 @@ function ItemRow({
 
 export function ItemsTable({ items, onEdit, onStock, onDeactivate }: Props) {
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900">
-      <div className="overflow-x-auto">
+    <div className="overflow-hidden rounded-2xl border border-navy-border/40 bg-navy-900/60 backdrop-blur-md">
+      <div className="overflow-x-auto scrollbar-premium">
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="border-b border-slate-800 text-slate-400">
+            <tr className="border-b border-navy-border/40 text-slate-400">
               <th className="px-3 py-2.5 text-right font-semibold">الاسم</th>
               <th className="px-3 py-2.5 text-right font-semibold">SKU</th>
               <th className="px-3 py-2.5 text-right font-semibold">سعر التكلفة</th>

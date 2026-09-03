@@ -4,6 +4,7 @@ import { Menu, X, Search, Plus } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import Decimal from 'decimal.js';
 import { Sidebar } from './Sidebar';
+import { BrandMark } from './BrandMark';
 import { AdminSubNav } from './AdminSubNav';
 import { GlobalSearch } from '../search/GlobalSearch';
 import { CommandPalette } from '../CommandPalette';
@@ -201,7 +202,7 @@ export function AppShell() {
             <Menu className="h-5 w-5" aria-hidden="true" />
           </button>
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-cyan-600 text-sm font-bold text-white shadow-lg shadow-cyan-500/20">ب</div>
+            <BrandMark className="h-8 w-8" />
             <span className="text-sm font-semibold text-slate-100">BarakaMobile</span>
           </div>
           <div className="flex items-center gap-2">
@@ -237,7 +238,7 @@ export function AppShell() {
           <div className="relative z-50 flex max-w-xs w-full flex-col bg-gradient-to-b from-navy-900 to-navy-950 border-l border-navy-border/40 shadow-2xl">
             <div className="flex h-16 items-center justify-between border-b border-navy-border/40 px-3">
               <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-md bg-cyan-600 text-sm font-bold text-white shadow-lg shadow-cyan-500/20">ب</div>
+                <BrandMark className="h-8 w-8" />
                 <span className="text-sm font-semibold text-slate-100">BarakaMobile</span>
               </div>
               <button

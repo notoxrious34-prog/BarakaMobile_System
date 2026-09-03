@@ -2,6 +2,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { useUiStore } from '@/store/ui.store';
 import { PILLAR_NAV_ITEMS } from './navConfig';
+import { BrandMark } from './BrandMark';
 
 export function Sidebar() {
   const { pathname } = useLocation();
@@ -16,9 +17,7 @@ export function Sidebar() {
       aria-label="الشريط الجانبي"
     >
       <div className="flex h-16 items-center gap-3 border-b border-navy-border/40 bg-navy-900 px-3">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-cyan-600 text-sm font-bold text-white shadow-lg shadow-cyan-500/20">
-          ب
-        </div>
+        <BrandMark className="h-9 w-9" />
         {!collapsed && (
           <span className="hidden lg:block truncate text-sm font-semibold tracking-tight text-slate-100">
             BarakaMobile
