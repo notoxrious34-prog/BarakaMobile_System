@@ -4,6 +4,8 @@ import Decimal from 'decimal.js';
 import { Wallet, TrendingUp, CreditCard, Wrench, AlertTriangle, RefreshCw, Package, Users, ChevronLeft } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useDashboard } from '@/features/reports/hooks/useDashboard';
+import { useSalesTrend } from '@/features/reports/hooks/useSalesTrend';
+import { SalesTrendWidget } from '@/components/dashboard/SalesTrendWidget';
 import { FlexyExpressWidget } from '@/features/dashboard/components/FlexyExpressWidget';
 import { Skeleton } from '@/components/feedback/Skeleton';
 import { ErrorState } from '@/components/feedback/ErrorState';
@@ -168,6 +170,8 @@ export function Dashboard() {
     staleTime: 30_000,
   });
 
+  const trendQ = useSalesTrend();
+
   const isLoading = summaryQ.isLoading || cashQ.isLoading;
   const isError = summaryQ.isError || cashQ.isError;
   const errorMsg =
@@ -180,6 +184,7 @@ export function Dashboard() {
     qc.invalidateQueries({ queryKey: ['cash-balance'] });
     qc.invalidateQueries({ queryKey: ['repairs'] });
     qc.invalidateQueries({ queryKey: ['transactions'] });
+    qc.invalidateQueries({ queryKey: ['transactions', 'sales-trend'] });
   }
 
   // Derived KPIs — approved opportunistic cleanup: removed dead `s.todayProfit?.totalProfit` branch
@@ -378,6 +383,16 @@ export function Dashboard() {
           </div>
         );
       })()}
+
+      {/* Sales Trend (7-day) — TB-064: between Smart Alerts and Pipeline */}
+      <div className={`${ENTRANCE}`} style={{ animationDelay: '100ms' }}>
+        <SalesTrendWidget
+          days={trendQ.trend?.days ?? null}
+          total={trendQ.trend?.total ?? '0.00'}
+          trendPct={trendQ.trend?.trendPct ?? null}
+          isUp={trendQ.trend?.isUp ?? true}
+        />
+      </div>
 
       {/* Middle row: Pipeline + Flexy */}
       <div className={`grid gap-4 lg:grid-cols-3 ${ENTRANCE}`} style={{ animationDelay: '120ms' }}>
