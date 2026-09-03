@@ -110,17 +110,18 @@ export function AppShell() {
     }
   }, [mobileOpen]);
 
-  // Global F2 → POS new operation
+  // Global F2 → POS new operation (no-op while already on the cockpit —
+  // the cockpit's own F2 handler owns checkout there)
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === 'F2') {
         e.preventDefault();
-        navigate('/pos');
+        if (location.pathname !== '/pos') navigate('/pos');
       }
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [navigate]);
+  }, [navigate, location.pathname]);
 
   // Global Ctrl+K / Cmd+K → Command palette
   useEffect(() => {

@@ -5,6 +5,7 @@ import { ContactsPage } from '@/pages/ContactsPage';
 import { InventoryPage } from '@/pages/InventoryPage';
 import { ServicesPage } from '@/pages/ServicesPage';
 import { TransactionsPage } from '@/pages/TransactionsPage';
+import { PosPage } from '@/pages/PosPage';
 import { RepairsPage } from '@/pages/RepairsPage';
 import { TreasuryPage } from '@/pages/TreasuryPage';
 import { ExpensesPage } from '@/pages/ExpensesPage';
@@ -20,7 +21,7 @@ export default function App() {
       <Route element={<AppShell />}>
         {/* 4-Pillar primary routes */}
         <Route index element={<Dashboard />} />
-        <Route path="pos" element={<TransactionsPage />} />
+        <Route path="pos" element={<PosPage />} />
         <Route path="repairs" element={<RepairsPage />} />
 
         {/* Admin pillar */}
@@ -29,12 +30,13 @@ export default function App() {
           <Route path="contacts" element={<ContactsPage />} />
           <Route path="catalog" element={<CatalogPage />} />
           <Route path="finance" element={<FinancePage />} />
+          <Route path="transactions" element={<TransactionsPage />} />
           <Route path="reports" element={<ReportsPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
 
         {/* Legacy redirects — backwards compatibility */}
-        <Route path="transactions" element={<Navigate to="/pos" replace />} />
+        <Route path="transactions" element={<Navigate to="/admin/transactions" replace />} />
         <Route path="contacts" element={<Navigate to="/admin/contacts" replace />} />
         <Route path="inventory" element={<Navigate to="/admin/catalog" replace />} />
         <Route path="services" element={<Navigate to="/admin/catalog" replace />} />

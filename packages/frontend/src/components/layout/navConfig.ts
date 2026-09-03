@@ -32,6 +32,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { to: '/admin/contacts', label: 'جهات الاتصال', icon: Users },
   { to: '/admin/catalog', label: 'الكتالوج', icon: Package },
   { to: '/admin/finance', label: 'المالية', icon: Wallet },
+  { to: '/admin/transactions', label: 'المعاملات', icon: Receipt },
   { to: '/admin/reports', label: 'التقارير', icon: BarChart3 },
   { to: '/admin/settings', label: 'الإعدادات', icon: Settings },
 ];
