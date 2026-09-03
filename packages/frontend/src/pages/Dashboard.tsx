@@ -1,12 +1,14 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { NavLink } from 'react-router-dom';
-import { Wallet, TrendingUp, CreditCard, Wrench, AlertTriangle, RefreshCw } from 'lucide-react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import Decimal from 'decimal.js';
+import { Wallet, TrendingUp, CreditCard, Wrench, AlertTriangle, RefreshCw, Package, Users, ChevronLeft } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useDashboard } from '@/features/reports/hooks/useDashboard';
 import { FlexyExpressWidget } from '@/features/dashboard/components/FlexyExpressWidget';
 import { Skeleton } from '@/components/feedback/Skeleton';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { EmptyState } from '@/components/feedback/EmptyState';
+import { arPlural } from '@/lib/arPlural';
 
 type CashBalance = { currentBalance: string };
 type RepairTicket = {
@@ -145,6 +147,7 @@ const TYPE_LEFT_BORDER: Record<string, string> = {
 
 export function Dashboard() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const summaryQ = useDashboard();
 
   const cashQ = useQuery<CashBalance>({
@@ -192,6 +195,14 @@ export function Dashboard() {
   const byStatus = (status: string) => tickets.filter((t) => t.status === status).length;
 
   const recentTx: Transaction[] = Array.isArray(txQ.data) ? (txQ.data as Transaction[]).slice(0, 5) : [];
+
+  // --- Smart Alerts derived state (Decimal for money) ---
+  const pendingRepairsCount = tickets.filter((t) => ['DIAGNOSING', 'IN_REPAIR', 'IN_PROGRESS', 'RECEIVED'].includes(t.status)).length;
+  const lowStockCount = s ? (s.inventory.lowStockItems + s.inventory.outOfStockItems) : 0;
+  const hasLowStock = lowStockCount > 0;
+  const customerDebtRaw = s?.debts.totalCustomerDebt ?? '0';
+  let hasCustomerDebt = false;
+  try { hasCustomerDebt = !new Decimal(customerDebtRaw).equals(new Decimal(0)); } catch { hasCustomerDebt = customerDebtRaw !== '0' && customerDebtRaw !== '0.00'; }
 
   if (isLoading) {
     return (
@@ -282,6 +293,91 @@ export function Dashboard() {
           accent="cyan"
         />
       </div>
+
+      {/* Smart Alerts — C2 layout balance: 0=nothing, 1=full-width banner, 2-3=grid; C1 arPlural */}
+      {(() => {
+        const alertCount = (pendingRepairsCount > 0 ? 1 : 0) + (hasLowStock ? 1 : 0) + (hasCustomerDebt ? 1 : 0);
+        if (alertCount === 0) return null;
+        const repairsLabel = arPlural(pendingRepairsCount, {
+          one: 'جهاز واحد قيد الفحص والإصلاح',
+          two: 'جهازان قيد الفحص والإصلاح',
+          few: 'أجهزة قيد الفحص والإصلاح',
+          many: 'جهازاً قيد الفحص والإصلاح',
+        });
+        const stockLabel = arPlural(lowStockCount, {
+          one: 'منتج واحد قارب على النفاد',
+          two: 'منتجان قاربا على النفاد',
+          few: 'منتجات قاربت على النفاد',
+          many: 'منتجاً قارب على النفاد',
+        });
+        const gridClass = alertCount === 1 ? 'grid gap-3 grid-cols-1' : 'grid gap-3 sm:grid-cols-2 lg:grid-cols-3';
+        const singleBanner = 'flex items-center justify-between gap-3 rounded-2xl border border-navy-border/30 bg-navy-800 px-4 py-3 text-right shadow-sm focus-visible:outline-none focus-visible:ring-2 motion-reduce:transform-none transition-all duration-200 hover:border-navy-border/50 hover:shadow-md col-span-full';
+        const gridCard = 'flex items-center gap-3 rounded-2xl border border-navy-border/30 bg-navy-800 px-4 py-3 text-right shadow-sm focus-visible:outline-none focus-visible:ring-2 motion-reduce:transform-none transition-all duration-200 hover:border-navy-border/50 hover:shadow-md';
+        return (
+          <div className={`${gridClass} ${ENTRANCE}`} style={{ animationDelay: '90ms' }}>
+            {pendingRepairsCount > 0 && (
+              <button
+                type="button"
+                onClick={() => navigate('/repairs')}
+                className={alertCount === 1 ? `${singleBanner} border-r-2 border-r-amber-400/60 focus-visible:ring-amber-400/30 ${ENTRANCE}` : `${gridCard} border-r-2 border-r-amber-400/60 focus-visible:ring-amber-400/30 ${ENTRANCE}`}
+                aria-label={`${repairsLabel} — الانتقال إلى الصيانة`}
+              >
+                <span className="flex items-center gap-3 min-w-0">
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-amber-400/20 bg-amber-950/60 text-amber-400 shrink-0">
+                    <Wrench className="h-4 w-4" aria-hidden="true" />
+                  </span>
+                  <span className="block text-sm font-semibold text-slate-200 truncate">{repairsLabel}</span>
+                </span>
+                <span className="flex items-center gap-1.5 text-xs text-slate-400 shrink-0">
+                  <span className="hidden sm:inline">اضغط للانتقال</span>
+                  <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                </span>
+              </button>
+            )}
+            {hasLowStock && (
+              <button
+                type="button"
+                onClick={() => navigate('/admin/catalog')}
+                className={alertCount === 1 ? `${singleBanner} border-r-2 border-r-rose-400/60 focus-visible:ring-rose-400/30 ${ENTRANCE}` : `${gridCard} border-r-2 border-r-rose-400/60 focus-visible:ring-rose-400/30 ${ENTRANCE}`}
+                aria-label={`${stockLabel} — الانتقال إلى الكتالوج`}
+              >
+                <span className="flex items-center gap-3 min-w-0">
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-rose-400/20 bg-rose-950/60 text-rose-400 shrink-0">
+                    <Package className="h-4 w-4" aria-hidden="true" />
+                  </span>
+                  <span className="block text-sm font-semibold text-slate-200 truncate">{stockLabel}</span>
+                </span>
+                <span className="flex items-center gap-1.5 text-xs text-slate-400 shrink-0">
+                  <span className="hidden sm:inline">اضغط للانتقال</span>
+                  <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                </span>
+              </button>
+            )}
+            {hasCustomerDebt && (
+              <button
+                type="button"
+                onClick={() => navigate('/admin/reports')}
+                className={alertCount === 1 ? `${singleBanner} border-r-2 border-r-rose-400/60 focus-visible:ring-rose-400/30 ${ENTRANCE}` : `${gridCard} border-r-2 border-r-rose-400/60 focus-visible:ring-rose-400/30 ${ENTRANCE}`}
+                aria-label={`مستحقات معلقة ${formatMoney(customerDebtRaw)} د.ج — الانتقال إلى التقارير`}
+              >
+                <span className="flex items-center gap-3 min-w-0">
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-rose-400/20 bg-rose-950/60 text-rose-400 shrink-0">
+                    <Users className="h-4 w-4" aria-hidden="true" />
+                  </span>
+                  <span className="flex-1 min-w-0 text-right">
+                    <span className="block text-sm font-semibold text-slate-200">مستحقات معلقة</span>
+                    <span dir="ltr" className="block font-mono text-sm font-bold text-slate-200">{formatMoney(customerDebtRaw)} د.ج</span>
+                  </span>
+                </span>
+                <span className="flex items-center gap-1.5 text-xs text-slate-400 shrink-0">
+                  <span className="hidden sm:inline">اضغط للانتقال</span>
+                  <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                </span>
+              </button>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Middle row: Pipeline + Flexy */}
       <div className={`grid gap-4 lg:grid-cols-3 ${ENTRANCE}`} style={{ animationDelay: '120ms' }}>

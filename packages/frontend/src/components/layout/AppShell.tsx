@@ -6,6 +6,7 @@ import Decimal from 'decimal.js';
 import { Sidebar } from './Sidebar';
 import { AdminSubNav } from './AdminSubNav';
 import { GlobalSearch } from '../search/GlobalSearch';
+import { CommandPalette } from '../CommandPalette';
 import { useUiStore } from '@/store/ui.store';
 import { PILLAR_NAV_ITEMS } from './navConfig';
 import { api } from '@/lib/api';
@@ -50,6 +51,9 @@ export function AppShell() {
   })();
 
   const cashBalance = cashQ.data?.currentBalance ?? null;
+
+  // Command palette state
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   // Flash/glow when cash balance changes (decimal.js comparison)
   const prevCashRef = useRef<string | null>(null);
@@ -117,6 +121,18 @@ export function AppShell() {
     return () => window.removeEventListener('keydown', onKey);
   }, [navigate]);
 
+  // Global Ctrl+K / Cmd+K → Command palette
+  useEffect(() => {
+    function onPaletteKey(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setPaletteOpen((v) => !v);
+      }
+    }
+    window.addEventListener('keydown', onPaletteKey);
+    return () => window.removeEventListener('keydown', onPaletteKey);
+  }, []);
+
   const showAdminSubNav = location.pathname.startsWith('/admin');
 
   return (
@@ -125,8 +141,8 @@ export function AppShell() {
       <div className="flex min-h-screen flex-1 flex-col min-w-0 bg-navy-950">
         {/* TopBar h-16 — Deep Navy */}
         <header className="hidden md:flex h-16 items-center justify-between border-b border-cyan-500/10 bg-navy-900/95 backdrop-blur-md px-4 shrink-0 gap-4">
-          {/* Search — brand lives in Sidebar on desktop */}
-          <div className="flex items-center flex-1 min-w-0 max-w-md">
+          {/* Search — clicking triggers Command Palette; brand lives in Sidebar on desktop */}
+          <div className="flex items-center flex-1 min-w-0 max-w-md" onClick={() => setPaletteOpen(true)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') setPaletteOpen(true); }} aria-label="فتح لوحة الأوامر">
             <GlobalSearch />
           </div>
 
@@ -197,10 +213,7 @@ export function AppShell() {
             </span>
             <button
               type="button"
-              onClick={() => {
-                const el = document.getElementById('mobile-search-trigger');
-                el?.click();
-              }}
+              onClick={() => setPaletteOpen(true)}
               aria-label="بحث"
               className="inline-flex items-center justify-center rounded-md p-2 text-slate-400 hover:bg-white/[0.06] hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 min-h-11 min-w-11"
             >
@@ -278,6 +291,7 @@ export function AppShell() {
           </div>
         </div>
       )}
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     </div>
   );
 }

@@ -35,4 +35,21 @@
   .animate-fade-in-up {
     animation: fadeInUp 0.45s ease-out both;
   }
+  .scrollbar-premium {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(30, 58, 95, 0.55) transparent;
+  }
+  .scrollbar-premium::-webkit-scrollbar {
+    width: 6px;
+  }
+  .scrollbar-premium::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-premium::-webkit-scrollbar-thumb {
+    background: rgba(30, 58, 95, 0.55);
+    border-radius: 9999px;
+  }
+  .scrollbar-premium::-webkit-scrollbar-thumb:hover {
+    background: rgba(30, 58, 95, 0.85);
+  }
 }

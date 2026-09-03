@@ -3,16 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { Search, Loader2, X } from 'lucide-react';
 import { useSearch } from '@/features/search/hooks/useSearch';
 import { useInvoiceSettings } from '@/features/settings/hooks/useInvoiceSettings';
+import { PRICING_LABEL } from '../../lib/labels';
 
 const ROLE_LABEL: Record<string, string> = {
   SUPPLIER: 'مورد',
   CUSTOMER: 'عميل',
   BOTH: 'مورد وعميل',
-};
-
-const PRICING_LABEL: Record<string, string> = {
-  FIXED: 'ربح ثابت',
-  COMMISSION: 'عمولة',
 };
 
 export function GlobalSearch() {
