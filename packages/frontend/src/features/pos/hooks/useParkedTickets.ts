@@ -26,7 +26,7 @@ export type ParkedTicket = {
 };
 
 const STORAGE_KEY = 'baraka_pos_parked_tickets';
-const MAX_PARKED = 20;
+const MAX_PARKED = 10;
 
 function load(): ParkedTicket[] {
   try {

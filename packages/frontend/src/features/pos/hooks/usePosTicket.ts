@@ -10,6 +10,8 @@ export type TicketLine = {
   unitPrice: string;
   quantity: number;
   maxStock: number;
+  /** Ad-hoc service/uncataloged line — never sent as backend itemLines */
+  isCustom: boolean;
 };
 
 export type DiscountType = 'FIXED' | 'PERCENT';
@@ -56,6 +58,7 @@ export function usePosTicket() {
           unitPrice: to2dp(item.sellingPrice ?? '0'),
           quantity: Math.min(want, stock),
           maxStock: stock,
+          isCustom: false,
         },
       ]);
       return 'added';
@@ -125,10 +128,47 @@ export function usePosTicket() {
     discountValue: string;
     received: string;
   }): void {
-    setLines(s.lines.map((l) => ({ ...l })));
+    setLines(
+      s.lines.map((l) => ({
+        ...l,
+        // Pre-isCustom snapshots: normalize missing flag.
+        isCustom: l.isCustom === true,
+        maxStock: typeof l.maxStock === 'number' ? l.maxStock : 999999,
+      })),
+    );
     setDiscountType(s.discountType);
     setDiscountValue(s.discountValue);
     setReceived(s.received);
+  }
+
+  /**
+   * Ad-hoc custom line (service / uncataloged item). Price must already be a
+   * validated Decimal 2dp string. Stock bypass by design (maxStock 999999).
+   */
+  function addCustomItem(name: string, unitPrice2dp: string, qty: number): void {
+    const q = Number.isInteger(qty) && qty > 0 ? qty : 1;
+    setLines((prev) => [
+      ...prev,
+      {
+        itemId: `custom-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+        name,
+        sku: null,
+        unitPrice: unitPrice2dp,
+        quantity: q,
+        maxStock: 999999,
+        isCustom: true,
+      },
+    ]);
+  }
+
+  /** Ticket-level discount setter (retains FIXED | PERCENT union). */
+  function setDiscount(type: DiscountType, value: string): void {
+    setDiscountType(type);
+    setDiscountValue(value);
+  }
+
+  function clearDiscount(): void {
+    setDiscountValue('');
   }
 
   const lineTotals: string[] = useMemo(
@@ -248,6 +288,9 @@ export function usePosTicket() {
     itemsCount,
     canCheckout,
     addItem,
+    addCustomItem,
+    setDiscount,
+    clearDiscount,
     setQuantity,
     increment,
     decrement,

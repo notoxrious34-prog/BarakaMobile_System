@@ -22,6 +22,7 @@ import { useAccountsByContactQuery } from '@/features/transactions/hooks/useTran
 import { to2dp, type PosTicket } from '../hooks/usePosTicket';
 import type { ParkedCustomer } from '../hooks/useParkedTickets';
 import { PosReceiptModal, type ReceiptData } from './PosReceiptModal';
+import { CustomItemModal } from './CustomItemModal';
 import { playCheckoutSuccess } from '../utils/posAudio';
 
 export type LastSale = {
@@ -80,6 +81,10 @@ export function TicketPanel({
   const [quickError, setQuickError] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
   const [receiptOpen, setReceiptOpen] = useState(false);
+  const [discountOpen, setDiscountOpen] = useState(false);
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customDiscountValue, setCustomDiscountValue] = useState('');
+  const [customDiscountType, setCustomDiscountType] = useState<'FIXED' | 'PERCENT'>('FIXED');
   const [customerOpen, setCustomerOpen] = useState(false);
 
   const contactsQ = useContactsQuery();
@@ -320,15 +325,27 @@ export function TicketPanel({
               )
             </span>
           </h2>
-          <button
-            type="button"
-            onClick={handleClear}
-            aria-label="إفراغ السلة"
-            title="إفراغ السلة"
-            className="rounded-lg p-1.5 text-slate-500 hover:bg-rose-500/10 hover:text-rose-400"
-          >
-            <Trash2 className="h-4 w-4" aria-hidden="true" />
-          </button>
+          <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setCustomOpen(true)}
+              aria-label="بند مخصص"
+              title="بند مخصص / خدمة"
+              className="inline-flex items-center gap-1 rounded-lg border border-navy-border/40 px-2 py-1.5 text-[11px] font-bold text-cyan-300 hover:bg-white/[0.05]"
+            >
+              <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+              بند مخصص
+            </button>
+            <button
+              type="button"
+              onClick={handleClear}
+              aria-label="إفراغ السلة"
+              title="إفراغ السلة"
+              className="rounded-lg p-1.5 text-slate-500 hover:bg-rose-500/10 hover:text-rose-400"
+            >
+              <Trash2 className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </div>
         </div>
 
         {/* Customer — single compact row; full picker lives in a modal */}
@@ -367,8 +384,13 @@ export function TicketPanel({
               className="rounded-xl border border-navy-border/30 bg-navy-950/60 p-2.5"
             >
               <div className="flex items-start justify-between gap-2">
-                <p className="min-w-0 flex-1 truncate text-[13px] font-semibold text-slate-100">
-                  {l.name}
+                <p className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-[13px] font-semibold text-slate-100">
+                  <span className="truncate">{l.name}</span>
+                  {l.isCustom && (
+                    <span className="shrink-0 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-1.5 py-px text-[10px] font-bold text-cyan-300">
+                      مخصص
+                    </span>
+                  )}
                 </p>
                 <button
                   type="button"
@@ -429,42 +451,105 @@ export function TicketPanel({
           </span>
         </div>
 
-        <div className="flex items-center gap-1.5">
-          <div className="flex shrink-0 overflow-hidden rounded-lg border border-navy-border/40 text-[11px] font-bold">
+        {/* Discount trigger + popover (chips + custom DH/% input) */}
+        <div className="relative">
+          <div className="flex items-center justify-between text-xs">
             <button
               type="button"
-              onClick={() => ticket.setDiscountType('FIXED')}
-              className={`px-2 py-1 ${ticket.discountType === 'FIXED' ? 'bg-cyan-500/20 text-cyan-300' : 'text-slate-500 hover:text-slate-300'}`}
-            >
-              مبلغ
-            </button>
-            <button
-              type="button"
-              onClick={() => ticket.setDiscountType('PERCENT')}
-              className={`px-2 py-1 ${ticket.discountType === 'PERCENT' ? 'bg-cyan-500/20 text-cyan-300' : 'text-slate-500 hover:text-slate-300'}`}
-            >
-              %
-            </button>
-          </div>
-          <div className="relative flex-1">
-            <Percent
-              className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-600"
-              aria-hidden="true"
-            />
-            <input
-              type="text"
-              inputMode="decimal"
-              value={ticket.discountValue}
-              onChange={(e) => ticket.setDiscountValue(e.target.value)}
-              placeholder={ticket.discountType === 'FIXED' ? 'خصم (د.ج)' : 'خصم (%)'}
+              onClick={() => {
+                setCustomDiscountValue(ticket.discountValue);
+                setCustomDiscountType(ticket.discountType);
+                setDiscountOpen((v) => !v);
+              }}
               aria-label="الخصم"
-              className="w-full rounded-lg border border-navy-border/40 bg-navy-950/60 py-1 pe-2 ps-7 font-mono text-xs text-slate-100 placeholder:font-sans placeholder:text-[11px] placeholder:text-slate-600 outline-none focus:border-cyan-500/50"
-              dir="ltr"
-            />
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[11px] font-bold ${ticket.discountAmount !== '0.00' ? 'border-amber-500/40 bg-amber-500/10 text-amber-300' : 'border-navy-border/40 text-slate-400 hover:text-slate-200'}`}
+            >
+              <Percent className="h-3.5 w-3.5" aria-hidden="true" />
+              الخصم
+              <span dir="ltr" className="font-mono">
+                {ticket.discountAmount !== '0.00' ? `−${ticket.discountAmount}` : '—'}
+              </span>
+            </button>
+            {ticket.discountAmount !== '0.00' && (
+              <button
+                type="button"
+                onClick={() => ticket.clearDiscount()}
+                aria-label="إزالة الخصم"
+                className="rounded-md p-1 text-slate-500 hover:bg-rose-500/10 hover:text-rose-400"
+              >
+                <X className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            )}
           </div>
-          <span dir="ltr" className="shrink-0 font-mono text-xs font-bold text-amber-400">
-            {ticket.discountAmount !== '0.00' ? `−${ticket.discountAmount}` : ''}
-          </span>
+          {discountOpen && (
+            <div className="absolute inset-x-0 top-full z-20 mt-1 space-y-2 rounded-xl border border-navy-border/50 bg-navy-950 p-2 shadow-xl shadow-black/50">
+              <div className="flex flex-wrap gap-1">
+                {[
+                  { label: '-5 DH', type: 'FIXED', value: '5' },
+                  { label: '-10 DH', type: 'FIXED', value: '10' },
+                  { label: '-20 DH', type: 'FIXED', value: '20' },
+                  { label: '-5%', type: 'PERCENT', value: '5' },
+                  { label: '-10%', type: 'PERCENT', value: '10' },
+                ].map((c) => (
+                  <button
+                    key={c.label}
+                    type="button"
+                    onClick={() => {
+                      ticket.setDiscount(c.type as 'FIXED' | 'PERCENT', c.value);
+                      setDiscountOpen(false);
+                    }}
+                    className="h-7 rounded-lg border border-navy-border/40 bg-white/[0.03] px-2 py-0.5 font-mono text-xs text-slate-300 hover:border-amber-500/40 hover:text-amber-300"
+                  >
+                    <span dir="ltr">{c.label}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="flex shrink-0 overflow-hidden rounded-lg border border-navy-border/40 text-[11px] font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setCustomDiscountType('FIXED')}
+                    className={`px-2 py-1 ${customDiscountType === 'FIXED' ? 'bg-cyan-500/20 text-cyan-300' : 'text-slate-500 hover:text-slate-300'}`}
+                  >
+                    مبلغ
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCustomDiscountType('PERCENT')}
+                    className={`px-2 py-1 ${customDiscountType === 'PERCENT' ? 'bg-cyan-500/20 text-cyan-300' : 'text-slate-500 hover:text-slate-300'}`}
+                  >
+                    %
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={customDiscountValue}
+                  onChange={(e) => setCustomDiscountValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      ticket.setDiscount(customDiscountType, customDiscountValue.trim());
+                      setDiscountOpen(false);
+                    }
+                  }}
+                  placeholder={customDiscountType === 'FIXED' ? 'خصم (د.ج)' : 'خصم (%)'}
+                  aria-label="قيمة الخصم"
+                  className="w-full rounded-lg border border-navy-border/40 bg-navy-900 px-2 py-1 font-mono text-xs text-slate-100 placeholder:font-sans placeholder:text-[11px] placeholder:text-slate-600 outline-none focus:border-cyan-500/50"
+                  dir="ltr"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    ticket.setDiscount(customDiscountType, customDiscountValue.trim());
+                    setDiscountOpen(false);
+                  }}
+                  className="shrink-0 rounded-lg bg-cyan-600 px-3 py-1 text-xs font-extrabold text-navy-950 hover:bg-cyan-500"
+                >
+                  تطبيق
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center justify-between rounded-xl border border-amber-500/25 bg-amber-500/[0.07] px-3 py-1">
@@ -615,6 +700,14 @@ export function TicketPanel({
             setReceiptOpen(false);
             onNewSale();
           }}
+        />
+      )}
+
+      {/* Custom item modal */}
+      {customOpen && (
+        <CustomItemModal
+          onAdd={(name, unitPrice, qty) => ticket.addCustomItem(name, unitPrice, qty)}
+          onClose={() => setCustomOpen(false)}
         />
       )}
 

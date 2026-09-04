@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { FileText, Pause, RotateCcw, Trash2, Volume2, VolumeX, X } from 'lucide-react';
+import { FileText, Pause, Volume2, VolumeX } from 'lucide-react';
 import { ApiError } from '@/lib/api';
 import { BrandMark } from '@/components/layout/BrandMark';
 import { useItemsQuery } from '@/features/inventory/hooks/useInventory';
@@ -12,6 +12,7 @@ import {
   type ParkedTicket,
 } from '@/features/pos/hooks/useParkedTickets';
 import { CatalogPanel } from '@/features/pos/components/CatalogPanel';
+import { ParkedTicketsModal } from '@/features/pos/components/ParkedTicketsModal';
 import { PosShiftModal } from '@/features/pos/components/PosShiftModal';
 import { isAudioEnabled, toggleAudio } from '@/features/pos/utils/posAudio';
 import { TicketPanel, type LastSale } from '@/features/pos/components/TicketPanel';
@@ -60,16 +61,29 @@ export function PosPage() {
     async (accountId: string): Promise<{ invoiceNumber?: string } | null> => {
       setApiError(null);
       if (ticket.lines.length === 0 || !ticket.canCheckout) return null;
+      // Split cart: real catalog lines ride as itemLines (stock decrements);
+      // ad-hoc custom lines fold into the net amount + transparent note
+      // (backend itemId/serviceId are mandatory FKs — AD-58).
+      const realLines = ticket.lines.filter((l) => !l.isCustom);
+      const customLines = ticket.lines.filter((l) => l.isCustom);
+      const noteParts: string[] = [];
+      if (ticket.discountAmount !== '0.00') {
+        noteParts.push(
+          `خصم ${ticket.discountValue.trim()}${ticket.discountType === 'PERCENT' ? '%' : ' د.ج'}`,
+        );
+      }
+      if (customLines.length > 0) {
+        noteParts.push(
+          `بنود مخصصة: ${customLines.map((l) => `${l.name} ×${l.quantity} @ ${to2dp(l.unitPrice)}`).join('، ')}`,
+        );
+      }
       try {
         const res = await createMut.mutateAsync({
           accountId,
           amount: ticket.grandTotal,
           amountPaidNow: ticket.paidNow,
-          note:
-            ticket.discountAmount !== '0.00'
-              ? `خصم ${ticket.discountValue.trim()}${ticket.discountType === 'PERCENT' ? '%' : ' د.ج'}`
-              : undefined,
-          itemLines: ticket.lines.map((l) => ({
+          note: noteParts.length > 0 ? noteParts.join(' | ') : undefined,
+          itemLines: realLines.map((l) => ({
             itemId: l.itemId,
             quantity: l.quantity,
             unitPrice: to2dp(l.unitPrice),
@@ -135,6 +149,14 @@ export function PosPage() {
   parkRef.current = handlePark;
 
   function handleRestore(p: ParkedTicket): void {
+    // Swap: park the live cart first so nothing is lost.
+    if (ticket.lines.length > 0) {
+      const ok = window.confirm(
+        'السلة الحالية بها منتجات — هل تريد تعليق السلة الحالية واستعادة هذه السلة؟',
+      );
+      if (!ok) return;
+      handlePark();
+    }
     ticket.loadState({
       lines: p.lines,
       discountType: p.discountType,
@@ -315,83 +337,14 @@ export function PosPage() {
       {/* Shift close / Z-report modal (TB-068) */}
       {shiftOpen && <PosShiftModal onClose={() => setShiftOpen(false)} />}
 
-      {/* Parked tickets modal */}
+      {/* Parked tickets drawer (TB-070) */}
       {parkedOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-navy-950/80 p-4 backdrop-blur-sm"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setParkedOpen(false);
-          }}
-          role="dialog"
-          aria-modal="true"
-          aria-label="الفواتير المعلقة"
-        >
-          <div className="flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-navy-border/40 bg-navy-900">
-            <div className="flex shrink-0 items-center justify-between border-b border-navy-border/30 p-4">
-              <h3 className="text-sm font-bold text-slate-100">
-                الفواتير المعلقة{' '}
-                <span dir="ltr" className="font-mono text-xs text-slate-400">
-                  ({parked.length})
-                </span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => setParkedOpen(false)}
-                aria-label="إغلاق"
-                className="rounded-lg p-1.5 text-slate-500 hover:bg-white/[0.06] hover:text-slate-200"
-              >
-                <X className="h-4 w-4" aria-hidden="true" />
-              </button>
-            </div>
-            <div className="scrollbar-premium min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
-              {parked.length === 0 ? (
-                <p className="py-8 text-center text-sm text-slate-500">لا توجد فواتير معلقة</p>
-              ) : (
-                parked.map((p) => (
-                  <div
-                    key={p.id}
-                    className="rounded-xl border border-navy-border/30 bg-navy-950/60 p-3"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="truncate text-sm font-semibold text-slate-100">
-                        {p.customerLabel}
-                      </p>
-                      <span dir="ltr" className="shrink-0 font-mono text-sm font-bold text-amber-400">
-                        {p.grandTotal}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-[11px] text-slate-500">
-                      {new Date(p.createdAt).toLocaleString('ar-DZ', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        day: '2-digit',
-                        month: '2-digit',
-                      })}{' '}
-                      · <span dir="ltr" className="font-mono">{p.itemsCount}</span> صنف
-                    </p>
-                    <div className="mt-2 flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleRestore(p)}
-                        className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-extrabold text-navy-950 hover:bg-cyan-500"
-                      >
-                        <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" /> استرجاع
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => remove(p.id)}
-                        aria-label="حذف الفاتورة المعلقة"
-                        className="rounded-lg border border-navy-border/40 p-1.5 text-slate-500 hover:bg-rose-500/10 hover:text-rose-400"
-                      >
-                        <Trash2 className="h-4 w-4" aria-hidden="true" />
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
+        <ParkedTicketsModal
+          parked={parked}
+          onRestore={handleRestore}
+          onDelete={remove}
+          onClose={() => setParkedOpen(false)}
+        />
       )}
     </div>
   );
