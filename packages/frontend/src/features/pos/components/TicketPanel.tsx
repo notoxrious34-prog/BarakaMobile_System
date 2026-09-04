@@ -21,7 +21,7 @@ import {
 import { useAccountsByContactQuery } from '@/features/transactions/hooks/useTransactions';
 import { to2dp, type PosTicket } from '../hooks/usePosTicket';
 import type { ParkedCustomer } from '../hooks/useParkedTickets';
-import { ThermalReceiptModal, type ReceiptData } from './ThermalReceiptModal';
+import { PosReceiptModal, type ReceiptData } from './PosReceiptModal';
 
 export type LastSale = {
   invoiceNumber?: string;
@@ -78,6 +78,7 @@ export function TicketPanel({
   const [quickPhone, setQuickPhone] = useState('');
   const [quickError, setQuickError] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
+  const [receiptOpen, setReceiptOpen] = useState(false);
   const [customerOpen, setCustomerOpen] = useState(false);
 
   const contactsQ = useContactsQuery();
@@ -270,6 +271,7 @@ export function TicketPanel({
     const snapshot: Omit<ReceiptData, 'invoiceNumber'> = {
       lines: ticket.lines.map((l, i) => ({
         name: l.name,
+        sku: l.sku ?? null,
         quantity: l.quantity,
         unitPrice: l.unitPrice,
         lineTotal: ticket.lineTotals[i] ?? '0.00',
@@ -286,9 +288,13 @@ export function TicketPanel({
       createdAt: new Date().toISOString(),
       customerLabel:
         useWalkin || !selectedContact ? 'عميل نقدي (افتراضي)' : selectedContact.name,
+      customerPhone: !useWalkin && selectedContact ? (selectedContact.phone ?? null) : null,
     };
     const res = await onCheckout(activeAccountId);
-    if (res) setReceipt({ ...snapshot, invoiceNumber: res.invoiceNumber });
+    if (res) {
+      setReceipt({ ...snapshot, invoiceNumber: res.invoiceNumber });
+      setReceiptOpen(true);
+    }
   }
 
   return (
@@ -547,6 +553,15 @@ export function TicketPanel({
             <p dir="ltr" className="font-mono text-lg font-bold text-emerald-400">
               {lastSale.total} د.ج
             </p>
+            {receipt && (
+              <button
+                type="button"
+                onClick={() => setReceiptOpen(true)}
+                className="w-full rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-2 text-sm font-bold text-cyan-300 hover:bg-cyan-500/20"
+              >
+                طباعة الإيصال (حراري / A4)
+              </button>
+            )}
             <button
               type="button"
               onClick={onNewSale}
@@ -588,9 +603,17 @@ export function TicketPanel({
         )}
       </div>
 
-      {/* Thermal receipt modal */}
-      {receipt && (
-        <ThermalReceiptModal data={receipt} onClose={() => setReceipt(null)} />
+      {/* Dual-mode receipt modal (TB-068) */}
+      {receipt && receiptOpen && (
+        <PosReceiptModal
+          data={receipt}
+          onClose={() => setReceiptOpen(false)}
+          onNewSale={() => {
+            setReceipt(null);
+            setReceiptOpen(false);
+            onNewSale();
+          }}
+        />
       )}
 
       {/* Customer picker modal */}

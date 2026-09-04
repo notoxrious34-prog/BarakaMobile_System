@@ -54,20 +54,19 @@
   }
 }
 
-/* TB-067: isolate the 80mm thermal receipt for window.print() */
+/* TB-068: isolate the POS print surface (dual-mode receipt + Z slip) for window.print() */
 @media print {
   body * {
     visibility: hidden;
   }
-  #thermal-receipt,
-  #thermal-receipt * {
+  #pos-receipt,
+  #pos-receipt * {
     visibility: visible;
   }
-  #thermal-receipt {
+  #pos-receipt {
     position: fixed;
     top: 0;
     right: 0;
-    width: 80mm;
     margin: 0;
   }
 }

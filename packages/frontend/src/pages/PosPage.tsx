@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pause, RotateCcw, Trash2, X } from 'lucide-react';
+import { FileText, Pause, RotateCcw, Trash2, X } from 'lucide-react';
 import { ApiError } from '@/lib/api';
 import { BrandMark } from '@/components/layout/BrandMark';
 import { useItemsQuery } from '@/features/inventory/hooks/useInventory';
@@ -12,6 +12,7 @@ import {
   type ParkedTicket,
 } from '@/features/pos/hooks/useParkedTickets';
 import { CatalogPanel } from '@/features/pos/components/CatalogPanel';
+import { PosShiftModal } from '@/features/pos/components/PosShiftModal';
 import { TicketPanel, type LastSale } from '@/features/pos/components/TicketPanel';
 
 type CustomerSnapshot = {
@@ -38,6 +39,7 @@ export function PosPage() {
   // Park / hold engine
   const { parked, park, remove } = useParkedTickets();
   const [parkedOpen, setParkedOpen] = useState(false);
+  const [shiftOpen, setShiftOpen] = useState(false);
   const [restoreSignal, setRestoreSignal] = useState<{
     nonce: number;
     customer: ParkedCustomer;
@@ -216,6 +218,16 @@ export function PosPage() {
           </button>
           <button
             type="button"
+            onClick={() => setShiftOpen(true)}
+            aria-label="إغلاق الوردية / تقرير Z"
+            title="إغلاق الوردية / تقرير Z"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-300 hover:bg-emerald-500/20"
+          >
+            <FileText className="h-4 w-4" aria-hidden="true" />
+            <span className="hidden sm:inline">إغلاق الوردية / تقرير Z</span>
+          </button>
+          <button
+            type="button"
             onClick={handlePark}
             disabled={ticket.lines.length === 0}
             title="تعليق الفاتورة (F6)"
@@ -271,6 +283,9 @@ export function PosPage() {
           </div>
         </div>
       )}
+
+      {/* Shift close / Z-report modal (TB-068) */}
+      {shiftOpen && <PosShiftModal onClose={() => setShiftOpen(false)} />}
 
       {/* Parked tickets modal */}
       {parkedOpen && (
