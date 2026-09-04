@@ -1,15 +1,19 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { PackageSearch, ScanBarcode, X } from 'lucide-react';
 import type { Item } from '@/features/inventory/hooks/useInventory';
-import { to2dp } from '../hooks/usePosTicket';
+import { to2dp, type AddResult } from '../hooks/usePosTicket';
+import { playScanError, playScanSuccess } from '../utils/posAudio';
 
 type Props = {
   items: Item[] | undefined;
   isLoading: boolean;
-  onAdd: (item: Item, qty?: number) => void;
+  onAdd: (item: Item, qty?: number) => AddResult | void;
   /** Structural ref type — accepts useRef<HTMLInputElement>(null) under React 18 types */
   searchRef: { current: HTMLInputElement | null };
 };
+
+/** Multiplier prefix: `3*SKU`, `3xSKU`, `3XSKU` (optional spaces). */
+const MULT_RE = /^(\d+)\s*[xX*]\s*(.+)$/;
 
 /**
  * Right panel (60%) — unified barcode/search input + high-density product grid.
@@ -20,6 +24,9 @@ type Props = {
 export function CatalogPanel({ items, isLoading, onAdd, searchRef }: Props) {
   const [query, setQuery] = useState('');
   const [flashId, setFlashId] = useState<string | null>(null);
+  const [focused, setFocused] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const errorTimer = useRef<number | null>(null);
 
   const activeItems = useMemo(
     () => (items ?? []).filter((i) => i.isActive),
@@ -43,27 +50,80 @@ export function CatalogPanel({ items, isLoading, onAdd, searchRef }: Props) {
     }, 350);
   }
 
+  function showScanError(msg: string): void {
+    setScanError(msg);
+    playScanError();
+    searchRef.current?.select();
+    if (errorTimer.current !== null) window.clearTimeout(errorTimer.current);
+    errorTimer.current = window.setTimeout(() => setScanError(null), 2500);
+  }
+
+  function addScanned(item: Item, qty: number): void {
+    const stock = typeof item.currentStock === 'number' ? item.currentStock : 999999;
+    if (stock <= 0 || stock < qty) {
+      showScanError('الكمية غير متوفرة في المخزون');
+      return;
+    }
+    const res = onAdd(item, qty);
+    if (res === 'blocked') {
+      showScanError('الكمية غير متوفرة في المخزون');
+      return;
+    }
+    if (res === 'capped') {
+      showScanError('الكمية تجاوزت المخزون — أُضيف المتاح فقط');
+      flash(item.id);
+      setQuery('');
+      searchRef.current?.focus();
+      return;
+    }
+    playScanSuccess();
+    flash(item.id);
+    setQuery('');
+    searchRef.current?.focus();
+  }
+
   function handleSubmit(): void {
     const raw = query.trim();
     if (raw === '') return;
-    // Quantity prefix: "3*ABC123"
+    // Quantity prefix: "3*SKU" / "3xSKU" / "3XSKU"
     let qty = 1;
     let code = raw;
-    const m = raw.match(/^(\d+)\*(.+)$/);
+    const m = raw.match(MULT_RE);
     if (m) {
       qty = Math.max(1, Number.parseInt(m[1], 10) || 1);
       code = m[2].trim();
+      if (code === '') {
+        showScanError('الباركود غير مسجل');
+        return;
+      }
     }
-    const exact = activeItems.find(
-      (it) => (it.sku ?? '').toLowerCase() === code.toLowerCase(),
+    const lowered = code.toLowerCase();
+    const exactSku = activeItems.find(
+      (it) => (it.sku ?? '').toLowerCase() === lowered,
     );
-    if (exact) {
-      onAdd(exact, qty);
-      flash(exact.id);
-      setQuery('');
+    if (exactSku) {
+      addScanned(exactSku, qty);
+      return;
     }
-    // No exact SKU: keep the text as a grid filter (no-op here).
-    searchRef.current?.focus();
+    const exactName = activeItems.find(
+      (it) => (it.name ?? '').toLowerCase() === lowered,
+    );
+    if (exactName) {
+      addScanned(exactName, qty);
+      return;
+    }
+    // Single visible filtered match → auto-add (scanner-friendly).
+    const q = lowered;
+    const visible = activeItems.filter(
+      (it) =>
+        (it.name ?? '').toLowerCase().includes(q) ||
+        (it.sku ?? '').toLowerCase().includes(q),
+    );
+    if (visible.length === 1) {
+      addScanned(visible[0], qty);
+      return;
+    }
+    showScanError('الباركود غير مسجل');
   }
 
   function clear(): void {
@@ -88,6 +148,8 @@ export function CatalogPanel({ items, isLoading, onAdd, searchRef }: Props) {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();
@@ -122,9 +184,28 @@ export function CatalogPanel({ items, isLoading, onAdd, searchRef }: Props) {
             </kbd>
           )}
         </div>
-        <p className="mt-1 text-[10px] text-slate-500">
-          مسح دقيق لـ SKU يضيف الصنف فوراً · صيغة الكمية: <span dir="ltr" className="font-mono">3*SKU</span>
-        </p>
+        <div className="mt-1 flex items-center justify-between gap-2">
+          <p className="text-[10px] text-slate-500">
+            مسح دقيق لـ SKU يضيف الصنف فوراً · صيغة الكمية: <span dir="ltr" className="font-mono">3*SKU</span>
+          </p>
+          <span
+            className={`flex shrink-0 items-center gap-1 text-[10px] font-bold ${focused ? 'text-emerald-400' : 'text-slate-500'}`}
+            title="حالة الماسح"
+          >
+            <span className="relative flex h-2 w-2">
+              {focused && (
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60 motion-reduce:animate-none" />
+              )}
+              <span className={`relative inline-flex h-2 w-2 rounded-full ${focused ? 'bg-emerald-400' : 'bg-slate-600'}`} />
+            </span>
+            {focused ? 'الماسح متصل' : 'الماسح جاهز'}
+          </span>
+        </div>
+        {scanError && (
+          <p className="mt-1 text-[11px] font-bold text-rose-400" role="alert">
+            {scanError}
+          </p>
+        )}
       </div>
 
       {/* Product grid — expansive, breathes with the page */}

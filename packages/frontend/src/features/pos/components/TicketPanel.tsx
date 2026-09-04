@@ -22,6 +22,7 @@ import { useAccountsByContactQuery } from '@/features/transactions/hooks/useTran
 import { to2dp, type PosTicket } from '../hooks/usePosTicket';
 import type { ParkedCustomer } from '../hooks/useParkedTickets';
 import { PosReceiptModal, type ReceiptData } from './PosReceiptModal';
+import { playCheckoutSuccess } from '../utils/posAudio';
 
 export type LastSale = {
   invoiceNumber?: string;
@@ -292,6 +293,7 @@ export function TicketPanel({
     };
     const res = await onCheckout(activeAccountId);
     if (res) {
+      playCheckoutSuccess();
       setReceipt({ ...snapshot, invoiceNumber: res.invoiceNumber });
       setReceiptOpen(true);
     }

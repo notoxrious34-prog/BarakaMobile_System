@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { FileText, Pause, RotateCcw, Trash2, X } from 'lucide-react';
+import { FileText, Pause, RotateCcw, Trash2, Volume2, VolumeX, X } from 'lucide-react';
 import { ApiError } from '@/lib/api';
 import { BrandMark } from '@/components/layout/BrandMark';
 import { useItemsQuery } from '@/features/inventory/hooks/useInventory';
@@ -13,6 +13,7 @@ import {
 } from '@/features/pos/hooks/useParkedTickets';
 import { CatalogPanel } from '@/features/pos/components/CatalogPanel';
 import { PosShiftModal } from '@/features/pos/components/PosShiftModal';
+import { isAudioEnabled, toggleAudio } from '@/features/pos/utils/posAudio';
 import { TicketPanel, type LastSale } from '@/features/pos/components/TicketPanel';
 
 type CustomerSnapshot = {
@@ -40,6 +41,7 @@ export function PosPage() {
   const { parked, park, remove } = useParkedTickets();
   const [parkedOpen, setParkedOpen] = useState(false);
   const [shiftOpen, setShiftOpen] = useState(false);
+  const [audioOn, setAudioOn] = useState<boolean>(() => isAudioEnabled());
   const [restoreSignal, setRestoreSignal] = useState<{
     nonce: number;
     customer: ParkedCustomer;
@@ -183,8 +185,20 @@ export function PosPage() {
     customerSnap.current = s;
   }
 
+  function handleBackgroundFocus(e: React.MouseEvent): void {
+    // Never steal focus from a modal or another form field.
+    const t = e.target as HTMLElement | null;
+    if (!t || t === searchRef.current) return;
+    if (t.closest('[role="dialog"], input, textarea, select, button, a')) return;
+    searchRef.current?.focus();
+  }
+
   return (
-    <div dir="rtl" className="flex min-h-[calc(100vh-4.5rem)] flex-col gap-3 font-sans">
+    <div
+      dir="rtl"
+      className="flex min-h-[calc(100vh-4.5rem)] flex-col gap-3 font-sans"
+      onMouseDown={handleBackgroundFocus}
+    >
       {/* Cockpit header */}
       <div className="flex shrink-0 items-center justify-between gap-2 py-1">
         <div className="flex min-w-0 items-center gap-2.5">
@@ -215,6 +229,19 @@ export function PosPage() {
             >
               {parked.length}
             </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setAudioOn(toggleAudio())}
+            aria-label={audioOn ? 'كتم الأصوات التفاعلية' : 'تفعيل الأصوات التفاعلية'}
+            title="تفعيل/كتم الأصوات التفاعلية"
+            className={`inline-flex items-center rounded-xl border px-3 py-2 hover:bg-white/[0.05] ${audioOn ? 'border-navy-border/40 text-cyan-300' : 'border-navy-border/40 text-slate-500'}`}
+          >
+            {audioOn ? (
+              <Volume2 className="h-4 w-4" aria-hidden="true" />
+            ) : (
+              <VolumeX className="h-4 w-4" aria-hidden="true" />
+            )}
           </button>
           <button
             type="button"
@@ -261,8 +288,9 @@ export function PosPage() {
               items={itemsQ.data}
               isLoading={itemsQ.isLoading}
               onAdd={(item, qty) => {
-                ticket.addItem(item, qty);
+                const res = ticket.addItem(item, qty);
                 setLastSale(null);
+                return res;
               }}
               searchRef={searchRef}
             />
