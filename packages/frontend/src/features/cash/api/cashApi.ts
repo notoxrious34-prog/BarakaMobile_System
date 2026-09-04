@@ -78,10 +78,17 @@ export async function fetchExpenseBreakdown(
 export async function postExpense(data: {
   categoryId: string;
   amount: string;
-  date: string;
+  /** Backend field is `expenseDate` (CreateExpenseDto) — `date` kept as alias. */
+  expenseDate?: string;
+  date?: string;
   description?: string;
 }): Promise<unknown> {
-  return api.post<unknown>('/expenses', data);
+  return api.post<unknown>('/expenses', {
+    categoryId: data.categoryId,
+    amount: data.amount,
+    expenseDate: data.expenseDate ?? data.date,
+    description: data.description,
+  });
 }
 
 export async function postExpenseCategory(data: { name: string }): Promise<ExpenseCategory> {

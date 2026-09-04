@@ -16,6 +16,14 @@ export const CASH_CATEGORY_MAP: Record<string, string> = {
   REPAIR_PAYMENT: 'دفعات صيانة',
   DEBT_COLLECTION: 'تحصيل ديون',
   DEBT_SETTLEMENT: 'سداد موردين',
+  // Backend CashMovementCategory enum (ground truth, Prisma):
+  SALE_PAYMENT: 'تحصيل مبيعات',
+  PURCHASE_PAYMENT: 'سداد مشتريات',
+  PAYMENT_IN: 'تحصيل',
+  PAYMENT_OUT: 'دفع',
+  OWNER_DRAW: 'سحب مالك',
+  OWNER_DEPOSIT: 'إيداع مالك',
+  ADJUSTMENT: 'تسوية',
 };
 
 export function cashCategoryLabel(category: string): string {

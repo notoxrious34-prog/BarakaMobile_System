@@ -45,6 +45,8 @@ export type ExpenseItem = {
   category?: { id: string; name: string };
   amount: string;
   date: string;
+  /** Backend field name (Prisma `expense.expenseDate`) — preferred when present. */
+  expenseDate?: string;
   description: string | null;
   createdAt: string;
 };
@@ -54,6 +56,8 @@ export type ExpenseBreakdownItem = {
   categoryName: string;
   totalAmount: string;
   count: number;
+  /** Server-computed share (2dp) — client recomputes per AD-73 regardless. */
+  percentage?: string;
 };
 
 export type OwnerMovementMode = 'deposit' | 'draw';
