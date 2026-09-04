@@ -1,4 +1,5 @@
-import { X } from 'lucide-react';
+import Decimal from 'decimal.js';
+import { Printer, X } from 'lucide-react';
 import { Loading } from '@/components/feedback/Loading';
 import { useLedgerQuery } from '../hooks/useReports';
 import { useInvoiceSettings } from '@/features/settings/hooks/useInvoiceSettings';
@@ -36,6 +37,15 @@ const ENTRY_LABEL: Record<string, { label: string; className: string }> = {
   CREDIT: { label: 'دائن', className: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400' },
 };
 
+/** TB-074 — Decimal 2dp display (Rule ②: final rendering only). */
+function fmt2(raw: string): string {
+  try {
+    return new Decimal(raw).toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2);
+  } catch {
+    return '0.00';
+  }
+}
+
 export function ContactLedgerModal({ open, onClose, accountId, contactName, role }: Props) {
   const { data: entries, isLoading, isError, error } = useLedgerQuery(accountId ?? '');
   const { data: settingsData } = useInvoiceSettings();
@@ -49,6 +59,7 @@ export function ContactLedgerModal({ open, onClose, accountId, contactName, role
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" dir="rtl">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} aria-hidden="true" />
       <div
+        id="contact-statement"
         role="dialog"
         aria-modal="true"
         aria-label="كشف الحساب"
@@ -64,14 +75,25 @@ export function ContactLedgerModal({ open, onClose, accountId, contactName, role
               </p>
             )}
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="إغلاق"
-            className="rounded-md p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-100"
-          >
-            <X className="h-5 w-5" aria-hidden="true" />
-          </button>
+          <div className="flex items-center gap-1 print:hidden">
+            <button
+              type="button"
+              onClick={() => window.print()}
+              aria-label="طباعة الكشف"
+              title="طباعة"
+              className="rounded-md p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+            >
+              <Printer className="h-5 w-5" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="إغلاق"
+              className="rounded-md p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+            >
+              <X className="h-5 w-5" aria-hidden="true" />
+            </button>
+          </div>
         </div>
 
         {isLoading ? (
@@ -111,13 +133,13 @@ export function ContactLedgerModal({ open, onClose, accountId, contactName, role
                           </span>
                         </td>
                         <td className="px-3 py-2 font-mono text-slate-200" dir="ltr">
-                          {Number(e.amount).toFixed(2)} {currencySymbol}
+                          {fmt2(e.amount)} {currencySymbol}
                         </td>
                         <td className="px-3 py-2 font-mono text-slate-300" dir="ltr">
-                          {Number(e.balanceBefore).toFixed(2)} {currencySymbol}
+                          {fmt2(e.balanceBefore)} {currencySymbol}
                         </td>
                         <td className="px-3 py-2 font-mono text-slate-300" dir="ltr">
-                          {Number(e.balanceAfter).toFixed(2)} {currencySymbol}
+                          {fmt2(e.balanceAfter)} {currencySymbol}
                         </td>
                       </tr>
                     );

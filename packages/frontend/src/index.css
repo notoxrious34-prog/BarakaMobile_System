@@ -63,11 +63,14 @@
   #pos-receipt,
   #pos-receipt *,
   #repair-slip,
-  #repair-slip * {
+  #repair-slip *,
+  #contact-statement,
+  #contact-statement * {
     visibility: visible;
   }
   #pos-receipt,
-  #repair-slip {
+  #repair-slip,
+  #contact-statement {
     position: fixed;
     top: 0;
     right: 0;

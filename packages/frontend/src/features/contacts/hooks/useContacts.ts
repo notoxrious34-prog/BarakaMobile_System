@@ -20,6 +20,7 @@ export type Contact = {
   name: string;
   phone: string | null;
   role: ContactRole;
+  notes?: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt?: string;

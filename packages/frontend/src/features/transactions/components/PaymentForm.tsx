@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import Decimal from 'decimal.js';
 import { X } from 'lucide-react';
 import { ApiError } from '@/lib/api';
 import { useCreatePaymentMutation, useAccountsByContactQuery } from '../hooks/useTransactions';
@@ -15,8 +16,18 @@ type Props = {
   onPaid?: () => void;
 };
 
-function isPositiveNumeric(v: string): boolean {
-  return /^\d+(\.\d{1,2})?$/.test(v.trim()) && Number(v) > 0;
+/** TB-074: Decimal-only amount parse — positive, finite, max 2dp. */
+function parseAmountInput(v: string): Decimal | null {
+  const t = v.trim();
+  if (!t) return null;
+  try {
+    const d = new Decimal(t);
+    if (!d.isFinite() || d.lessThanOrEqualTo(new Decimal(0))) return null;
+    if (d.decimalPlaces() > 2) return null;
+    return d;
+  } catch {
+    return null;
+  }
 }
 
 export function PaymentForm({ open, onClose, presetContactId, presetPaymentType, onPaid }: Props) {
@@ -74,7 +85,7 @@ export function PaymentForm({ open, onClose, presetContactId, presetPaymentType,
     if (!paymentType) errs.paymentType = 'نوع الدفع مطلوب';
     if (!contactId) errs.contactId = 'جهة الاتصال مطلوبة';
     if (!amount.trim()) errs.amount = 'المبلغ مطلوب';
-    else if (!isPositiveNumeric(amount)) errs.amount = 'المبلغ يجب أن يكون رقمًا موجبًا';
+    else if (!parseAmountInput(amount)) errs.amount = 'المبلغ يجب أن يكون رقمًا موجبًا (رقمان عشريان كحد أقصى)';
     setFieldErrors(errs);
     return Object.keys(errs).length === 0;
   }
@@ -91,11 +102,17 @@ export function PaymentForm({ open, onClose, presetContactId, presetPaymentType,
       return;
     }
 
+    const parsed = parseAmountInput(amount);
+    if (!parsed) {
+      setApiError('المبلغ غير صالح');
+      return;
+    }
+
     try {
       await createMut.mutateAsync({
         contactId,
         type: paymentType,
-        amount: Number(amount).toFixed(2),
+        amount: parsed.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2),
         note: note.trim() || undefined,
         accountId: account.id,
       } as never);
@@ -111,28 +128,28 @@ export function PaymentForm({ open, onClose, presetContactId, presetPaymentType,
   const submitLabel = isSubmitting ? 'جاري الحفظ...' : paymentType === 'PAYMENT_IN' ? 'تأكيد قبض المبلغ' : 'تأكيد دفع المبلغ';
   const submitClass =
     paymentType === 'PAYMENT_IN'
-      ? 'rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50'
-      : 'rounded-md bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-500 disabled:opacity-50';
+      ? 'rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50'
+      : 'rounded-xl bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-500 disabled:opacity-50';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" dir="rtl">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} aria-hidden="true" />
+      <div className="absolute inset-0 bg-navy-950/80 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
       <div
         role="dialog"
         aria-modal="true"
         aria-label={headerTitle}
-        className="relative z-10 w-full max-w-md rounded-lg border border-slate-800 bg-slate-900 p-6 text-slate-100 shadow-lg"
+        className="relative z-10 w-full max-w-md rounded-xl border border-navy-border/40 bg-navy-900 p-6 text-slate-100 shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-base font-semibold text-slate-100">{headerTitle}</h2>
-          <button type="button" onClick={onClose} aria-label="إغلاق" className="rounded-md p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-100">
+          <button type="button" onClick={onClose} aria-label="إغلاق" className="rounded-xl p-1 text-slate-400 hover:bg-white/[0.06] hover:text-slate-100">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {apiError && (
-          <div className="mb-4 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-400" role="alert">
+          <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-400" role="alert">
             {apiError}
           </div>
         )}
@@ -147,7 +164,7 @@ export function PaymentForm({ open, onClose, presetContactId, presetPaymentType,
               value={paymentType}
               onChange={(e) => setPaymentType(e.target.value as never)}
               disabled={isSubmitting}
-              className={`w-full rounded-md border bg-slate-800 px-3 py-2 text-sm text-slate-100 ${fieldErrors.paymentType ? 'border-rose-500/50' : 'border-slate-700'}`}
+              className={`w-full rounded-xl border bg-navy-950/60 px-3 py-2 text-sm text-slate-100 ${fieldErrors.paymentType ? 'border-rose-500/50' : 'border-navy-border/40'}`}
             >
               <option value="PAYMENT_IN">تحصيل</option>
               <option value="PAYMENT_OUT">دفع</option>
@@ -164,7 +181,7 @@ export function PaymentForm({ open, onClose, presetContactId, presetPaymentType,
               value={contactId}
               onChange={(e) => setContactId(e.target.value)}
               disabled={isSubmitting}
-              className={`w-full rounded-md border bg-slate-800 px-3 py-2 text-sm text-slate-100 ${fieldErrors.contactId ? 'border-rose-500/50' : 'border-slate-700'}`}
+              className={`w-full rounded-xl border bg-navy-950/60 px-3 py-2 text-sm text-slate-100 ${fieldErrors.contactId ? 'border-rose-500/50' : 'border-navy-border/40'}`}
             >
               <option value="">اختر جهة الاتصال</option>
               {filteredContacts.map((c) => (
@@ -187,7 +204,7 @@ export function PaymentForm({ open, onClose, presetContactId, presetPaymentType,
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               disabled={isSubmitting}
-              className={`w-full rounded-md border bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 ${fieldErrors.amount ? 'border-rose-500/50' : 'border-slate-700'}`}
+              className={`w-full rounded-xl border bg-navy-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 ${fieldErrors.amount ? 'border-rose-500/50' : 'border-navy-border/40'}`}
               placeholder="مثال: 500.00"
               dir="ltr"
             />
@@ -204,13 +221,13 @@ export function PaymentForm({ open, onClose, presetContactId, presetPaymentType,
               onChange={(e) => setNote(e.target.value)}
               disabled={isSubmitting}
               rows={2}
-              className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500"
+              className="w-full rounded-xl border border-navy-border/40 bg-navy-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500"
               placeholder="ملاحظة اختيارية"
             />
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={onClose} disabled={isSubmitting} className="rounded-md border border-slate-700 bg-slate-800 px-4 py-2 text-sm text-slate-300 hover:bg-slate-700">
+            <button type="button" onClick={onClose} disabled={isSubmitting} className="rounded-xl border border-navy-border/40 bg-navy-950/60 px-4 py-2 text-sm text-slate-300 hover:bg-white/[0.06]">
               إلغاء
             </button>
             <button type="submit" disabled={isSubmitting} className={submitClass}>
