@@ -55,15 +55,19 @@
 }
 
 /* TB-068: isolate the POS print surface (dual-mode receipt + Z slip) for window.print() */
+/* TB-072: repair claim slip shares the same isolation */
 @media print {
   body * {
     visibility: hidden;
   }
   #pos-receipt,
-  #pos-receipt * {
+  #pos-receipt *,
+  #repair-slip,
+  #repair-slip * {
     visibility: visible;
   }
-  #pos-receipt {
+  #pos-receipt,
+  #repair-slip {
     position: fixed;
     top: 0;
     right: 0;
