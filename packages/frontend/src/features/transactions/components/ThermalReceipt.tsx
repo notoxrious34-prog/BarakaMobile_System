@@ -1,4 +1,5 @@
 import { X, Printer, Loader2 } from 'lucide-react';
+import Decimal from 'decimal.js';
 import { useTransaction } from '../hooks/useTransaction';
 import { useInvoiceSettings } from '@/features/settings/hooks/useInvoiceSettings';
 
@@ -30,10 +31,13 @@ function formatArabicDate(iso: string): string {
   }
 }
 
+/** TB-076 — Decimal 2dp display (Rule ②: final rendering only). */
 function formatMoney(value: string | number, currencySymbol: string): string {
-  const n = Number(value);
-  if (Number.isNaN(n)) return `0.00 ${currencySymbol}`;
-  return `${n.toFixed(2)} ${currencySymbol}`;
+  try {
+    return `${new Decimal(String(value)).toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2)} ${currencySymbol}`;
+  } catch {
+    return `0.00 ${currencySymbol}`;
+  }
 }
 
 export function ThermalReceipt({ transactionId, onClose }: Props) {
@@ -70,7 +74,7 @@ export function ThermalReceipt({ transactionId, onClose }: Props) {
   }>;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex flex-col items-center overflow-auto bg-slate-950 p-4" dir="rtl">
+    <div className="fixed inset-0 z-[9999] flex flex-col items-center overflow-auto bg-navy-950 p-4" dir="rtl">
       <style>{`
         @media print {
           @page { size: 80mm auto; margin: 2mm; }
@@ -92,22 +96,22 @@ export function ThermalReceipt({ transactionId, onClose }: Props) {
       `}</style>
 
       {/* Chrome controls — not printed */}
-      <div className="no-print mb-4 flex w-full max-w-[302px] items-center justify-between rounded-lg border border-slate-800 bg-slate-900 px-4 py-3 shadow-sm">
+      <div className="no-print mb-4 flex w-full max-w-[302px] items-center justify-between rounded-xl border border-navy-border/40 bg-navy-900 px-4 py-3 shadow-sm">
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-2 text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+            className="rounded-lg p-2 text-slate-400 hover:bg-white/[0.06] hover:text-slate-100"
             aria-label="إغلاق"
           >
             <X className="h-5 w-5" aria-hidden="true" />
           </button>
-          <span className="text-sm font-semibold text-slate-100">إيصال حراري</span>
+          <span className="text-sm font-bold text-slate-100">إيصال حراري</span>
         </div>
         <button
           type="button"
           onClick={handlePrint}
-          className="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500"
+          className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-500"
         >
           <Printer className="h-4 w-4" aria-hidden="true" />
           طباعة

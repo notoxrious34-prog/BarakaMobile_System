@@ -1,8 +1,10 @@
 import { X } from 'lucide-react';
+import Decimal from 'decimal.js';
 import { Loading } from '@/components/feedback/Loading';
 import { useTransactionDetailQuery } from '../hooks/useTransactions';
 import { TransactionTypeBadge } from './TransactionTypeBadge';
 import { useInvoiceSettings } from '@/features/settings/hooks/useInvoiceSettings';
+import { formatMoney2dp, transactionTypeLabel } from '../utils/transactionLabels';
 
 type Props = {
   open: boolean;
@@ -30,12 +32,21 @@ function formatArabicDate(iso: string): string {
 }
 
 const TYPE_LABEL: Record<string, string> = {
-  SALE: 'بيع',
-  PURCHASE: 'شراء',
-  PAYMENT_IN: 'تحصيل',
-  PAYMENT_OUT: 'دفع',
-  OFFSET: 'مقاصة',
+  SALE: transactionTypeLabel('SALE'),
+  PURCHASE: transactionTypeLabel('PURCHASE'),
+  PAYMENT_IN: transactionTypeLabel('PAYMENT_IN'),
+  PAYMENT_OUT: transactionTypeLabel('PAYMENT_OUT'),
+  OFFSET: transactionTypeLabel('OFFSET'),
 };
+
+/** TB-076 — Decimal line total fallback (unit × qty), display only. */
+function lineTotalFallback(unitRaw: string | undefined, qty: number): string {
+  try {
+    return new Decimal(unitRaw ?? '0').times(new Decimal(qty)).toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2);
+  } catch {
+    return '0.00';
+  }
+}
 
 export function TransactionDetail({
   open,
@@ -115,7 +126,7 @@ export function TransactionDetail({
             <div>
               <span className="text-slate-400">المبلغ:</span>{' '}
               <span dir="ltr" className="font-mono font-medium text-slate-100">
-                {Number(tx.amount).toFixed(2)} {currencySymbol}
+                {formatMoney2dp(tx.amount)} {currencySymbol}
               </span>
             </div>
             <div>
@@ -143,19 +154,19 @@ export function TransactionDetail({
           {items.length > 0 && (
             <div>
               <h3 className="mb-2 text-sm font-semibold text-slate-100">المنتجات</h3>
-              <div className="overflow-hidden rounded-md border border-slate-800">
+              <div className="overflow-hidden rounded-xl border border-navy-border/30">
                 <table className="w-full text-sm">
-                  <thead className="bg-slate-800 text-slate-400">
+                  <thead className="bg-navy-950/60 text-slate-500">
                     <tr>
-                      <th className="px-3 py-2 text-right font-semibold">المنتج</th>
-                      <th className="px-3 py-2 text-right font-semibold">الكمية</th>
-                      <th className="px-3 py-2 text-right font-semibold">سعر الوحدة</th>
-                      <th className="px-3 py-2 text-right font-semibold">الإجمالي</th>
+                      <th className="px-3 py-2 text-right font-bold">المنتج</th>
+                      <th className="px-3 py-2 text-right font-bold">الكمية</th>
+                      <th className="px-3 py-2 text-right font-bold">سعر الوحدة</th>
+                      <th className="px-3 py-2 text-right font-bold">الإجمالي</th>
                     </tr>
                   </thead>
                   <tbody>
                     {items.map((l) => (
-                      <tr key={l.id} className="border-t border-slate-800">
+                      <tr key={l.id} className="border-t border-navy-border/20">
                         <td className="px-3 py-2 text-slate-300">{l.item?.name ?? l.itemId}</td>
                         <td className="px-3 py-2 font-mono text-slate-300" dir="ltr">
                           {l.quantity}
@@ -164,7 +175,7 @@ export function TransactionDetail({
                           {(l.unitPrice ?? l.costPrice ?? l.sellingPrice ?? '0.00')} {currencySymbol}
                         </td>
                         <td className="px-3 py-2 font-mono text-slate-300" dir="ltr">
-                          {(l.totalPrice ?? (Number(l.unitPrice ?? l.costPrice ?? '0') * l.quantity).toFixed(2))} {currencySymbol}
+                          {(l.totalPrice ?? lineTotalFallback(l.unitPrice ?? l.costPrice, l.quantity))} {currencySymbol}
                         </td>
                       </tr>
                     ))}
@@ -177,24 +188,24 @@ export function TransactionDetail({
           {services.length > 0 && (
             <div>
               <h3 className="mb-2 text-sm font-semibold text-slate-100">الخدمات</h3>
-              <div className="overflow-hidden rounded-md border border-slate-800">
+              <div className="overflow-hidden rounded-xl border border-navy-border/30">
                 <table className="w-full text-sm">
-                  <thead className="bg-slate-800 text-slate-400">
+                  <thead className="bg-navy-950/60 text-slate-500">
                     <tr>
-                      <th className="px-3 py-2 text-right font-semibold">الخدمة</th>
-                      <th className="px-3 py-2 text-right font-semibold">المبلغ</th>
-                      <th className="px-3 py-2 text-right font-semibold">الربح</th>
+                      <th className="px-3 py-2 text-right font-bold">الخدمة</th>
+                      <th className="px-3 py-2 text-right font-bold">المبلغ</th>
+                      <th className="px-3 py-2 text-right font-bold">الربح</th>
                     </tr>
                   </thead>
                   <tbody>
                     {services.map((l) => (
-                      <tr key={l.id} className="border-t border-slate-800">
+                      <tr key={l.id} className="border-t border-navy-border/20">
                         <td className="px-3 py-2 text-slate-300">{l.service?.name ?? l.serviceId}</td>
                         <td className="px-3 py-2 font-mono text-slate-300" dir="ltr">
-                          {Number(l.amount).toFixed(2)} {currencySymbol}
+                          {formatMoney2dp(l.amount)} {currencySymbol}
                         </td>
                         <td className="px-3 py-2 font-mono text-slate-300" dir="ltr">
-                          {Number(l.profit).toFixed(2)} {currencySymbol}
+                          {formatMoney2dp(l.profit)} {currencySymbol}
                         </td>
                       </tr>
                     ))}
@@ -209,18 +220,18 @@ export function TransactionDetail({
           )}
 
           {tx.type === 'SALE' && (tx as unknown as { invoiceNumber?: string | null }).invoiceNumber ? (
-            <div className="flex flex-wrap gap-2 border-t border-slate-800 pt-4">
+            <div className="flex flex-wrap gap-2 border-t border-navy-border/30 pt-4">
               <button
                 type="button"
                 onClick={() => onPrintA4?.(tx.id)}
-                className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500"
+                className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-500"
               >
                 طباعة A4
               </button>
               <button
                 type="button"
                 onClick={() => onPrintThermal?.(tx.id)}
-                className="rounded-md border border-slate-700 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-700"
+                className="rounded-xl border border-navy-border/40 bg-navy-950/60 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-white/[0.06]"
               >
                 إيصال حراري
               </button>
@@ -233,7 +244,7 @@ export function TransactionDetail({
 
   if (isPanel) {
     return (
-      <div className="rounded-xl border border-slate-800 bg-slate-900 p-4 h-full min-h-[24rem] overflow-y-auto">
+      <div className="scrollbar-premium h-full min-h-[24rem] overflow-y-auto rounded-2xl border border-navy-border/40 bg-navy-900/60 p-4">
         {inner}
       </div>
     );
@@ -241,12 +252,12 @@ export function TransactionDetail({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" dir="rtl">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} aria-hidden="true" />
+      <div className="absolute inset-0 bg-navy-950/80 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
       <div
         role="dialog"
         aria-modal="true"
         aria-label="تفاصيل المعاملة"
-        className="relative z-10 max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-slate-800 bg-slate-900 p-6 shadow-lg"
+        className="scrollbar-premium relative z-10 max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-navy-border/40 bg-navy-900 p-6 text-slate-100 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         {inner}

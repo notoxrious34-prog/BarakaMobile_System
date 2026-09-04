@@ -1,30 +1,29 @@
 import { useState, useMemo } from 'react';
-import { Loading } from '@/components/feedback/Loading';
-import { ErrorState } from '@/components/feedback/ErrorState';
-import { EmptyState } from '@/components/feedback/EmptyState';
+import { Plus, Search, ArrowLeftRight } from 'lucide-react';
+import { BrandMark } from '@/components/layout/BrandMark';
 import { useTransactionsQuery } from '@/features/transactions/hooks/useTransactions';
 import { TransactionsList } from '@/features/transactions/components/TransactionsList';
 import { TransactionDetail } from '@/features/transactions/components/TransactionDetail';
 import { InvoiceDocument } from '@/features/invoices/InvoiceDocument';
 import { ThermalReceipt } from '@/features/transactions/components/ThermalReceipt';
-import { SaleForm } from '@/features/transactions/components/SaleForm';
 import { PurchaseForm } from '@/features/transactions/components/PurchaseForm';
 import { PaymentForm } from '@/features/transactions/components/PaymentForm';
 import { OffsetForm } from '@/features/transactions/components/OffsetForm';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import {
+  TRANSACTION_FILTERS,
+  sumByType,
+  type TransactionFilter,
+} from '@/features/transactions/utils/transactionLabels';
 
 type Contact = { id: string; name: string };
 
-const TYPE_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: '', label: 'كل الأنواع' },
-  { value: 'SALE', label: 'بيع' },
-  { value: 'PURCHASE', label: 'شراء' },
-  { value: 'PAYMENT_IN', label: 'تحصيل' },
-  { value: 'PAYMENT_OUT', label: 'دفع' },
-  { value: 'OFFSET', label: 'مقاصة' },
-];
-
+/**
+ * TB-076 Transactions & Financial Ledger cockpit — Golden Standard shell:
+ * BrandMark header, 4 Decimal metric badges (sales/purchases/collections/
+ * outflows), omnisearch, quick filter pills, purchase/payment/offset CTAs.
+ */
 export function TransactionsPage() {
   const { data: transactions, isLoading, isError, error, refetch } = useTransactionsQuery();
   const { data: contacts } = useQuery<Contact[]>({
@@ -32,14 +31,13 @@ export function TransactionsPage() {
     queryFn: () => api.get<Contact[]>('/contacts'),
   });
 
-  const [saleOpen, setSaleOpen] = useState(false);
   const [purchaseOpen, setPurchaseOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [offsetOpen, setOffsetOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [printA4Id, setPrintA4Id] = useState<string | null>(null);
   const [printThermalId, setPrintThermalId] = useState<string | null>(null);
-  const [typeFilter, setTypeFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState<TransactionFilter>('ALL');
   const [search, setSearch] = useState('');
 
   const contactNameMap = useMemo(() => {
@@ -74,132 +72,187 @@ export function TransactionsPage() {
       })()
     : undefined;
 
+  const metrics = useMemo(() => {
+    const list = transactions ?? [];
+    return {
+      sales: sumByType(list, 'SALE'),
+      purchases: sumByType(list, 'PURCHASE'),
+      collections: sumByType(list, 'PAYMENT_IN'),
+      outflows: sumByType(list, 'PAYMENT_OUT'),
+    };
+  }, [transactions]);
+
   const filtered = useMemo(() => {
     if (!transactions) return [];
     const s = search.trim().toLowerCase();
     return transactions.filter((tx) => {
-      if (typeFilter && tx.type !== typeFilter) return false;
+      if (typeFilter !== 'ALL' && tx.type !== typeFilter) return false;
       if (!s) return true;
       const hay = [tx.note ?? '', tx.invoiceNumber ?? '', tx.amount ?? '', getContactNameForTx(tx)].join(' ').toLowerCase();
       return hay.includes(s);
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [transactions, typeFilter, search, contactNameMap]);
 
-  const hasActiveFilter = typeFilter !== '' || search.trim() !== '';
+  function Metric({ label, value, tone }: { label: string; value: string; tone: string }) {
+    return (
+      <div className="rounded-xl border border-navy-border/30 bg-navy-900/60 px-3 py-2">
+        <p className="text-[11px] text-slate-500">{label}</p>
+        <p dir="ltr" className={`mt-0.5 text-left font-mono text-base font-bold ${tone}`}>
+          {value} د.ج
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <div dir="rtl" className="font-sans space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-100">المعاملات</h1>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => setSaleOpen(true)}
-          className="inline-flex items-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500"
-        >
-          بيع
-        </button>
-        <button
-          type="button"
-          onClick={() => setPurchaseOpen(true)}
-          className="inline-flex items-center rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500"
-        >
-          شراء
-        </button>
-        <button
-          type="button"
-          onClick={() => setPaymentOpen(true)}
-          className="inline-flex items-center rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-500"
-        >
-          دفع/تحصيل
-        </button>
-        <button
-          type="button"
-          onClick={() => setOffsetOpen(true)}
-          className="inline-flex items-center rounded-md bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-500"
-        >
-          مقاصة
-        </button>
-      </div>
-
-      <div className="flex flex-wrap gap-2 rounded-xl border border-slate-800 bg-slate-900 p-3">
-        <select
-          value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value)}
-          className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100"
-        >
-          {TYPE_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="بحث: ملاحظة أو رقم فاتورة أو جهة..."
-          className="min-w-[16rem] flex-1 rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500"
-        />
-        {hasActiveFilter ? (
+    <div dir="rtl" className="flex min-h-[calc(100vh-4.5rem)] flex-col gap-3 font-sans">
+      {/* Cockpit header */}
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 py-1">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <BrandMark className="h-9 w-9" />
+          <div className="min-w-0">
+            <h1 className="truncate text-base font-bold tracking-tight text-slate-100">
+              سجل المعاملات والعمليات المالية
+            </h1>
+            <p className="hidden text-[11px] text-slate-500 sm:block">
+              إدارة المشتريات، المقاصات، وسندات القبض والدفع
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
           <button
             type="button"
-            onClick={() => {
-              setTypeFilter('');
-              setSearch('');
-            }}
-            className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700"
+            onClick={() => setPurchaseOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-cyan-600 px-4 py-2 text-xs font-extrabold text-navy-950 hover:bg-cyan-500"
           >
-            مسح
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            شراء بضاعة
           </button>
-        ) : null}
+          <button
+            type="button"
+            onClick={() => setPaymentOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-extrabold text-white hover:bg-emerald-500"
+          >
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            سند مالي
+          </button>
+          <button
+            type="button"
+            onClick={() => setOffsetOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-violet-600 px-4 py-2 text-xs font-extrabold text-white hover:bg-violet-500"
+          >
+            <ArrowLeftRight className="h-4 w-4" aria-hidden="true" />
+            مقاصة حسابات
+          </button>
+        </div>
       </div>
 
-      {isLoading ? (
-        <Loading text="جاري تحميل المعاملات..." />
-      ) : isError ? (
-        <ErrorState
-          title="تعذر تحميل المعاملات"
-          message={error instanceof Error ? error.message : 'حدث خطأ أثناء جلب البيانات'}
-          onRetry={() => refetch()}
-        />
-      ) : !transactions || transactions.length === 0 ? (
-        <EmptyState title="لا توجد معاملات" message="ابدأ بإنشاء عملية بيع أو شراء أو دفع." />
-      ) : (
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-          <div className="w-full lg:w-1/2 lg:flex-shrink-0">
-            {filtered.length === 0 ? (
-              <div className="rounded-xl border border-slate-800 bg-slate-900 p-8 text-center text-sm text-slate-500">
-                لا توجد نتائج مطابقة للبحث
-              </div>
-            ) : (
-              <TransactionsList
-                transactions={filtered}
-                contactNameMap={contactNameMap}
-                selectedId={selectedId}
-                onSelect={setSelectedId}
+      {/* Metric badges (Decimal) */}
+      <div className="grid shrink-0 grid-cols-2 gap-2 sm:grid-cols-4">
+        <Metric label="إجمالي المبيعات" value={metrics.sales} tone="text-emerald-400" />
+        <Metric label="إجمالي المشتريات" value={metrics.purchases} tone="text-cyan-300" />
+        <Metric label="إجمالي المقبوضات" value={metrics.collections} tone="text-emerald-400" />
+        <Metric label="إجمالي المدفوعات" value={metrics.outflows} tone="text-rose-400" />
+      </div>
+
+      {/* Toolbar: omnisearch */}
+      <div className="flex shrink-0 flex-wrap items-center gap-2">
+        <div className="relative min-w-52 flex-1">
+          <Search
+            className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"
+            aria-hidden="true"
+          />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="بحث: ملاحظة أو رقم فاتورة أو مبلغ أو جهة…"
+            aria-label="بحث في المعاملات"
+            className="w-full rounded-xl border border-navy-border/40 bg-navy-950/60 py-2 pe-3 ps-9 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-cyan-500/50"
+          />
+        </div>
+      </div>
+
+      {/* Quick filter pills */}
+      <div className="flex shrink-0 flex-wrap gap-1.5">
+        {TRANSACTION_FILTERS.map((f) => (
+          <button
+            key={f.value}
+            type="button"
+            onClick={() => setTypeFilter(f.value)}
+            aria-pressed={typeFilter === f.value}
+            className={`h-7 rounded-lg border px-2 py-0.5 text-xs font-bold ${
+              typeFilter === f.value
+                ? 'border-amber-500/40 bg-amber-500/10 text-amber-300'
+                : 'border-navy-border/40 text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Board */}
+      <div className="min-h-[200px] flex-1">
+        {isLoading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-14 animate-pulse rounded-xl border border-navy-border/30 bg-navy-800/40" />
+            ))}
+          </div>
+        ) : isError ? (
+          <div className="rounded-2xl border border-rose-500/20 bg-navy-900 p-6 text-center">
+            <p className="text-sm text-rose-300">تعذر تحميل المعاملات</p>
+            <p className="mt-1 text-xs text-slate-500">
+              {error instanceof Error ? error.message : 'حدث خطأ أثناء جلب البيانات'}
+            </p>
+            <button
+              type="button"
+              onClick={() => refetch()}
+              className="mt-2 rounded-xl bg-rose-600 px-4 py-1.5 text-sm font-bold text-white hover:bg-rose-500"
+            >
+              إعادة المحاولة
+            </button>
+          </div>
+        ) : !transactions || transactions.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
+            <ArrowLeftRight className="h-8 w-8 text-slate-600" aria-hidden="true" />
+            <p className="text-sm text-slate-400">لا توجد معاملات — ابدأ بإنشاء عملية شراء أو سند مالي.</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
+            <div className="w-full lg:w-1/2 lg:flex-shrink-0">
+              {filtered.length === 0 ? (
+                <div className="rounded-2xl border border-navy-border/30 bg-navy-900/60 p-8 text-center text-sm text-slate-500">
+                  لا توجد نتائج مطابقة للبحث
+                </div>
+              ) : (
+                <TransactionsList
+                  transactions={filtered}
+                  contactNameMap={contactNameMap}
+                  selectedId={selectedId}
+                  onSelect={setSelectedId}
+                  onPrintA4={setPrintA4Id}
+                  onPrintThermal={setPrintThermalId}
+                />
+              )}
+            </div>
+            <div className="w-full lg:w-1/2 lg:sticky lg:top-4">
+              <TransactionDetail
+                variant="panel"
+                open={true}
+                transactionId={selectedId}
+                onClose={() => setSelectedId(null)}
+                contactName={detailContactName}
                 onPrintA4={setPrintA4Id}
                 onPrintThermal={setPrintThermalId}
               />
-            )}
+            </div>
           </div>
-          <div className="w-full lg:w-1/2 lg:sticky lg:top-4">
-            <TransactionDetail
-              variant="panel"
-              open={true}
-              transactionId={selectedId}
-              onClose={() => setSelectedId(null)}
-              contactName={detailContactName}
-              onPrintA4={setPrintA4Id}
-              onPrintThermal={setPrintThermalId}
-            />
-          </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      <SaleForm open={saleOpen} onClose={() => setSaleOpen(false)} />
       <PurchaseForm open={purchaseOpen} onClose={() => setPurchaseOpen(false)} />
       <PaymentForm open={paymentOpen} onClose={() => setPaymentOpen(false)} />
       <OffsetForm open={offsetOpen} onClose={() => setOffsetOpen(false)} />

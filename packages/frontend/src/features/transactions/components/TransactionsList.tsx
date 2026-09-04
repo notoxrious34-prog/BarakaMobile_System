@@ -2,6 +2,7 @@ import { Printer } from 'lucide-react';
 import type { Transaction } from '../hooks/useTransactions';
 import { TransactionTypeBadge } from './TransactionTypeBadge';
 import { useInvoiceSettings } from '@/features/settings/hooks/useInvoiceSettings';
+import { formatMoney2dp } from '../utils/transactionLabels';
 
 type Props = {
   transactions: Transaction[];
@@ -53,17 +54,17 @@ export function TransactionsList({
   );
 
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900">
-      <div className="overflow-x-auto">
+    <div className="overflow-hidden rounded-2xl border border-navy-border/40 bg-navy-900/60">
+      <div className="scrollbar-premium overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="border-b border-slate-800 text-slate-400">
-              <th className="px-3 py-2.5 text-right font-semibold">التاريخ</th>
-              <th className="px-3 py-2.5 text-right font-semibold">النوع</th>
-              <th className="px-3 py-2.5 text-right font-semibold">جهة الاتصال</th>
-              <th className="px-3 py-2.5 text-right font-semibold">المبلغ</th>
-              <th className="px-3 py-2.5 text-right font-semibold">ملاحظة</th>
-              <th className="px-3 py-2.5 text-center font-semibold">إجراءات</th>
+            <tr className="border-b border-navy-border/30 text-xs text-slate-500">
+              <th className="px-3 py-2 text-right font-bold">التاريخ</th>
+              <th className="px-3 py-2 text-right font-bold">النوع</th>
+              <th className="px-3 py-2 text-right font-bold">جهة الاتصال</th>
+              <th className="px-3 py-2 text-right font-bold">المبلغ</th>
+              <th className="px-3 py-2 text-right font-bold">ملاحظة</th>
+              <th className="px-3 py-2 text-center font-bold">إجراءات</th>
             </tr>
           </thead>
           <tbody>
@@ -74,7 +75,7 @@ export function TransactionsList({
                 <tr
                   key={tx.id}
                   onClick={() => onSelect(tx.id)}
-                  className={`cursor-pointer border-b border-slate-800 hover:bg-slate-800/50 ${isSelected ? 'bg-slate-800/80 ring-1 ring-emerald-500/30' : ''}`}
+                  className={`cursor-pointer border-b border-navy-border/20 last:border-0 hover:bg-white/[0.03] ${isSelected ? 'bg-white/[0.04] ring-1 ring-inset ring-emerald-500/30' : ''}`}
                 >
                   <td className="px-3 py-2.5 text-slate-300" dir="ltr">
                     {formatArabicDate(tx.createdAt)}
@@ -84,7 +85,7 @@ export function TransactionsList({
                   </td>
                   <td className="px-3 py-2.5 text-slate-100">{getContactName(tx, contactNameMap)}</td>
                   <td className="px-3 py-2.5 font-mono text-slate-100" dir="ltr">
-                    {Number(tx.amount).toFixed(2)} {currencySymbol}
+                    {formatMoney2dp(tx.amount)} {currencySymbol}
                   </td>
                   <td className="max-w-[14rem] truncate px-3 py-2.5 text-slate-400">{tx.note ?? '—'}</td>
                   <td className="px-3 py-2.5 text-center">
@@ -99,7 +100,7 @@ export function TransactionsList({
                             }}
                             title="طباعة A4"
                             aria-label={`طباعة A4 ${tx.id}`}
-                            className="rounded-md border border-slate-700 bg-slate-800 px-2 py-1 text-xs font-medium text-slate-300 hover:bg-slate-700 hover:text-slate-100"
+                            className="rounded-lg border border-navy-border/40 bg-navy-950/60 px-2 py-1 text-xs font-bold text-slate-300 hover:bg-white/[0.06] hover:text-slate-100"
                           >
                             A4
                           </button>
@@ -111,7 +112,7 @@ export function TransactionsList({
                             }}
                             title="إيصال حراري"
                             aria-label={`إيصال حراري ${tx.id}`}
-                            className="rounded-md border border-slate-700 bg-slate-800 px-2 py-1 text-xs font-medium text-slate-300 hover:bg-slate-700 hover:text-slate-100"
+                            className="rounded-lg border border-navy-border/40 bg-navy-950/60 px-2 py-1 text-xs font-bold text-slate-300 hover:bg-white/[0.06] hover:text-slate-100"
                           >
                             حراري
                           </button>
@@ -123,7 +124,7 @@ export function TransactionsList({
                             }}
                             aria-label={`طباعة ${tx.id}`}
                             title="طباعة الفاتورة"
-                            className="rounded-md p-1.5 text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+                            className="rounded-lg p-1.5 text-slate-400 hover:bg-white/[0.06] hover:text-slate-100"
                           >
                             <Printer className="h-4 w-4" aria-hidden="true" />
                           </button>

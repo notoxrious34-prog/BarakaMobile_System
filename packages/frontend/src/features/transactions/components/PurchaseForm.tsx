@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
+import Decimal from 'decimal.js';
 import { X, Plus, Trash2 } from 'lucide-react';
 import { ApiError } from '@/lib/api';
 import { useCreatePurchaseMutation, useAccountsByContactQuery } from '../hooks/useTransactions';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { parsePositive2dp, parsePositiveInt } from '../utils/transactionLabels';
 
 type Contact = { id: string; name: string; role: string };
 type Item = { id: string; name: string };
@@ -13,11 +15,22 @@ type Props = {
   onClose: () => void;
 };
 
+/** TB-076 — Decimal validators (Rule ②). Zero Number() for money. */
 function isPositiveNumeric(v: string): boolean {
-  return /^\d+(\.\d{1,2})?$/.test(v.trim()) && Number(v) > 0;
+  return parsePositive2dp(v) !== null;
 }
 function isPositiveInt(v: string): boolean {
-  return /^\d+$/.test(v.trim()) && Number(v) > 0 && Number.isInteger(Number(v));
+  return parsePositiveInt(v) !== null;
+}
+
+/** TB-076 — Decimal 2dp display (final rendering only). */
+function to2dp(raw: string | Decimal): string {
+  try {
+    const d = raw instanceof Decimal ? raw : new Decimal(raw);
+    return d.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2);
+  } catch {
+    return '0.00';
+  }
 }
 
 export function PurchaseForm({ open, onClose }: Props) {
@@ -59,19 +72,39 @@ export function PurchaseForm({ open, onClose }: Props) {
 
   const isSubmitting = createMut.isPending;
   const supplierContacts = contacts?.filter((c) => c.role === 'SUPPLIER' || c.role === 'BOTH') ?? [];
-  const computedTotal = rows.reduce((sum, r) => {
-    const q = Number(r.quantity || 0);
-    const p = Number(r.costPrice || 0);
-    return sum + (q && p ? q * p : 0);
-  }, 0);
-  const remainingDebt = (computedTotal - Number(amountPaidNow || 0)).toFixed(2);
+  // TB-076 — Decimal aggregation (Rule ②): line qty × cost, HALF_UP 2dp.
+  const computedTotal = rows.reduce((sum: Decimal, r) => {
+    try {
+      const q = new Decimal(r.quantity.trim() === '' ? '0' : r.quantity.trim());
+      const p = new Decimal(r.costPrice.trim() === '' ? '0' : r.costPrice.trim());
+      if (!q.isFinite() || !p.isFinite() || q.lessThanOrEqualTo(new Decimal(0)) || p.lessThanOrEqualTo(new Decimal(0))) return sum;
+      return sum.plus(q.times(p));
+    } catch {
+      return sum;
+    }
+  }, new Decimal(0));
+  const computedTotal2dp = computedTotal.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2);
+  const remainingDebt = (() => {
+    try {
+      const paid = amountPaidNow.trim() === '' ? new Decimal(0) : new Decimal(amountPaidNow.trim());
+      return computedTotal.minus(paid).toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2);
+    } catch {
+      return computedTotal2dp;
+    }
+  })();
 
   function validate(): boolean {
     const errs: Record<string, string> = {};
     if (!contactId) errs.contactId = 'جهة الاتصال مطلوبة';
     if (rows.length === 0) errs.items = 'يجب إضافة منتج واحد على الأقل';
     if (amountPaidNow && amountPaidNow.trim() && !/^\d+(\.\d{1,2})?$/.test(amountPaidNow.trim())) errs.amountPaidNow = 'المبلغ المدفوع يجب أن يكون رقمًا صحيحًا';
-    else if (amountPaidNow && Number(amountPaidNow) > computedTotal) errs.amountPaidNow = 'المبلغ المدفوع لا يمكن أن يتجاوز الإجمالي';
+    else if (amountPaidNow.trim() !== '') {
+      try {
+        if (new Decimal(amountPaidNow.trim()).greaterThan(computedTotal)) errs.amountPaidNow = 'المبلغ المدفوع لا يمكن أن يتجاوز الإجمالي';
+      } catch {
+        errs.amountPaidNow = 'المبلغ المدفوع يجب أن يكون رقمًا صحيحًا';
+      }
+    }
     rows.forEach((r, i) => {
       if (!r.itemId) errs[`row_${i}_itemId`] = 'المنتج مطلوب';
       if (!r.quantity.trim()) errs[`row_${i}_quantity`] = 'الكمية مطلوبة';
@@ -96,18 +129,18 @@ export function PurchaseForm({ open, onClose }: Props) {
 
     const itemLines = rows.map((r) => ({
       itemId: r.itemId,
-      quantity: Number(r.quantity),
-      unitPrice: Number(r.costPrice).toFixed(2),
+      quantity: parsePositiveInt(r.quantity) ?? 0,
+      unitPrice: to2dp(r.costPrice.trim()),
     }));
-    const total = rows.reduce((sum, r) => sum + Number(r.costPrice) * Number(r.quantity), 0);
-    const amount = total.toFixed(2);
+    const total = to2dp(computedTotal);
+    const amount = total;
 
     try {
       await createMut.mutateAsync({
         contactId,
         accountId: supplierAccount.id,
         amount,
-        amountPaidNow: amountPaidNow.trim() ? Number(amountPaidNow).toFixed(2) : undefined,
+        amountPaidNow: amountPaidNow.trim() ? to2dp(amountPaidNow.trim()) : undefined,
         note: note.trim() || undefined,
         itemLines,
       } as never);
@@ -120,23 +153,23 @@ export function PurchaseForm({ open, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" dir="rtl">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} aria-hidden="true" />
+      <div className="absolute inset-0 bg-navy-950/80 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
       <div
         role="dialog"
         aria-modal="true"
         aria-label="إنشاء عملية شراء"
-        className="relative z-10 max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-slate-800 bg-slate-900 p-6 text-slate-100 shadow-lg"
+        className="scrollbar-premium relative z-10 max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-navy-border/40 bg-navy-900 p-6 text-slate-100 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-slate-100">عملية شراء</h2>
-          <button type="button" onClick={onClose} aria-label="إغلاق" className="rounded-md p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-100">
+          <h2 className="text-base font-bold text-slate-100">عملية شراء</h2>
+          <button type="button" onClick={onClose} aria-label="إغلاق" className="rounded-lg p-1 text-slate-500 hover:bg-white/[0.06] hover:text-slate-200">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {apiError && (
-          <div className="mb-4 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-400" role="alert">
+          <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-400" role="alert">
             {apiError}
           </div>
         )}
@@ -151,7 +184,7 @@ export function PurchaseForm({ open, onClose }: Props) {
               value={contactId}
               onChange={(e) => setContactId(e.target.value)}
               disabled={isSubmitting}
-              className={`w-full rounded-md border bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 ${fieldErrors.contactId ? 'border-rose-500/50' : 'border-slate-700'}`}
+              className={`w-full rounded-xl border bg-navy-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 ${fieldErrors.contactId ? 'border-rose-500/50' : 'border-navy-border/40'}`}
             >
               <option value="">اختر جهة الاتصال</option>
               {supplierContacts.map((c) => (
@@ -173,7 +206,7 @@ export function PurchaseForm({ open, onClose }: Props) {
               onChange={(e) => setNote(e.target.value)}
               disabled={isSubmitting}
               rows={2}
-              className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500"
+              className="w-full rounded-xl border border-navy-border/40 bg-navy-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500"
               placeholder="ملاحظة اختيارية"
             />
           </div>
@@ -186,7 +219,7 @@ export function PurchaseForm({ open, onClose }: Props) {
               <button
                 type="button"
                 onClick={() => setRows((prev) => [...prev, { itemId: '', quantity: '', costPrice: '' }])}
-                className="inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-800 px-3 py-1 text-xs font-medium text-slate-300 hover:bg-slate-700"
+                className="inline-flex items-center gap-1 rounded-xl border border-navy-border/40 bg-navy-950/60 px-3 py-1 text-xs font-bold text-slate-300 hover:bg-white/[0.06]"
               >
                 <Plus className="h-3 w-3" /> إضافة منتج
               </button>
@@ -194,12 +227,12 @@ export function PurchaseForm({ open, onClose }: Props) {
             {fieldErrors.items && <p className="mb-2 text-xs text-rose-400">{fieldErrors.items}</p>}
             <div className="space-y-2">
               {rows.map((row, idx) => (
-                <div key={idx} className="flex items-start gap-2 rounded-md border border-slate-700 bg-slate-800/50 p-2">
+                <div key={idx} className="flex items-start gap-2 rounded-xl border border-navy-border/30 bg-navy-950/40 p-2">
                   <div className="flex-1">
                     <select
                       value={row.itemId}
                       onChange={(e) => setRows((prev) => prev.map((r, i) => (i === idx ? { ...r, itemId: e.target.value } : r)))}
-                      className={`w-full rounded-md border bg-slate-800 px-2 py-1.5 text-sm text-slate-100 ${fieldErrors[`row_${idx}_itemId`] ? 'border-rose-500/50' : 'border-slate-700'}`}
+                      className={`w-full rounded-xl border bg-navy-950/60 px-2 py-1.5 text-sm text-slate-100 ${fieldErrors[`row_${idx}_itemId`] ? 'border-rose-500/50' : 'border-navy-border/40'}`}
                     >
                       <option value="">اختر المنتج</option>
                       {items?.map((it) => (
@@ -217,7 +250,7 @@ export function PurchaseForm({ open, onClose }: Props) {
                       placeholder="الكمية"
                       value={row.quantity}
                       onChange={(e) => setRows((prev) => prev.map((r, i) => (i === idx ? { ...r, quantity: e.target.value } : r)))}
-                      className={`w-full rounded-md border bg-slate-800 px-2 py-1.5 text-sm text-slate-100 placeholder:text-slate-500 ${fieldErrors[`row_${idx}_quantity`] ? 'border-rose-500/50' : 'border-slate-700'}`}
+                      className={`w-full rounded-xl border bg-navy-950/60 px-2 py-1.5 text-sm text-slate-100 placeholder:text-slate-500 ${fieldErrors[`row_${idx}_quantity`] ? 'border-rose-500/50' : 'border-navy-border/40'}`}
                       dir="ltr"
                     />
                     {fieldErrors[`row_${idx}_quantity`] && <p className="mt-1 text-xs text-rose-400">{fieldErrors[`row_${idx}_quantity`]}</p>}
@@ -229,7 +262,7 @@ export function PurchaseForm({ open, onClose }: Props) {
                       placeholder="التكلفة"
                       value={row.costPrice}
                       onChange={(e) => setRows((prev) => prev.map((r, i) => (i === idx ? { ...r, costPrice: e.target.value } : r)))}
-                      className={`w-full rounded-md border bg-slate-800 px-2 py-1.5 text-sm text-slate-100 placeholder:text-slate-500 ${fieldErrors[`row_${idx}_costPrice`] ? 'border-rose-500/50' : 'border-slate-700'}`}
+                      className={`w-full rounded-xl border bg-navy-950/60 px-2 py-1.5 text-sm text-slate-100 placeholder:text-slate-500 ${fieldErrors[`row_${idx}_costPrice`] ? 'border-rose-500/50' : 'border-navy-border/40'}`}
                       dir="ltr"
                     />
                     {fieldErrors[`row_${idx}_costPrice`] && <p className="mt-1 text-xs text-rose-400">{fieldErrors[`row_${idx}_costPrice`]}</p>}
@@ -237,7 +270,7 @@ export function PurchaseForm({ open, onClose }: Props) {
                   <button
                     type="button"
                     onClick={() => setRows((prev) => prev.filter((_, i) => i !== idx))}
-                    className="rounded-md p-1.5 text-rose-400 hover:bg-slate-700"
+                    className="rounded-xl p-1.5 text-rose-400 hover:bg-rose-500/10"
                     aria-label="حذف المنتج"
                     disabled={rows.length === 1}
                   >
@@ -250,16 +283,16 @@ export function PurchaseForm({ open, onClose }: Props) {
 
           <div>
             <label htmlFor="purchase-paid" className="mb-1 block text-sm font-medium text-slate-300">المبلغ المدفوع الآن</label>
-            <input id="purchase-paid" type="text" inputMode="decimal" placeholder="0.00" value={amountPaidNow} onChange={(e) => setAmountPaidNow(e.target.value)} className={`w-full rounded-md border bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 ${fieldErrors.amountPaidNow ? 'border-rose-500/50' : 'border-slate-700'}`} dir="ltr" />
+            <input id="purchase-paid" type="text" inputMode="decimal" placeholder="0.00" value={amountPaidNow} onChange={(e) => setAmountPaidNow(e.target.value)} className={`w-full rounded-xl border bg-navy-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 ${fieldErrors.amountPaidNow ? 'border-rose-500/50' : 'border-navy-border/40'}`} dir="ltr" />
             {fieldErrors.amountPaidNow && <p className="mt-1 text-xs text-rose-400">{fieldErrors.amountPaidNow}</p>}
-            <p className="mt-1 text-xs text-slate-500">المتبقي كدين: {remainingDebt} دج — الإجمالي: {computedTotal.toFixed(2)} دج</p>
+            <p className="mt-1 text-xs text-slate-500">المتبقي كدين: {remainingDebt} دج — الإجمالي: {computedTotal2dp} دج</p>
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={onClose} disabled={isSubmitting} className="rounded-md border border-slate-700 bg-slate-800 px-4 py-2 text-sm text-slate-300 hover:bg-slate-700">
+            <button type="button" onClick={onClose} disabled={isSubmitting} className="rounded-xl border border-navy-border/40 bg-navy-950/60 px-4 py-2 text-sm font-bold text-slate-300 hover:bg-white/[0.06] disabled:opacity-50">
               إلغاء
             </button>
-            <button type="submit" disabled={isSubmitting} className="rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500 disabled:opacity-50">
+            <button type="submit" disabled={isSubmitting} className="rounded-xl bg-cyan-600 px-4 py-2 text-sm font-bold text-navy-950 hover:bg-cyan-500 disabled:opacity-50">
               {isSubmitting ? 'جاري الحفظ...' : 'إنشاء عملية الشراء'}
             </button>
           </div>
