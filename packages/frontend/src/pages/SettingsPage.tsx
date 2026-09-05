@@ -9,6 +9,10 @@ type FormState = {
   business_name: string;
   business_phone: string;
   business_address: string;
+  business_rc: string;
+  business_nif: string;
+  business_nis: string;
+  business_art: string;
   currency_symbol: string;
   low_stock_threshold: string;
   invoice_footer_note: string;
@@ -18,6 +22,10 @@ const DEFAULT_FORM: FormState = {
   business_name: '',
   business_phone: '',
   business_address: '',
+  business_rc: '',
+  business_nif: '',
+  business_nis: '',
+  business_art: '',
   currency_symbol: '',
   low_stock_threshold: '5',
   invoice_footer_note: '',
@@ -28,6 +36,10 @@ function isDirty(a: FormState, b: FormState): boolean {
     a.business_name !== b.business_name ||
     a.business_phone !== b.business_phone ||
     a.business_address !== b.business_address ||
+    a.business_rc !== b.business_rc ||
+    a.business_nif !== b.business_nif ||
+    a.business_nis !== b.business_nis ||
+    a.business_art !== b.business_art ||
     a.currency_symbol !== b.currency_symbol ||
     a.low_stock_threshold !== b.low_stock_threshold ||
     a.invoice_footer_note !== b.invoice_footer_note
@@ -54,6 +66,10 @@ export function SettingsPage() {
         business_name: data.business_name ?? '',
         business_phone: data.business_phone ?? '',
         business_address: data.business_address ?? '',
+        business_rc: data.business_rc ?? '',
+        business_nif: data.business_nif ?? '',
+        business_nis: data.business_nis ?? '',
+        business_art: data.business_art ?? '',
         currency_symbol: data.currency_symbol ?? '',
         low_stock_threshold: data.low_stock_threshold ?? '5',
         invoice_footer_note: data.invoice_footer_note ?? '',
@@ -90,6 +106,10 @@ export function SettingsPage() {
       business_name: form.business_name,
       business_phone: form.business_phone,
       business_address: form.business_address,
+      business_rc: form.business_rc,
+      business_nif: form.business_nif,
+      business_nis: form.business_nis,
+      business_art: form.business_art,
       currency_symbol: form.currency_symbol,
       low_stock_threshold: String(thresholdNum),
       invoice_footer_note: form.invoice_footer_note,
@@ -261,6 +281,73 @@ export function SettingsPage() {
                     onChange={(e) => handleChange('business_address', e.target.value)}
                     className={INPUT_CLS}
                     placeholder="مثال: الجزائر العاصمة"
+                  />
+                </div>
+              </div>
+            </section>
+
+            {/* Section 1B — البيانات القانونية والجبائية (للفواتير الرسمية) */}
+            <section className={CARD_CLS} aria-label="البيانات القانونية والجبائية">
+              <h2 className="mb-1 text-sm font-bold text-slate-100">البيانات القانونية والجبائية (للفواتير الرسمية)</h2>
+              <p className="mb-4 text-xs text-slate-400">السجل التجاري، رقم التعريف الجبائي، المادة الجبائية ورقم التعريف الإحصائي (تظهر في الفاتورة الرسمية)</p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label htmlFor="business_rc" className={LABEL_CLS}>
+                    رقم السجل التجاري (RC)
+                  </label>
+                  <input
+                    id="business_rc"
+                    type="text"
+                    value={form.business_rc}
+                    onChange={(e) => handleChange('business_rc', e.target.value)}
+                    className={INPUT_CLS}
+                    placeholder="مثال: 16/00-1234567A26"
+                    dir="ltr"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="business_nif" className={LABEL_CLS}>
+                    رقم التعريف الجبائي (NIF)
+                  </label>
+                  <input
+                    id="business_nif"
+                    type="text"
+                    value={form.business_nif}
+                    onChange={(e) => handleChange('business_nif', e.target.value)}
+                    className={INPUT_CLS}
+                    placeholder="مثال: 123456789012345"
+                    dir="ltr"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="business_nis" className={LABEL_CLS}>
+                    رقم التعريف الإحصائي (NIS)
+                  </label>
+                  <input
+                    id="business_nis"
+                    type="text"
+                    value={form.business_nis}
+                    onChange={(e) => handleChange('business_nis', e.target.value)}
+                    className={INPUT_CLS}
+                    placeholder="مثال: 123456789012345"
+                    dir="ltr"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="business_art" className={LABEL_CLS}>
+                    رقم المادة الجبائية (Article d'imposition)
+                  </label>
+                  <input
+                    id="business_art"
+                    type="text"
+                    value={form.business_art}
+                    onChange={(e) => handleChange('business_art', e.target.value)}
+                    className={INPUT_CLS}
+                    placeholder="مثال: 12345678"
+                    dir="ltr"
                   />
                 </div>
               </div>
