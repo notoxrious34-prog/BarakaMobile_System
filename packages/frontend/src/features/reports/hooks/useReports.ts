@@ -14,6 +14,8 @@ export type ProfitResponse = {
   totalCost: string;
   serviceProfit: string;
   itemProfit: string;
+  repairProfit?: string;
+  totalRepairRevenue?: string;
   grossProfit: string;
   netProfit: string;
   totalExpenses: string;
@@ -63,6 +65,10 @@ export type SummaryResponse = {
   inventory: { totalItems: number; lowStockItems: number; outOfStockItems: number };
   salesCount: number;
   salesVolume: string;
+  repairStats?: { openTickets: number; deliveredToday: number };
+  repairProfit?: string;
+  totalExpenses?: string;
+  cashBalance?: string;
   recentTransactions: Array<{ id: string; type: string; totalAmount: string; contactName: string; createdAt: string }>;
 };
 

@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import Decimal from 'decimal.js';
 import { RefreshCw, Printer, FileDown } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Loading } from '@/components/feedback/Loading';
@@ -25,6 +26,15 @@ type DatePreset = 'today' | 'week' | 'month' | 'custom';
 function formatISODate(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
+
+const fmt = (v?: string | null) => {
+  if (!v) return '0.00';
+  try {
+    return new Decimal(v).toFixed(2);
+  } catch {
+    return '0.00';
+  }
+};
 
 function getPresetRange(preset: DatePreset, customStart: string, customEnd: string): { startDate?: string; endDate?: string } {
   const now = new Date();
@@ -70,21 +80,6 @@ export function ReportsPage() {
     role: string;
   } | null>(null);
 
-  useEffect(() => {
-    const style = document.createElement('style');
-    style.setAttribute('data-reports-print', 'true');
-    style.textContent = `
-      @media print {
-        body * { visibility: hidden; }
-        #reports-print-area, #reports-print-area * { visibility: visible; }
-        #reports-print-area { position: absolute; left: 0; top: 0; width: 100%; }
-        .no-print { display: none !important; }
-      }
-    `;
-    document.head.appendChild(style);
-    return () => { document.head.removeChild(style); };
-  }, []);
-
   function handleRefresh() {
     queryClient.invalidateQueries({ queryKey: ['capital'] });
     queryClient.invalidateQueries({ queryKey: ['profit'] });
@@ -117,7 +112,7 @@ export function ReportsPage() {
           <button
             type="button"
             onClick={handleExportPDF}
-            className="inline-flex items-center gap-2 rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500"
+            className="inline-flex items-center gap-2 rounded-xl bg-cyan-600 px-4 py-2 text-sm font-bold text-white hover:bg-cyan-500"
           >
             <FileDown className="h-4 w-4" aria-hidden="true" />
             تصدير PDF
@@ -125,7 +120,7 @@ export function ReportsPage() {
           <button
             type="button"
             onClick={() => window.print()}
-            className="inline-flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800"
+            className="inline-flex items-center gap-2 rounded-xl border border-navy-800 bg-navy-900/60 px-4 py-2 text-sm font-bold text-slate-300 hover:bg-navy-800/60"
           >
             <Printer className="h-4 w-4" aria-hidden="true" />
             طباعة
@@ -133,7 +128,7 @@ export function ReportsPage() {
           <button
             type="button"
             onClick={handleRefresh}
-            className="inline-flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800"
+            className="inline-flex items-center gap-2 rounded-xl border border-navy-800 bg-navy-900/60 px-4 py-2 text-sm font-bold text-slate-300 hover:bg-navy-800/60"
           >
             <RefreshCw className="h-4 w-4" aria-hidden="true" />
             تحديث
@@ -141,16 +136,16 @@ export function ReportsPage() {
         </div>
       </div>
 
-      <div className="flex gap-2 border-b border-slate-800 no-print">
+      <div className="flex flex-wrap gap-2 p-1.5 rounded-2xl bg-navy-950/70 border border-navy-800/80 backdrop-blur-md no-print">
         {(Object.keys(TAB_LABELS) as TabKey[]).map((key) => (
           <button
             key={key}
             type="button"
             onClick={() => setActiveTab(key)}
-            className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+            className={`rounded-xl px-4 py-2 text-sm transition-colors ${
               activeTab === key
-                ? 'border-cyan-500 text-cyan-400'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'bg-gradient-to-r from-amber-500/20 to-amber-600/10 text-amber-300 border border-amber-500/30 shadow-lg shadow-amber-950/20 font-bold'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-navy-800/50 border border-transparent font-medium'
             }`}
           >
             {TAB_LABELS[key]}
@@ -188,33 +183,33 @@ export function ReportsPage() {
                 />
               ) : summaryQ.data ? (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+                  <div className="rounded-2xl border border-navy-800 bg-navy-900/60 p-4 backdrop-blur-sm">
                     <p className="text-xs font-medium text-slate-400">إجمالي المبيعات (عدد)</p>
                     <p className="mt-1 text-lg font-bold font-mono text-slate-100">{summaryQ.data.salesCount}</p>
                   </div>
-                  <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+                  <div className="rounded-2xl border border-navy-800 bg-navy-900/60 p-4 backdrop-blur-sm">
                     <p className="text-xs font-medium text-slate-400">حجم المبيعات</p>
                     <p className="mt-1 text-lg font-bold font-mono text-emerald-400" dir="ltr">
-                      {Number(summaryQ.data.salesVolume).toFixed(2)} {currencySymbol}
+                      {fmt(summaryQ.data.salesVolume)} {currencySymbol}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+                  <div className="rounded-2xl border border-navy-800 bg-navy-900/60 p-4 backdrop-blur-sm">
                     <p className="text-xs font-medium text-slate-400">ربح اليوم</p>
                     <p className="mt-1 text-lg font-bold font-mono text-emerald-400" dir="ltr">
-                      {Number(summaryQ.data.todayProfit.totalProfit).toFixed(2)} {currencySymbol}
+                      {fmt(summaryQ.data.todayProfit.totalProfit)} {currencySymbol}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+                  <div className="rounded-2xl border border-navy-800 bg-navy-900/60 p-4 backdrop-blur-sm">
                     <p className="text-xs font-medium text-slate-400">ربح الشهر</p>
                     <p className="mt-1 text-lg font-bold font-mono text-emerald-400" dir="ltr">
-                      {Number(summaryQ.data.monthProfit.totalProfit).toFixed(2)} {currencySymbol}
+                      {fmt(summaryQ.data.monthProfit.totalProfit)} {currencySymbol}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+                  <div className="rounded-2xl border border-navy-800 bg-navy-900/60 p-4 backdrop-blur-sm">
                     <p className="text-xs font-medium text-slate-400">إجمالي المخزون</p>
                     <p className="mt-1 text-lg font-bold font-mono text-slate-100">{summaryQ.data.inventory.totalItems} صنف</p>
                   </div>
-                  <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+                  <div className="rounded-2xl border border-navy-800 bg-navy-900/60 p-4 backdrop-blur-sm">
                     <p className="text-xs font-medium text-slate-400">أصناف منخفضة</p>
                     <p className="mt-1 text-lg font-bold font-mono text-amber-400">{summaryQ.data.inventory.lowStockItems}</p>
                   </div>
@@ -228,14 +223,16 @@ export function ReportsPage() {
           <section className="space-y-4">
             <div className="flex flex-wrap items-center gap-2 no-print">
               <span className="text-sm font-medium text-slate-300">الفترة:</span>
-              <div className="flex gap-1 rounded-lg border border-slate-800 bg-slate-900 p-1">
+              <div className="flex flex-wrap gap-1.5 rounded-2xl border border-navy-800 bg-navy-950/60 p-1.5">
                 {(['today', 'week', 'month', 'custom'] as DatePreset[]).map((p) => (
                   <button
                     key={p}
                     type="button"
                     onClick={() => setPreset(p)}
-                    className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${
-                      preset === p ? 'bg-slate-800 text-slate-100 shadow-sm' : 'text-slate-400 hover:text-slate-200'
+                    className={`rounded-xl border px-3 py-1.5 text-sm transition-colors ${
+                      preset === p
+                        ? 'bg-gradient-to-r from-amber-500/20 to-amber-600/10 text-amber-300 border-amber-500/30 font-bold'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-navy-800/50 border-transparent font-medium'
                     }`}
                   >
                     {p === 'today' ? 'اليوم' : p === 'week' ? 'هذا الأسبوع' : p === 'month' ? 'هذا الشهر' : 'مخصص'}
@@ -248,14 +245,14 @@ export function ReportsPage() {
                     type="date"
                     value={customStart}
                     onChange={(e) => setCustomStart(e.target.value)}
-                    className="rounded-md border border-slate-700 bg-slate-800/60 px-3 py-1 text-sm text-slate-100 focus:border-cyan-600 focus:outline-none focus:ring-1 focus:ring-cyan-600"
+                    className="rounded-xl border border-navy-800 bg-navy-950/60 px-3 py-1.5 text-sm text-slate-100 focus:border-amber-500/50 focus:outline-none"
                   />
                   <span className="text-slate-500">إلى</span>
                   <input
                     type="date"
                     value={customEnd}
                     onChange={(e) => setCustomEnd(e.target.value)}
-                    className="rounded-md border border-slate-700 bg-slate-800/60 px-3 py-1 text-sm text-slate-100 focus:border-cyan-600 focus:outline-none focus:ring-1 focus:ring-cyan-600"
+                    className="rounded-xl border border-navy-800 bg-navy-950/60 px-3 py-1.5 text-sm text-slate-100 focus:border-amber-500/50 focus:outline-none"
                   />
                 </div>
               )}
@@ -296,39 +293,33 @@ export function ReportsPage() {
           <section className="space-y-4">
             <h2 className="text-base font-semibold text-slate-100">الخزينة والمصاريف — ملخص</h2>
             {capitalQ.data && (
-              <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+              <div className="rounded-2xl border border-navy-800 bg-navy-900/60 p-5 backdrop-blur-sm">
                 <p className="text-sm text-slate-400">السيولة في الصندوق</p>
                 <p className="mt-1 text-2xl font-bold font-mono text-slate-100" dir="ltr">
-                  {Number(capitalQ.data.cashInHand ?? '0.00').toFixed(2)} {currencySymbol}
+                  {fmt(capitalQ.data.cashInHand)} {currencySymbol}
                 </p>
                 <p className="mt-1 text-xs text-slate-500">مضمنة في حساب رأس المال: inventory + receivables + cash − payables</p>
               </div>
             )}
             {profitQ.data && (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+                <div className="rounded-2xl border border-navy-800 bg-navy-900/60 p-5 backdrop-blur-sm">
                   <p className="text-xs text-slate-400">إجمالي المصاريف (للفترة)</p>
                   <p className="mt-1 text-lg font-bold font-mono text-amber-400" dir="ltr">
-                    {Number(profitQ.data.totalExpenses ?? '0.00').toFixed(2)} {currencySymbol}
+                    {fmt(profitQ.data.totalExpenses)} {currencySymbol}
                   </p>
                 </div>
-                <div className="rounded-xl border-2 border-slate-700 bg-slate-900 p-4">
+                <div className="rounded-2xl border-2 border-navy-700/80 bg-navy-900/90 p-5 shadow-xl shadow-navy-950/50 backdrop-blur-sm">
                   <p className="text-xs font-bold text-slate-100">صافي الربح بعد المصاريف</p>
                   <p className="mt-1 text-xl font-extrabold font-mono text-emerald-400" dir="ltr">
-                    {Number(profitQ.data.netProfitAfterExpenses ?? '0.00').toFixed(2)} {currencySymbol}
+                    {fmt(profitQ.data.netProfitAfterExpenses)} {currencySymbol}
                   </p>
                 </div>
               </div>
             )}
-            <div className="flex gap-2">
-              <Link to="/treasury" className="rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500">
-                فتح الخزينة
-              </Link>
-              <Link
-                to="/expenses"
-                className="rounded-md border border-slate-700 bg-slate-800 px-4 py-2 text-sm text-slate-200 hover:bg-slate-700"
-              >
-                فتح المصاريف
+            <div className="flex flex-wrap gap-2 no-print">
+              <Link to="/admin/finance" className="rounded-xl bg-gradient-to-r from-amber-500/20 to-amber-600/10 border border-amber-500/30 px-4 py-2 text-sm font-bold text-amber-300 hover:from-amber-500/30 hover:to-amber-600/20">
+                فتح المالية (الصندوق والمصاريف)
               </Link>
             </div>
           </section>

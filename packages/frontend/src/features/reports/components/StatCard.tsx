@@ -1,3 +1,4 @@
+import Decimal from 'decimal.js';
 import { useInvoiceSettings } from '@/features/settings/hooks/useInvoiceSettings';
 
 type Props = {
@@ -8,7 +9,7 @@ type Props = {
 };
 
 const TONE_CLASSES: Record<string, string> = {
-  neutral: 'border-slate-800 bg-slate-900 text-slate-100',
+  neutral: 'border-navy-800 bg-navy-900/60 text-slate-100 hover:border-navy-700 transition-colors',
   positive: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400',
   negative: 'border-rose-500/30 bg-rose-500/10 text-rose-400',
   warning: 'border-amber-500/30 bg-amber-500/10 text-amber-400',
@@ -20,9 +21,11 @@ export function StatCard({ label, value, suffix, tone = 'neutral' }: Props) {
   const resolvedSuffix = suffix ?? currencySymbol;
   const toneClass = TONE_CLASSES[tone] ?? TONE_CLASSES.neutral;
   const displayValue = (() => {
-    const n = Number(value);
-    if (Number.isNaN(n)) return value;
-    return n.toFixed(2);
+    try {
+      return new Decimal(value).toFixed(2);
+    } catch {
+      return value;
+    }
   })();
 
   return (

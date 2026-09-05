@@ -57,6 +57,7 @@
 /* TB-068: isolate the POS print surface (dual-mode receipt + Z slip) for window.print() */
 /* TB-072: repair claim slip shares the same isolation */
 /* TB-076: back-office thermal receipt shares the same isolation */
+/* TB-084: strategic reports print area shares the same isolation */
 @media print {
   body * {
     visibility: hidden;
@@ -68,13 +69,16 @@
   #contact-statement,
   #contact-statement *,
   #thermal-receipt-root,
-  #thermal-receipt-root * {
+  #thermal-receipt-root *,
+  #reports-print-area,
+  #reports-print-area * {
     visibility: visible;
   }
   #pos-receipt,
   #repair-slip,
   #contact-statement,
-  #thermal-receipt-root {
+  #thermal-receipt-root,
+  #reports-print-area {
     position: fixed;
     top: 0;
     right: 0;

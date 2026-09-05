@@ -1,3 +1,4 @@
+import Decimal from 'decimal.js';
 import { StatCard } from './StatCard';
 import type { CapitalResponse } from '../hooks/useReports';
 import { useInvoiceSettings } from '@/features/settings/hooks/useInvoiceSettings';
@@ -7,10 +8,14 @@ type Props = {
 };
 
 function getNetCapitalTone(value: string): 'positive' | 'negative' | 'neutral' {
-  const n = Number(value);
-  if (n > 0) return 'positive';
-  if (n < 0) return 'negative';
-  return 'neutral';
+  try {
+    const d = new Decimal(value || '0');
+    if (d.gt(0)) return 'positive';
+    if (d.lt(0)) return 'negative';
+    return 'neutral';
+  } catch {
+    return 'neutral';
+  }
 }
 
 export function CapitalCard({ data }: Props) {

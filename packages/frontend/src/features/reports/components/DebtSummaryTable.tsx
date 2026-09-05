@@ -1,3 +1,4 @@
+import Decimal from 'decimal.js';
 import type { DebtSummaryResponse } from '../hooks/useReports';
 import { useInvoiceSettings } from '@/features/settings/hooks/useInvoiceSettings';
 
@@ -12,18 +13,35 @@ const ROLE_LABEL: Record<string, string> = {
   BOTH: 'مورد وعميل',
 };
 
+const fmt = (v?: string | null) => {
+  if (!v) return '0.00';
+  try {
+    return new Decimal(v).toFixed(2);
+  } catch {
+    return '0.00';
+  }
+};
+
 function getNetPositionTone(value: string): string {
-  const n = Number(value);
-  if (n > 0) return 'text-emerald-400';
-  if (n < 0) return 'text-rose-400';
-  return 'text-slate-400';
+  try {
+    const d = new Decimal(value || '0');
+    if (d.gt(0)) return 'text-emerald-400';
+    if (d.lt(0)) return 'text-rose-400';
+    return 'text-slate-400';
+  } catch {
+    return 'text-slate-400';
+  }
 }
 
 function getNetDebtTone(value: string): string {
-  const n = Number(value);
-  if (n > 0) return 'text-emerald-400';
-  if (n < 0) return 'text-rose-400';
-  return 'text-slate-400';
+  try {
+    const d = new Decimal(value || '0');
+    if (d.gt(0)) return 'text-emerald-400';
+    if (d.lt(0)) return 'text-rose-400';
+    return 'text-slate-400';
+  } catch {
+    return 'text-slate-400';
+  }
 }
 
 export function DebtSummaryTable({ data, onViewLedger }: Props) {
@@ -34,32 +52,32 @@ export function DebtSummaryTable({ data, onViewLedger }: Props) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+        <div className="rounded-2xl border border-navy-800 bg-navy-900/60 p-4 backdrop-blur-sm">
           <p className="text-xs font-medium text-slate-400">إجمالي المستحقات</p>
           <p className="mt-1 text-lg font-bold font-mono text-emerald-400" dir="ltr">
-            {Number(data.totalReceivables).toFixed(2)} {currencySymbol}
+            {fmt(data.totalReceivables)} {currencySymbol}
           </p>
         </div>
-        <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+        <div className="rounded-2xl border border-navy-800 bg-navy-900/60 p-4 backdrop-blur-sm">
           <p className="text-xs font-medium text-slate-400">إجمالي الالتزامات</p>
           <p className="mt-1 text-lg font-bold font-mono text-amber-400" dir="ltr">
-            {Number(data.totalPayables).toFixed(2)} {currencySymbol}
+            {fmt(data.totalPayables)} {currencySymbol}
           </p>
         </div>
-        <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+        <div className="rounded-2xl border border-navy-800 bg-navy-900/60 p-4 backdrop-blur-sm">
           <p className="text-xs font-medium text-slate-400">صافي المركز المالي</p>
           <p className={`mt-1 text-lg font-bold font-mono ${netDebtTone}`} dir="ltr">
-            {Number(data.netDebtPosition).toFixed(2)} {currencySymbol}
+            {fmt(data.netDebtPosition)} {currencySymbol}
           </p>
         </div>
       </div>
 
       {data.topDebtors && data.topDebtors.length > 0 && (
-        <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+        <div className="rounded-2xl border border-navy-800 bg-navy-900/60 p-4 backdrop-blur-sm">
           <h3 className="mb-3 text-sm font-semibold text-slate-100">أكبر المدينين (العملاء)</h3>
           <ol className="space-y-2">
             {data.topDebtors.map((d, idx) => (
-              <li key={d.contactId} className="flex items-center justify-between rounded-lg bg-slate-800/60 px-3 py-2">
+              <li key={d.contactId} className="flex items-center justify-between rounded-lg bg-navy-950/60 px-3 py-2">
                 <span className="flex items-center gap-2">
                   <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/10 text-xs font-bold text-emerald-400 border border-emerald-500/20">
                     {idx + 1}
@@ -67,7 +85,7 @@ export function DebtSummaryTable({ data, onViewLedger }: Props) {
                   <span className="text-sm font-medium text-slate-100">{d.contactName}</span>
                 </span>
                 <span className="text-sm font-bold font-mono text-slate-100" dir="ltr">
-                  {Number(d.currentBalance).toFixed(2)} {currencySymbol}
+                  {fmt(d.currentBalance)} {currencySymbol}
                 </span>
               </li>
             ))}
@@ -76,11 +94,11 @@ export function DebtSummaryTable({ data, onViewLedger }: Props) {
       )}
 
       {data.topCreditors && data.topCreditors.length > 0 && (
-        <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+        <div className="rounded-2xl border border-navy-800 bg-navy-900/60 p-4 backdrop-blur-sm">
           <h3 className="mb-3 text-sm font-semibold text-slate-100">أكبر الدائنين (الموردين)</h3>
           <ol className="space-y-2">
             {data.topCreditors.map((d, idx) => (
-              <li key={d.contactId} className="flex items-center justify-between rounded-lg bg-slate-800/60 px-3 py-2">
+              <li key={d.contactId} className="flex items-center justify-between rounded-lg bg-navy-950/60 px-3 py-2">
                 <span className="flex items-center gap-2">
                   <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-500/10 text-xs font-bold text-amber-400 border border-amber-500/20">
                     {idx + 1}
@@ -88,7 +106,7 @@ export function DebtSummaryTable({ data, onViewLedger }: Props) {
                   <span className="text-sm font-medium text-slate-100">{d.contactName}</span>
                 </span>
                 <span className="text-sm font-bold font-mono text-slate-100" dir="ltr">
-                  {Number(d.currentBalance).toFixed(2)} {currencySymbol}
+                  {fmt(d.currentBalance)} {currencySymbol}
                 </span>
               </li>
             ))}
@@ -96,11 +114,11 @@ export function DebtSummaryTable({ data, onViewLedger }: Props) {
         </div>
       )}
 
-      <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900">
-        <div className="overflow-x-auto">
+      <div className="overflow-hidden rounded-2xl border border-navy-800 bg-navy-900/60 backdrop-blur-sm">
+        <div className="scrollbar-premium overflow-x-auto">
           <table className="w-full border-collapse text-sm">
             <thead>
-              <tr className="bg-slate-800/60 text-slate-400">
+              <tr className="bg-navy-950/70 text-slate-300">
                 <th className="px-3 py-2.5 text-right font-semibold">جهة الاتصال</th>
                 <th className="px-3 py-2.5 text-right font-semibold">الدور</th>
                 <th className="px-3 py-2.5 text-right font-semibold">رصيد المورد</th>
@@ -111,17 +129,17 @@ export function DebtSummaryTable({ data, onViewLedger }: Props) {
             </thead>
             <tbody>
               {data.contacts.map((c) => (
-                <tr key={c.contactId} className="border-t border-slate-800 bg-slate-900 hover:bg-slate-800/40">
+                <tr key={c.contactId} className="border-t border-navy-800/60 bg-navy-900/60 hover:bg-navy-800/40">
                   <td className="px-3 py-2.5 font-medium text-slate-100">{c.contactName}</td>
                   <td className="px-3 py-2.5 text-slate-300">{ROLE_LABEL[c.contactRole] ?? c.contactRole}</td>
                   <td className="px-3 py-2.5 font-mono text-slate-300" dir="ltr">
-                    {c.supplierAccount ? `${Number(c.supplierAccount.currentBalance).toFixed(2)} ${currencySymbol}` : '—'}
+                    {c.supplierAccount ? `${fmt(c.supplierAccount.currentBalance)} ${currencySymbol}` : '—'}
                   </td>
                   <td className="px-3 py-2.5 font-mono text-slate-300" dir="ltr">
-                    {c.customerAccount ? `${Number(c.customerAccount.currentBalance).toFixed(2)} ${currencySymbol}` : '—'}
+                    {c.customerAccount ? `${fmt(c.customerAccount.currentBalance)} ${currencySymbol}` : '—'}
                   </td>
                   <td className={`px-3 py-2.5 font-medium font-mono ${getNetPositionTone(c.netPosition)}`} dir="ltr">
-                    {Number(c.netPosition).toFixed(2)} {currencySymbol}
+                    {fmt(c.netPosition)} {currencySymbol}
                   </td>
                   <td className="px-3 py-2.5 text-center">
                     <div className="flex items-center justify-center gap-1">
