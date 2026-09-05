@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import Decimal from 'decimal.js';
 import { X } from 'lucide-react';
 import { ApiError } from '@/lib/api';
 import {
@@ -18,30 +19,41 @@ type Props = {
 function isPositiveNumeric(value: string): boolean {
   if (!value.trim()) return false;
   if (!/^\d+(\.\d{1,2})?$/.test(value.trim())) return false;
-  const n = Number(value);
-  return !Number.isNaN(n) && n > 0;
+  try {
+    return new Decimal(value).gt(0);
+  } catch {
+    return false;
+  }
 }
 
 function isValidCommission(value: string): boolean {
   if (!isPositiveNumeric(value)) return false;
-  const n = Number(value);
-  return n > 0 && n <= 100;
+  try {
+    const n = new Decimal(value);
+    return n.gt(0) && n.lte(100);
+  } catch {
+    return false;
+  }
 }
 
 function toDisplayFixed(value: string | null | undefined): string {
   if (value == null || value === '') return '';
-  const n = Number(value);
-  if (Number.isNaN(n)) return value;
-  return n.toFixed(2);
+  try {
+    return new Decimal(value).toFixed(2);
+  } catch {
+    return value;
+  }
 }
 
 function toDisplayCommission(value: string | null | undefined): string {
   if (value == null || value === '') return '';
-  const n = Number(value);
-  if (Number.isNaN(n)) return value;
-  // backend stores 4dp like 2.5000 — show as number without trailing zeros for UX
-  const s = n.toFixed(4).replace(/\.?0+$/, '');
-  return s;
+  try {
+    // backend stores 4dp like 2.5000 — show as number without trailing zeros for UX
+    const s = new Decimal(value).toFixed(4).replace(/\.?0+$/, '');
+    return s;
+  } catch {
+    return value;
+  }
 }
 
 export function ServiceFormModal({ open, onClose, service }: Props) {
@@ -102,9 +114,13 @@ export function ServiceFormModal({ open, onClose, service }: Props) {
     if (pricingType === 'COMMISSION') {
       if (!commissionRate.trim()) errs.commissionRate = 'نسبة العمولة مطلوبة';
       else if (!isValidCommission(commissionRate)) {
-        const n = Number(commissionRate);
-        if (Number.isNaN(n) || n <= 0) errs.commissionRate = 'نسبة العمولة يجب أن تكون رقمًا موجبًا';
-        else if (n > 100) errs.commissionRate = 'نسبة العمولة يجب ألا تتجاوز 100';
+        let outOfRange = false;
+        try {
+          outOfRange = new Decimal(commissionRate).gt(100);
+        } catch {
+          outOfRange = false;
+        }
+        if (outOfRange) errs.commissionRate = 'نسبة العمولة يجب ألا تتجاوز 100';
         else errs.commissionRate = 'نسبة العمولة يجب أن تكون رقمًا موجبًا وألا تتجاوز 100';
       }
     }

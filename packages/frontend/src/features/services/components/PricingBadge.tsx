@@ -1,3 +1,4 @@
+import Decimal from 'decimal.js';
 import { useInvoiceSettings } from '@/features/settings/hooks/useInvoiceSettings';
 
 type Props = {
@@ -9,9 +10,11 @@ export function PricingBadge({ pricingType, value }: Props) {
   const { data: settingsData } = useInvoiceSettings();
   const currencySymbol = settingsData?.currency_symbol ?? 'د.ج';
   const normalized = (() => {
-    const n = Number(value);
-    if (Number.isNaN(n)) return value;
-    return pricingType === 'FIXED' ? n.toFixed(2) : `${n}`;
+    try {
+      return pricingType === 'FIXED' ? new Decimal(value).toFixed(2) : `${new Decimal(value).toString()}`;
+    } catch {
+      return value;
+    }
   })();
 
   if (pricingType === 'FIXED') {

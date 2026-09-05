@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import Decimal from 'decimal.js';
 import { X } from 'lucide-react';
 import { ApiError } from '@/lib/api';
 import {
@@ -18,15 +19,20 @@ type Props = {
 function isPositiveNumeric(value: string): boolean {
   if (!value.trim()) return false;
   if (!/^\d+(\.\d{1,2})?$/.test(value.trim())) return false;
-  const num = Number(value);
-  return !Number.isNaN(num) && num > 0;
+  try {
+    return new Decimal(value).gt(0);
+  } catch {
+    return false;
+  }
 }
 
 function toDisplayPrice(value: string | undefined): string {
   if (value === undefined || value === null) return '';
-  const n = Number(value);
-  if (Number.isNaN(n)) return value;
-  return n.toFixed(2);
+  try {
+    return new Decimal(value).toFixed(2);
+  } catch {
+    return value;
+  }
 }
 
 export function ItemFormModal({ open, onClose, item }: Props) {
