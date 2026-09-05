@@ -59,6 +59,11 @@
 /* TB-076: back-office thermal receipt shares the same isolation */
 /* TB-084: strategic reports print area shares the same isolation */
 /* TB-094: back-office A4 invoice paper shares the same isolation */
+/* TB-095: exact 1-page A4 — compact margins, absolute paper, break avoidance */
+@page {
+  size: A4 portrait;
+  margin: 6mm 8mm;
+}
 @media print {
   body * {
     visibility: hidden;
@@ -91,5 +96,17 @@
   #invoice-paper {
     page-break-after: avoid;
     page-break-inside: avoid;
+  }
+  #invoice-paper {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
   }
 }

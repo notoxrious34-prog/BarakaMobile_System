@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import Decimal from 'decimal.js';
 import QRCode from 'qrcode';
 import { X, Printer, Download, Loader2 } from 'lucide-react';
+import { BrandMark } from '@/components/layout/BrandMark';
 import { useTransaction } from '@/features/transactions/hooks/useTransaction';
 import { useInvoiceSettings } from '@/features/settings/hooks/useInvoiceSettings';
-import logoUrl from '@/assets/logo.png';
 
 declare global {
   interface Window {
@@ -138,7 +138,7 @@ export function parseCustomNoteRows(note: string | null | undefined): ParsedCust
   chunks.forEach((chunk, idx) => {
     const m = chunk.match(/^(.*?)\s*[×xX*]\s*(\d+)\s*@\s*([\d,]+\.?\d*)\s*$/);
     if (!m) return;
-    const name = (m[1] || '').trim() || `بند مخصص ${idx + 1}`;
+    const name = (m[1] || '').trim() || `صنف ${idx + 1}`;
     const qty = parseInt(m[2] || '1', 10);
     if (!Number.isFinite(qty) || qty < 1) return;
     let unit: string;
@@ -301,6 +301,52 @@ export function InvoiceDocument({ transactionId, onClose }: Props) {
     }
   })();
 
+  /* Full financial breakdown — Decimal only (Rule ②) */
+  const explicitDiscount = (transaction as unknown as { discount?: string | null })?.discount ?? null;
+  const amountPaidRaw =
+    (transaction as unknown as { amountPaidNow?: string | null; amountPaid?: string | null })?.amountPaidNow ??
+    (transaction as unknown as { amountPaid?: string | null })?.amountPaid ??
+    '0';
+  const finance = (() => {
+    try {
+      const sub = new Decimal(subtotalStr);
+      const grand = new Decimal(grandTotalStr);
+      let disc = new Decimal(0);
+      if (explicitDiscount !== null && explicitDiscount !== '') {
+        disc = new Decimal(explicitDiscount);
+      } else if (sub.gt(grand)) {
+        disc = sub.minus(grand);
+      }
+      if (disc.lt(0)) disc = new Decimal(0);
+      let paid: Decimal;
+      try {
+        paid = new Decimal(amountPaidRaw ?? '0');
+      } catch {
+        paid = new Decimal(0);
+      }
+      if (paid.lt(0)) paid = new Decimal(0);
+      let rest = grand.minus(paid);
+      if (rest.lt(0)) rest = new Decimal(0);
+      return {
+        discountStr: disc.toFixed(2),
+        paidStr: paid.toFixed(2),
+        remainingStr: rest.toFixed(2),
+        hasDiscount: disc.gt(0),
+        hasPaid: paid.gt(0),
+        hasRemaining: rest.gt(0),
+      };
+    } catch {
+      return {
+        discountStr: '0.00',
+        paidStr: '0.00',
+        remainingStr: '0.00',
+        hasDiscount: false,
+        hasPaid: false,
+        hasRemaining: false,
+      };
+    }
+  })();
+
   const modePill = (active: boolean, activeCls: string) =>
     `rounded-xl border px-4 py-2 text-sm transition-colors ${
       active ? activeCls : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.05] border-transparent font-medium'
@@ -309,7 +355,7 @@ export function InvoiceDocument({ transactionId, onClose }: Props) {
   return (
     <div className="fixed inset-0 z-[9999] flex flex-col items-center overflow-auto bg-white p-4 print:static print:p-0 print:overflow-visible print:bg-transparent" dir="rtl">
       <style>{`
-        @page { size: A4; margin: 12mm; }
+        @page { size: A4 portrait; margin: 6mm 8mm; }
         @media print {
           .no-print { display: none !important; }
           #invoice-paper { box-shadow: none !important; border: none !important; margin: 0 !important; }
@@ -383,7 +429,7 @@ export function InvoiceDocument({ transactionId, onClose }: Props) {
 
       <div
         id="invoice-paper"
-        className="w-full max-w-[210mm] min-h-[297mm] bg-white p-8 shadow-lg border border-zinc-200 flex flex-col print:min-h-0 print:m-0 print:shadow-none print:border-none print:w-full"
+        className="w-full max-w-[210mm] min-h-[297mm] bg-white p-8 print:p-2 sm:p-6 shadow-lg border border-zinc-200 flex flex-col print:min-h-0 print:m-0 print:shadow-none print:border-none print:w-full print:text-[11px] print:max-h-[280mm]"
       >
         {isLoading ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 py-24">
@@ -403,20 +449,11 @@ export function InvoiceDocument({ transactionId, onClose }: Props) {
           </div>
         ) : (
           <>
-            {/* a. Header row: logo + business info from Settings API */}
-            <div className="flex items-start justify-between gap-6">
+            {/* a. Header row: BrandMark emblem + business info from Settings API */}
+            <div className="flex items-start justify-between gap-6 print:gap-3">
               <div className="flex items-center gap-4">
-                <img
-                  src={logoUrl}
-                  alt="logo"
-                  className="h-14 w-auto object-contain"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).style.display = 'none';
-                    const fallback = document.getElementById('logo-text-fallback');
-                    if (fallback) fallback.style.display = 'block';
-                  }}
-                />
-                <div id="logo-text-fallback" style={{ display: 'none' }}>
+                <BrandMark className="h-10 w-10 shrink-0 text-amber-500 print:text-slate-900" />
+                <div>
                   <p className="text-2xl font-extrabold tracking-tight text-zinc-900">{businessName}</p>
                 </div>
               </div>
@@ -435,26 +472,26 @@ export function InvoiceDocument({ transactionId, onClose }: Props) {
                 )}
               </div>
             </div>
-            <hr className="mt-6 border-zinc-200" />
+            <hr className="mt-6 print:mt-2 border-zinc-200" />
 
             {/* b. Document title */}
-            <div className="mt-6 text-center">
+            <div className="mt-6 print:mt-2 text-center">
               {mode === 'legal' ? (
                 <>
-                  <h1 className="text-3xl font-extrabold text-zinc-900">فاتورة بيع</h1>
+                  <h1 className="text-3xl print:text-2xl font-extrabold text-zinc-900">فاتورة بيع</h1>
                   <p className="mt-1 text-xs tracking-widest text-zinc-400">FACTURE DE VENTE</p>
                 </>
               ) : (
                 <>
-                  <h1 className="text-3xl font-extrabold text-zinc-900">سند تسليم / وصل بيع</h1>
+                  <h1 className="text-3xl print:text-2xl font-extrabold text-zinc-900">سند تسليم / وصل بيع</h1>
                   <p className="mt-1 text-xs tracking-widest text-zinc-400">BON DE LIVRAISON</p>
                 </>
               )}
             </div>
 
             {/* c. Metadata block: invoiceNumber, date, QR */}
-            <div className="mt-6 flex items-start justify-between gap-6 rounded-lg border border-zinc-100 bg-zinc-50/50 p-4">
-              <div className="space-y-2 text-sm">
+            <div className="mt-6 print:mt-2 flex items-start justify-between gap-6 print:gap-3 rounded-lg border border-zinc-100 bg-zinc-50/50 p-4 print:p-2">
+              <div className="space-y-2 print:space-y-1 text-sm">
                 <div className="flex gap-2">
                   <span className="font-medium text-zinc-500">رقم الفاتورة:</span>
                   <span className="font-mono font-semibold text-zinc-900" dir="ltr">{displayInvoiceNumber}</span>
@@ -476,20 +513,20 @@ export function InvoiceDocument({ transactionId, onClose }: Props) {
               </div>
               <div className="flex flex-col items-center gap-2">
                 {qrDataUrl ? (
-                  <img src={qrDataUrl} alt="QR" className="h-28 w-28 rounded border border-zinc-200 bg-white p-1" />
+                  <img src={qrDataUrl} alt="QR" className="h-28 w-28 print:h-20 print:w-20 rounded border border-zinc-200 bg-white p-1" />
                 ) : invoiceNumber ? (
-                  <div className="flex h-28 w-28 items-center justify-center rounded border border-dashed border-zinc-300 bg-white">
+                  <div className="flex h-28 w-28 print:h-20 print:w-20 items-center justify-center rounded border border-dashed border-zinc-300 bg-white">
                     <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
                   </div>
                 ) : (
-                  <div className="flex h-28 w-28 items-center justify-center rounded border border-dashed border-zinc-300 bg-white text-xs text-zinc-400">لا يوجد QR</div>
+                  <div className="flex h-28 w-28 print:h-20 print:w-20 items-center justify-center rounded border border-dashed border-zinc-300 bg-white text-xs text-zinc-400">لا يوجد QR</div>
                 )}
                 {qrDataUrl && <span className="text-[10px] text-zinc-400" dir="ltr">{`BarakaMobile|${invoiceNumber}`}</span>}
               </div>
             </div>
 
             {/* d. Bill To block */}
-            <div className="mt-6 rounded-lg border border-zinc-200 p-4">
+            <div className="mt-6 print:mt-2 rounded-lg border border-zinc-200 p-4 print:p-2">
               <h3 className="text-sm font-semibold text-zinc-700">فاتورة إلى</h3>
               <div className="mt-2 space-y-1 text-sm">
                 <p className="font-medium text-zinc-900">{transaction.account.contact.name}</p>
@@ -503,15 +540,15 @@ export function InvoiceDocument({ transactionId, onClose }: Props) {
             </div>
 
             {/* e. Line items table — uses transaction itemLines sellingPrice historically (unitPrice), NOT current item sellingPrice */}
-            <div className="mt-6 flex-1">
+            <div className="mt-6 print:mt-2 flex-1">
               <table className="w-full border-collapse text-sm">
                 <thead>
                   <tr className="border-b border-zinc-300 bg-zinc-50 text-zinc-700">
-                    <th className="px-3 py-2 text-right font-semibold">#</th>
-                    <th className="px-3 py-2 text-right font-semibold">الوصف</th>
-                    <th className="px-3 py-2 text-right font-semibold">الكمية</th>
-                    <th className="px-3 py-2 text-right font-semibold">سعر الوحدة</th>
-                    <th className="px-3 py-2 text-right font-semibold">الإجمالي</th>
+                    <th className="px-3 py-2 print:px-2 print:py-1 text-right font-semibold">#</th>
+                    <th className="px-3 py-2 print:px-2 print:py-1 text-right font-semibold">الوصف</th>
+                    <th className="px-3 py-2 print:px-2 print:py-1 text-right font-semibold">الكمية</th>
+                    <th className="px-3 py-2 print:px-2 print:py-1 text-right font-semibold">سعر الوحدة</th>
+                    <th className="px-3 py-2 print:px-2 print:py-1 text-right font-semibold">الإجمالي</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -522,18 +559,13 @@ export function InvoiceDocument({ transactionId, onClose }: Props) {
                   ) : (
                     combinedRows.map((row, idx) => (
                       <tr key={row.id} className="border-b border-zinc-100">
-                        <td className="px-3 py-2 text-zinc-600">{idx + 1}</td>
-                        <td className="px-3 py-2 font-medium text-zinc-900">
+                        <td className="px-3 py-2 print:px-2 print:py-1 text-zinc-600">{idx + 1}</td>
+                        <td className="px-3 py-2 print:px-2 print:py-1 font-medium text-zinc-900">
                           {row.description}
-                          {row.isCustom && (
-                            <span className="mr-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">
-                              بند مخصص
-                            </span>
-                          )}
                         </td>
-                        <td className="px-3 py-2 text-zinc-900" dir="ltr">{row.quantity}</td>
-                        <td className="px-3 py-2 text-zinc-900" dir="ltr">{formatMoney(row.unitPrice, currencySymbol)}</td>
-                        <td className="px-3 py-2 font-medium text-zinc-900" dir="ltr">{formatMoney(row.lineTotal, currencySymbol)}</td>
+                        <td className="px-3 py-2 print:px-2 print:py-1 text-zinc-900" dir="ltr">{row.quantity}</td>
+                        <td className="px-3 py-2 print:px-2 print:py-1 text-zinc-900" dir="ltr">{formatMoney(row.unitPrice, currencySymbol)}</td>
+                        <td className="px-3 py-2 print:px-2 print:py-1 font-medium text-zinc-900" dir="ltr">{formatMoney(row.lineTotal, currencySymbol)}</td>
                       </tr>
                     ))
                   )}
@@ -541,57 +573,75 @@ export function InvoiceDocument({ transactionId, onClose }: Props) {
               </table>
             </div>
 
-            {/* f. Totals block */}
-            <div className="mt-6 flex justify-end">
-              <div className="w-64 space-y-2 rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-sm">
+            {/* f. Totals block — full financial breakdown */}
+            <div className="mt-6 print:mt-2 flex justify-end">
+              <div className="w-64 space-y-2 print:space-y-1 rounded-lg border border-zinc-200 bg-zinc-50 p-4 print:p-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-zinc-600">المجموع الفرعي:</span>
                   <span className="font-medium text-zinc-900" dir="ltr">{formatMoney(subtotalStr, currencySymbol)}</span>
                 </div>
+                {finance.hasDiscount && (
+                  <div className="flex justify-between">
+                    <span className="font-medium text-amber-700">التخفيض / الخصم:</span>
+                    <span className="font-medium text-amber-700" dir="ltr">-{formatMoney(finance.discountStr, currencySymbol)}</span>
+                  </div>
+                )}
                 <hr className="border-zinc-200" />
                 <div className="flex justify-between text-base">
                   <span className="font-bold text-zinc-900">المجموع الكلي:</span>
                   <span className="font-extrabold text-zinc-900" dir="ltr">{formatMoney(grandTotalStr, currencySymbol)}</span>
                 </div>
+                {finance.hasPaid && (
+                  <div className="flex justify-between">
+                    <span className="font-medium text-emerald-700">المدفوع / الدفعة الأولى:</span>
+                    <span className="font-medium text-emerald-700" dir="ltr">{formatMoney(finance.paidStr, currencySymbol)}</span>
+                  </div>
+                )}
+                {finance.hasRemaining && (
+                  <div className="flex justify-between">
+                    <span className="font-bold text-rose-700">المبلغ المتبقي:</span>
+                    <span className="font-bold text-rose-700" dir="ltr">{formatMoney(finance.remainingStr, currencySymbol)}</span>
+                  </div>
+                )}
               </div>
             </div>
 
             {/* g-mode. Legal vs slip closing sections */}
             {mode === 'legal' ? (
-              <div className="mt-6 space-y-4">
-                <div className="rounded-lg border border-zinc-300 bg-zinc-50 p-4 text-center">
+              <div className="mt-6 print:mt-2 space-y-4 print:space-y-1">
+                <div className="rounded-lg border border-zinc-300 bg-zinc-50 p-4 print:p-2 text-center">
                   <p className="text-sm font-bold text-zinc-900">
                     أوقفت هذه الفاتورة عند مبلغ قدره: {numberToArabicWords(grandTotalStr)}
                   </p>
                 </div>
                 <div className="flex justify-end">
-                  <div className="w-64 rounded-lg border-2 border-dashed border-zinc-300 p-4 text-center">
+                  <div className="w-64 rounded-lg border-2 border-dashed border-zinc-300 p-4 print:p-2 text-center">
                     <p className="text-sm font-bold text-zinc-800">ختم وتوقيع المؤسسة</p>
                     <p className="mt-0.5 text-[10px] tracking-widest text-zinc-400">Cachet &amp; Signature</p>
-                    <div className="mt-10 border-t border-zinc-300" />
+                    <div className="mt-10 print:mt-6 border-t border-zinc-300" />
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="mt-6 space-y-4">
-                <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-center">
+              <div className="mt-6 print:mt-2 space-y-4 print:space-y-1">
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 print:p-2 text-center">
                   <p className="text-sm font-medium text-emerald-900">استلمت البضاعة المذكورة أعلاه في حالة جيدة وسليمة</p>
                 </div>
-                <div className="flex justify-between gap-6 text-center">
+                <div className="flex justify-between gap-6 print:gap-3 text-center">
                   <div className="flex-1">
                     <p className="text-sm font-semibold text-zinc-800">توقيع البائع</p>
-                    <div className="mt-10 border-t border-zinc-300" />
+                    <div className="mt-10 print:mt-6 border-t border-zinc-300" />
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-semibold text-zinc-800">توقيع واستلام الزبون</p>
-                    <div className="mt-10 border-t border-zinc-300" />
+                    <div className="mt-10 print:mt-6 border-t border-zinc-300" />
                   </div>
                 </div>
               </div>
             )}
 
             {/* g. Footer */}
-            <div className="mt-8 text-center">
+            <div className="mt-8 print:mt-3 text-center">
               {footerNote && <p className="text-sm italic text-zinc-600">{footerNote}</p>}
               <p className="mt-2 text-sm text-zinc-500">شكراً لتعاملكم معنا</p>
               <hr className="mt-4 border-zinc-200" />
