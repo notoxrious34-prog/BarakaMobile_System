@@ -624,10 +624,7 @@ export function InvoiceDocument({ transactionId, onClose }: Props) {
               </div>
             ) : (
               <div className="mt-6 print:mt-2 space-y-4 print:space-y-1">
-                <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 print:p-2 text-center">
-                  <p className="text-sm font-medium text-emerald-900">استلمت البضاعة المذكورة أعلاه في حالة جيدة وسليمة</p>
-                </div>
-                <div className="flex justify-between gap-6 print:gap-3 text-center">
+                <div className="mt-4 print:mt-2 flex justify-between gap-6 print:gap-3 text-center">
                   <div className="flex-1">
                     <p className="text-sm font-semibold text-zinc-800">توقيع البائع</p>
                     <div className="mt-10 print:mt-6 border-t border-zinc-300" />
@@ -641,7 +638,7 @@ export function InvoiceDocument({ transactionId, onClose }: Props) {
             )}
 
             {/* g. Footer */}
-            <div className="mt-8 print:mt-3 text-center">
+            <div className="mt-4 print:mt-2 pt-2 print:pt-1 text-center">
               {footerNote && <p className="text-sm italic text-zinc-600">{footerNote}</p>}
               <p className="mt-2 text-sm text-zinc-500">شكراً لتعاملكم معنا</p>
               <hr className="mt-4 border-zinc-200" />
