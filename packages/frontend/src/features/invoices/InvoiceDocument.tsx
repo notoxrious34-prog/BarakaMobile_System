@@ -22,6 +22,8 @@ type Props = {
   onClose: () => void;
 };
 
+type InvoiceMode = 'legal' | 'slip';
+
 function formatMoney(value: string | number | Decimal, currencySymbol: string): string {
   try {
     return `${new Decimal(value).toFixed(2)} ${currencySymbol}`;
@@ -47,11 +49,109 @@ function formatArabicDate(iso: string): string {
 
 function formatISODate(iso: string): string {
   try {
-    const d = new Date(iso);
-    return d.toISOString().slice(0, 10);
+    const d = new Date(iso).toISOString().slice(0, 10);
+    return d;
   } catch {
     return iso.slice(0, 10);
   }
+}
+
+/* ---------- Tafqeet: Algerian Dinars in words (pure TS, no deps) ---------- */
+
+const AR_ONES = [
+  'صفر', 'واحد', 'اثنان', 'ثلاثة', 'أربعة', 'خمسة', 'ستة', 'سبعة', 'ثمانية', 'تسعة',
+  'عشرة', 'أحد عشر', 'اثنا عشر', 'ثلاثة عشر', 'أربعة عشر', 'خمسة عشر', 'ستة عشر',
+  'سبعة عشر', 'ثمانية عشر', 'تسعة عشر',
+];
+const AR_TENS = ['', '', 'عشرون', 'ثلاثون', 'أربعون', 'خمسون', 'ستون', 'سبعون', 'ثمانون', 'تسعون'];
+const AR_HUNDREDS = ['', 'مائة', 'مائتان', 'ثلاثمائة', 'أربعمائة', 'خمسمائة', 'ستمائة', 'سبعمائة', 'ثمانمائة', 'تسعمائة'];
+
+function subThousand(n: number): string {
+  if (n <= 0) return '';
+  const parts: string[] = [];
+  const h = Math.floor(n / 100);
+  const r = n % 100;
+  if (h > 0) parts.push(AR_HUNDREDS[h]);
+  if (r > 0) {
+    if (r < 20) {
+      parts.push(AR_ONES[r]);
+    } else {
+      const t = Math.floor(r / 10);
+      const o = r % 10;
+      parts.push(o > 0 ? `${AR_ONES[o]} و${AR_TENS[t]}` : AR_TENS[t]);
+    }
+  }
+  return parts.join(' و');
+}
+
+function scaleWord(n: number, singular: string, dual: string, plural310: string, plural11: string): string {
+  if (n === 1) return singular;
+  if (n === 2) return dual;
+  if (n <= 10) return `${subThousand(n)} ${plural310}`;
+  return `${subThousand(n)} ${plural11}`;
+}
+
+function intToArabicWords(n: number): string {
+  if (!Number.isFinite(n) || n < 0) return 'صفر';
+  const int = Math.floor(n);
+  if (int === 0) return 'صفر';
+  const parts: string[] = [];
+  const millions = Math.floor(int / 1000000);
+  const thousands = Math.floor((int % 1000000) / 1000);
+  const rest = int % 1000;
+  if (millions > 0) parts.push(scaleWord(millions, 'مليون', 'مليونان', 'ملايين', 'مليوناً'));
+  if (thousands > 0) parts.push(scaleWord(thousands, 'ألف', 'ألفان', 'آلاف', 'ألفاً'));
+  if (rest > 0) parts.push(subThousand(rest));
+  return parts.join(' و');
+}
+
+export function numberToArabicWords(amountStr: string): string {
+  try {
+    const fixed = new Decimal(amountStr).toFixed(2);
+    const [intPart] = fixed.split('.');
+    const words = intToArabicWords(parseInt(intPart || '0', 10));
+    return `فقط ${words} دينار جزائري لا غير`;
+  } catch {
+    return 'فقط صفر دينار جزائري لا غير';
+  }
+}
+
+/* ---------- Custom-items parser (TB-070 note convention) ---------- */
+
+type ParsedCustomRow = {
+  id: string;
+  description: string;
+  quantity: number;
+  unitPrice: string;
+  lineTotal: string;
+  isCustom: true;
+};
+
+const CUSTOM_PREFIX = 'بنود مخصصة:';
+
+export function parseCustomNoteRows(note: string | null | undefined): ParsedCustomRow[] {
+  if (!note || !note.includes(CUSTOM_PREFIX)) return [];
+  const body = note.slice(note.indexOf(CUSTOM_PREFIX) + CUSTOM_PREFIX.length).trim();
+  if (!body) return [];
+  const chunks = body.split(/[،,]/).map((s) => s.trim()).filter(Boolean);
+  const rows: ParsedCustomRow[] = [];
+  chunks.forEach((chunk, idx) => {
+    const m = chunk.match(/^(.*?)\s*[×xX*]\s*(\d+)\s*@\s*([\d,]+\.?\d*)\s*$/);
+    if (!m) return;
+    const name = (m[1] || '').trim() || `بند مخصص ${idx + 1}`;
+    const qty = parseInt(m[2] || '1', 10);
+    if (!Number.isFinite(qty) || qty < 1) return;
+    let unit: string;
+    let total: string;
+    try {
+      unit = new Decimal((m[3] || '0').replace(/,/g, '')).toFixed(2);
+      total = new Decimal(qty).times(new Decimal((m[3] || '0').replace(/,/g, ''))).toFixed(2);
+    } catch {
+      return;
+    }
+    rows.push({ id: `custom-${idx}`, description: name, quantity: qty, unitPrice: unit, lineTotal: total, isCustom: true });
+  });
+  return rows;
 }
 
 export function InvoiceDocument({ transactionId, onClose }: Props) {
@@ -59,6 +159,7 @@ export function InvoiceDocument({ transactionId, onClose }: Props) {
   const { data: settings, isLoading: settingsLoading } = useInvoiceSettings();
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [pdfState, setPdfState] = useState<{ msg: string; isError: boolean } | null>(null);
+  const [mode, setMode] = useState<InvoiceMode>('legal');
 
   const isLoading = txLoading || settingsLoading;
   const isError = txError || (!isLoading && !transaction);
@@ -68,6 +169,16 @@ export function InvoiceDocument({ transactionId, onClose }: Props) {
   const businessPhone = settings?.business_phone ?? '';
   const businessAddress = settings?.business_address ?? '';
   const footerNote = settings?.invoice_footer_note ?? '';
+  const fiscalRc = settings?.business_rc ?? '';
+  const fiscalNif = settings?.business_nif ?? '';
+  const fiscalNis = settings?.business_nis ?? '';
+  const fiscalArt = settings?.business_art ?? '';
+  const fiscalRows = [
+    fiscalRc ? { label: 'RC', value: fiscalRc } : null,
+    fiscalNif ? { label: 'NIF', value: fiscalNif } : null,
+    fiscalNis ? { label: 'NIS', value: fiscalNis } : null,
+    fiscalArt ? { label: 'ART', value: fiscalArt } : null,
+  ].filter((r): r is { label: string; value: string } => r !== null);
 
   useEffect(() => {
     if (!transaction || !settings) return;
@@ -141,7 +252,19 @@ export function InvoiceDocument({ transactionId, onClose }: Props) {
     quantity: number;
     unitPrice: string;
     lineTotal: string;
+    isCustom?: boolean;
   };
+  const customRows: CombinedRow[] =
+    itemLines.length === 0 && serviceLines.length === 0
+      ? parseCustomNoteRows(transaction?.note).map((r) => ({
+          id: r.id,
+          description: r.description,
+          quantity: r.quantity,
+          unitPrice: r.unitPrice,
+          lineTotal: r.lineTotal,
+          isCustom: true as const,
+        }))
+      : [];
   const combinedRows: CombinedRow[] = [
     ...itemLines.map((l) => ({
       id: l.id,
@@ -157,6 +280,7 @@ export function InvoiceDocument({ transactionId, onClose }: Props) {
       unitPrice: l.amount,
       lineTotal: l.amount,
     })),
+    ...customRows,
   ];
 
   const subtotalStr = (() => {
@@ -177,8 +301,13 @@ export function InvoiceDocument({ transactionId, onClose }: Props) {
     }
   })();
 
+  const modePill = (active: boolean, activeCls: string) =>
+    `rounded-xl border px-4 py-2 text-sm transition-colors ${
+      active ? activeCls : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.05] border-transparent font-medium'
+    }`;
+
   return (
-    <div className="fixed inset-0 z-[9999] flex flex-col items-center overflow-auto bg-white p-4" dir="rtl">
+    <div className="fixed inset-0 z-[9999] flex flex-col items-center overflow-auto bg-white p-4 print:static print:p-0 print:overflow-visible print:bg-transparent" dir="rtl">
       <style>{`
         @page { size: A4; margin: 12mm; }
         @media print {
@@ -221,6 +350,28 @@ export function InvoiceDocument({ transactionId, onClose }: Props) {
         </div>
       </div>
 
+      {/* Mode toggle — screen only */}
+      <div className="no-print mb-4 flex w-full max-w-[210mm] gap-2 rounded-2xl border border-navy-800/80 bg-navy-950/70 p-1.5" role="tablist" aria-label="نوع المستند">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === 'legal'}
+          onClick={() => setMode('legal')}
+          className={modePill(mode === 'legal', 'bg-gradient-to-r from-amber-500/25 to-amber-600/10 text-amber-300 border-amber-500/40 font-bold shadow-lg shadow-amber-950/20')}
+        >
+          فاتورة بيع رسمية (Facture)
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === 'slip'}
+          onClick={() => setMode('slip')}
+          className={modePill(mode === 'slip', 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40 font-bold shadow-lg shadow-emerald-950/20')}
+        >
+          سند تسليم / وصل بيع (Bon de Livraison)
+        </button>
+      </div>
+
       {pdfState && (
         <div
           className={`no-print mb-3 w-full max-w-[210mm] rounded-md border px-4 py-2 text-sm ${pdfState.isError ? 'border-red-200 bg-red-50 text-red-700' : 'border-green-200 bg-green-50 text-green-700'}`}
@@ -232,7 +383,7 @@ export function InvoiceDocument({ transactionId, onClose }: Props) {
 
       <div
         id="invoice-paper"
-        className="w-full max-w-[210mm] min-h-[297mm] bg-white p-8 shadow-lg border border-zinc-200 flex flex-col"
+        className="w-full max-w-[210mm] min-h-[297mm] bg-white p-8 shadow-lg border border-zinc-200 flex flex-col print:min-h-0 print:m-0 print:shadow-none print:border-none print:w-full"
       >
         {isLoading ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 py-24">
@@ -273,14 +424,32 @@ export function InvoiceDocument({ transactionId, onClose }: Props) {
                 <p className="text-lg font-bold text-zinc-900">{businessName}</p>
                 {businessPhone && <p className="mt-1 text-sm text-zinc-600" dir="ltr">{businessPhone}</p>}
                 {businessAddress && <p className="mt-1 text-sm text-zinc-600">{businessAddress}</p>}
+                {mode === 'legal' && fiscalRows.length > 0 && (
+                  <div className="mt-2 space-y-0.5 text-[11px] text-zinc-600">
+                    {fiscalRows.map((f) => (
+                      <p key={f.label} dir="ltr">
+                        <span className="font-mono font-semibold">{f.label}: {f.value}</span>
+                      </p>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
             <hr className="mt-6 border-zinc-200" />
 
             {/* b. Document title */}
             <div className="mt-6 text-center">
-              <h1 className="text-3xl font-extrabold text-zinc-900">فاتورة</h1>
-              <p className="mt-1 text-xs tracking-widest text-zinc-400">INVOICE</p>
+              {mode === 'legal' ? (
+                <>
+                  <h1 className="text-3xl font-extrabold text-zinc-900">فاتورة بيع</h1>
+                  <p className="mt-1 text-xs tracking-widest text-zinc-400">FACTURE DE VENTE</p>
+                </>
+              ) : (
+                <>
+                  <h1 className="text-3xl font-extrabold text-zinc-900">سند تسليم / وصل بيع</h1>
+                  <p className="mt-1 text-xs tracking-widest text-zinc-400">BON DE LIVRAISON</p>
+                </>
+              )}
             </div>
 
             {/* c. Metadata block: invoiceNumber, date, QR */}
@@ -354,7 +523,14 @@ export function InvoiceDocument({ transactionId, onClose }: Props) {
                     combinedRows.map((row, idx) => (
                       <tr key={row.id} className="border-b border-zinc-100">
                         <td className="px-3 py-2 text-zinc-600">{idx + 1}</td>
-                        <td className="px-3 py-2 font-medium text-zinc-900">{row.description}</td>
+                        <td className="px-3 py-2 font-medium text-zinc-900">
+                          {row.description}
+                          {row.isCustom && (
+                            <span className="mr-2 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+                              بند مخصص
+                            </span>
+                          )}
+                        </td>
                         <td className="px-3 py-2 text-zinc-900" dir="ltr">{row.quantity}</td>
                         <td className="px-3 py-2 text-zinc-900" dir="ltr">{formatMoney(row.unitPrice, currencySymbol)}</td>
                         <td className="px-3 py-2 font-medium text-zinc-900" dir="ltr">{formatMoney(row.lineTotal, currencySymbol)}</td>
@@ -379,6 +555,40 @@ export function InvoiceDocument({ transactionId, onClose }: Props) {
                 </div>
               </div>
             </div>
+
+            {/* g-mode. Legal vs slip closing sections */}
+            {mode === 'legal' ? (
+              <div className="mt-6 space-y-4">
+                <div className="rounded-lg border border-zinc-300 bg-zinc-50 p-4 text-center">
+                  <p className="text-sm font-bold text-zinc-900">
+                    أوقفت هذه الفاتورة عند مبلغ قدره: {numberToArabicWords(grandTotalStr)}
+                  </p>
+                </div>
+                <div className="flex justify-end">
+                  <div className="w-64 rounded-lg border-2 border-dashed border-zinc-300 p-4 text-center">
+                    <p className="text-sm font-bold text-zinc-800">ختم وتوقيع المؤسسة</p>
+                    <p className="mt-0.5 text-[10px] tracking-widest text-zinc-400">Cachet &amp; Signature</p>
+                    <div className="mt-10 border-t border-zinc-300" />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-6 space-y-4">
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-center">
+                  <p className="text-sm font-medium text-emerald-900">استلمت البضاعة المذكورة أعلاه في حالة جيدة وسليمة</p>
+                </div>
+                <div className="flex justify-between gap-6 text-center">
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-zinc-800">توقيع البائع</p>
+                    <div className="mt-10 border-t border-zinc-300" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-zinc-800">توقيع واستلام الزبون</p>
+                    <div className="mt-10 border-t border-zinc-300" />
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* g. Footer */}
             <div className="mt-8 text-center">

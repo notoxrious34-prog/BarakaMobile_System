@@ -58,6 +58,7 @@
 /* TB-072: repair claim slip shares the same isolation */
 /* TB-076: back-office thermal receipt shares the same isolation */
 /* TB-084: strategic reports print area shares the same isolation */
+/* TB-094: back-office A4 invoice paper shares the same isolation */
 @media print {
   body * {
     visibility: hidden;
@@ -71,17 +72,24 @@
   #thermal-receipt-root,
   #thermal-receipt-root *,
   #reports-print-area,
-  #reports-print-area * {
+  #reports-print-area *,
+  #invoice-paper,
+  #invoice-paper * {
     visibility: visible;
   }
   #pos-receipt,
   #repair-slip,
   #contact-statement,
   #thermal-receipt-root,
-  #reports-print-area {
+  #reports-print-area,
+  #invoice-paper {
     position: fixed;
     top: 0;
     right: 0;
     margin: 0;
+  }
+  #invoice-paper {
+    page-break-after: avoid;
+    page-break-inside: avoid;
   }
 }
