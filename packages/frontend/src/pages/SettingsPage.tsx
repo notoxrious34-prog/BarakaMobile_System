@@ -3,6 +3,7 @@ import { useSettings, useUpdateSettings } from '@/features/settings/hooks/useSet
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { Skeleton } from '@/components/feedback/Skeleton';
 import { ReceiptPreview } from '@/features/settings/components/ReceiptPreview';
+import { BrandMark } from '@/components/layout/BrandMark';
 
 type FormState = {
   business_name: string;
@@ -32,6 +33,12 @@ function isDirty(a: FormState, b: FormState): boolean {
     a.invoice_footer_note !== b.invoice_footer_note
   );
 }
+
+const INPUT_CLS =
+  'w-full rounded-xl border border-navy-700/80 bg-navy-950/80 px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:border-amber-500/80 focus:outline-none focus:ring-1 focus:ring-amber-500/80 transition-all';
+const LABEL_CLS = 'text-sm font-semibold text-slate-300';
+const CARD_CLS =
+  'rounded-2xl border border-navy-800/80 bg-navy-900/60 p-6 backdrop-blur-md shadow-lg shadow-navy-950/30';
 
 export function SettingsPage() {
   const { data, isLoading, isError, refetch } = useSettings();
@@ -106,7 +113,7 @@ export function SettingsPage() {
             <Skeleton className="h-7 w-28" />
             <Skeleton className="h-9 w-24" />
           </div>
-          <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
+          <div className="rounded-2xl border border-navy-800/80 bg-navy-900/60 p-6">
             <Skeleton className="mb-4 h-5 w-32" />
             <div className="grid gap-4">
               <div className="space-y-2">
@@ -123,7 +130,7 @@ export function SettingsPage() {
               </div>
             </div>
           </div>
-          <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
+          <div className="rounded-2xl border border-navy-800/80 bg-navy-900/60 p-6">
             <Skeleton className="mb-4 h-5 w-32" />
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
@@ -136,7 +143,7 @@ export function SettingsPage() {
               </div>
             </div>
           </div>
-          <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
+          <div className="rounded-2xl border border-navy-800/80 bg-navy-900/60 p-6">
             <Skeleton className="mb-4 h-5 w-32" />
             <div className="space-y-2">
               <Skeleton className="h-4 w-28" />
@@ -152,8 +159,9 @@ export function SettingsPage() {
     return (
       <div className="font-sans" dir="rtl">
         <div className="mx-auto max-w-6xl space-y-6">
-          <header className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-slate-100">الإعدادات</h1>
+          <header className="flex items-center gap-3">
+            <BrandMark className="h-10 w-10" />
+            <h1 className="text-2xl font-bold text-slate-100">إعدادات المتجر والنظام</h1>
           </header>
           <ErrorState
             title="تعذر تحميل الإعدادات"
@@ -173,8 +181,10 @@ export function SettingsPage() {
           <div
             role="status"
             aria-live="polite"
-            className={`fixed left-1/2 top-4 z-50 -translate-x-1/2 rounded-md px-4 py-2 text-sm font-medium shadow-lg ${
-              toast.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
+            className={`fixed left-1/2 top-4 z-50 -translate-x-1/2 rounded-xl border px-4 py-2 text-sm font-bold shadow-2xl backdrop-blur-md ${
+              toast.type === 'success'
+                ? 'border-emerald-500/40 bg-navy-950/90 text-emerald-300 shadow-emerald-950/40'
+                : 'border-rose-500/40 bg-navy-950/90 text-rose-300 shadow-rose-950/40'
             }`}
           >
             {toast.message}
@@ -182,13 +192,21 @@ export function SettingsPage() {
         )}
 
         {/* Header */}
-        <header className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-slate-100">الإعدادات</h1>
+        <header className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <BrandMark className="h-11 w-11" />
+            <div>
+              <h1 className="text-xl font-bold text-slate-100">إعدادات المتجر والنظام</h1>
+              <p className="mt-0.5 text-xs text-slate-400">تخصيص الهوية التجارية، بيانات الفواتير، ونسب التنبيه الذكية</p>
+            </div>
+          </div>
           <button
             type="button"
             onClick={handleSave}
             disabled={!dirty || updateMutation.isPending}
-            className="rounded-md bg-cyan-600 px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-600 focus:ring-offset-2 focus:ring-offset-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
+            className={`bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-bold px-6 py-2.5 rounded-xl shadow-lg shadow-emerald-950/30 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-navy-950 disabled:cursor-not-allowed disabled:opacity-50 ${
+              dirty && !updateMutation.isPending ? 'ring-2 ring-emerald-400/60 ring-offset-2 ring-offset-navy-950 animate-pulse' : ''
+            }`}
           >
             {updateMutation.isPending ? 'جاري الحفظ...' : 'حفظ'}
           </button>
@@ -198,12 +216,13 @@ export function SettingsPage() {
         <div className="grid gap-6 lg:grid-cols-[1.35fr_0.9fr]">
           {/* Form column */}
           <div className="space-y-6">
-            {/* Section 1 — معلومات المحل */}
-            <section className="rounded-xl border border-slate-800 bg-slate-900 p-6" aria-label="معلومات المحل">
-              <h2 className="mb-4 text-sm font-semibold text-slate-100">معلومات المحل</h2>
+            {/* Section 1 — بيانات المتجر والهوية */}
+            <section className={CARD_CLS} aria-label="بيانات المتجر والهوية">
+              <h2 className="mb-1 text-sm font-bold text-slate-100">بيانات المتجر والهوية</h2>
+              <p className="mb-4 text-xs text-slate-400">تظهر هذه البيانات في ترويسة كل فاتورة وإيصال</p>
               <div className="grid gap-4">
                 <div className="space-y-1.5">
-                  <label htmlFor="business_name" className="text-sm font-medium text-slate-300">
+                  <label htmlFor="business_name" className={LABEL_CLS}>
                     اسم المحل <span className="text-rose-400">*</span>
                   </label>
                   <input
@@ -212,13 +231,13 @@ export function SettingsPage() {
                     required
                     value={form.business_name}
                     onChange={(e) => handleChange('business_name', e.target.value)}
-                    className="w-full rounded-md border border-slate-700 bg-slate-800/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-600 focus:outline-none focus:ring-1 focus:ring-cyan-600"
+                    className={INPUT_CLS}
                     placeholder="مثال: BarakaMobile"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label htmlFor="business_phone" className="text-sm font-medium text-slate-300">
+                  <label htmlFor="business_phone" className={LABEL_CLS}>
                     رقم الهاتف
                   </label>
                   <input
@@ -226,13 +245,13 @@ export function SettingsPage() {
                     type="text"
                     value={form.business_phone}
                     onChange={(e) => handleChange('business_phone', e.target.value)}
-                    className="w-full rounded-md border border-slate-700 bg-slate-800/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-600 focus:outline-none focus:ring-1 focus:ring-cyan-600"
+                    className={INPUT_CLS}
                     placeholder="مثال: 0555123456"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label htmlFor="business_address" className="text-sm font-medium text-slate-300">
+                  <label htmlFor="business_address" className={LABEL_CLS}>
                     العنوان
                   </label>
                   <textarea
@@ -240,19 +259,20 @@ export function SettingsPage() {
                     rows={3}
                     value={form.business_address}
                     onChange={(e) => handleChange('business_address', e.target.value)}
-                    className="w-full rounded-md border border-slate-700 bg-slate-800/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-600 focus:outline-none focus:ring-1 focus:ring-cyan-600"
+                    className={INPUT_CLS}
                     placeholder="مثال: الجزائر العاصمة"
                   />
                 </div>
               </div>
             </section>
 
-            {/* Section 2 — إعدادات العرض */}
-            <section className="rounded-xl border border-slate-800 bg-slate-900 p-6" aria-label="إعدادات العرض">
-              <h2 className="mb-4 text-sm font-semibold text-slate-100">إعدادات العرض</h2>
+            {/* Section 2 — إعدادات النظام والعملة والحدود */}
+            <section className={CARD_CLS} aria-label="إعدادات النظام والعملة والحدود">
+              <h2 className="mb-1 text-sm font-bold text-slate-100">إعدادات النظام والعملة والحدود</h2>
+              <p className="mb-4 text-xs text-slate-400">رمز العملة يظهر في كل الشاشات والتقارير</p>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <label htmlFor="currency_symbol" className="text-sm font-medium text-slate-300">
+                  <label htmlFor="currency_symbol" className={LABEL_CLS}>
                     رمز العملة <span className="text-rose-400">*</span>
                   </label>
                   <input
@@ -261,13 +281,13 @@ export function SettingsPage() {
                     required
                     value={form.currency_symbol}
                     onChange={(e) => handleChange('currency_symbol', e.target.value)}
-                    className="w-full rounded-md border border-slate-700 bg-slate-800/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-600 focus:outline-none focus:ring-1 focus:ring-cyan-600"
+                    className={INPUT_CLS}
                     placeholder="د.ج"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label htmlFor="low_stock_threshold" className="text-sm font-medium text-slate-300">
+                  <label htmlFor="low_stock_threshold" className={LABEL_CLS}>
                     حد تنبيه المخزون المنخفض
                   </label>
                   <input
@@ -277,18 +297,19 @@ export function SettingsPage() {
                     step={1}
                     value={form.low_stock_threshold}
                     onChange={(e) => handleChange('low_stock_threshold', e.target.value)}
-                    className="w-full rounded-md border border-slate-700 bg-slate-800/60 px-3 py-2 text-sm text-slate-100 focus:border-cyan-600 focus:outline-none focus:ring-1 focus:ring-cyan-600"
+                    className={INPUT_CLS}
                   />
                   <p className="text-xs text-slate-400">يؤثر على تنبيهات التقارير فقط — لا يغيّر حد الصنف الفعلي</p>
                 </div>
               </div>
             </section>
 
-            {/* Section 3 — إعدادات الفاتورة */}
-            <section className="rounded-xl border border-slate-800 bg-slate-900 p-6" aria-label="إعدادات الفاتورة">
-              <h2 className="mb-4 text-sm font-semibold text-slate-100">إعدادات الفاتورة</h2>
+            {/* Section 3 — تذييل الفواتير والملاحظات */}
+            <section className={CARD_CLS} aria-label="تذييل الفواتير والملاحظات">
+              <h2 className="mb-1 text-sm font-bold text-slate-100">تذييل الفواتير والملاحظات</h2>
+              <p className="mb-4 text-xs text-slate-400">تظهر أسفل كل إيصال مطبوع — جرّبها فوراً في المعاينة</p>
               <div className="space-y-1.5">
-                <label htmlFor="invoice_footer_note" className="text-sm font-medium text-slate-300">
+                <label htmlFor="invoice_footer_note" className={LABEL_CLS}>
                   ملاحظة أسفل الفاتورة
                 </label>
                 <textarea
@@ -296,7 +317,7 @@ export function SettingsPage() {
                   rows={3}
                   value={form.invoice_footer_note}
                   onChange={(e) => handleChange('invoice_footer_note', e.target.value)}
-                  className="w-full rounded-md border border-slate-700 bg-slate-800/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-600 focus:outline-none focus:ring-1 focus:ring-cyan-600"
+                  className={INPUT_CLS}
                   placeholder="مثال: شكراً لزيارتكم"
                 />
               </div>
