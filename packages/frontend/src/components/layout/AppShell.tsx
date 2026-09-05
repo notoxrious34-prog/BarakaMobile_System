@@ -53,6 +53,15 @@ export function AppShell() {
 
   const cashBalance = cashQ.data?.currentBalance ?? null;
 
+  const formattedCash = (() => {
+    if (cashBalance === null) return null;
+    try {
+      return new Decimal(cashBalance ?? '0').toFixed(2);
+    } catch {
+      return '0.00';
+    }
+  })();
+
   // Command palette state
   const [paletteOpen, setPaletteOpen] = useState(false);
 
@@ -163,7 +172,7 @@ export function AppShell() {
               <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse shadow shadow-emerald-400/50" aria-hidden="true" />
               <span>الصندوق:</span>
               <span dir="ltr" className="font-mono">
-                {cashQ.isLoading ? '...' : cashBalance !== null ? `${Number(cashBalance).toFixed(2)} د.ج` : '--'}
+                {cashQ.isLoading ? '...' : formattedCash !== null ? `${formattedCash} د.ج` : '--'}
               </span>
             </div>
 
@@ -213,7 +222,7 @@ export function AppShell() {
               className="inline-flex items-center rounded-full border border-emerald-400/25 bg-emerald-950/55 px-2 py-1 text-xs font-mono text-emerald-400"
               dir="ltr"
             >
-              {cashQ.isLoading ? '...' : cashBalance !== null ? Number(cashBalance).toFixed(2) : '--'}
+              {cashQ.isLoading ? '...' : formattedCash !== null ? formattedCash : '--'}
             </span>
             <button
               type="button"

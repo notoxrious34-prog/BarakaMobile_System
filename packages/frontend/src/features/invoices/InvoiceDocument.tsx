@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import Decimal from 'decimal.js';
 import QRCode from 'qrcode';
 import { X, Printer, Download, Loader2 } from 'lucide-react';
 import { useTransaction } from '@/features/transactions/hooks/useTransaction';
@@ -21,10 +22,12 @@ type Props = {
   onClose: () => void;
 };
 
-function formatMoney(value: string | number, currencySymbol: string): string {
-  const n = Number(value);
-  if (Number.isNaN(n)) return `0.00 ${currencySymbol}`;
-  return `${n.toFixed(2)} ${currencySymbol}`;
+function formatMoney(value: string | number | Decimal, currencySymbol: string): string {
+  try {
+    return `${new Decimal(value).toFixed(2)} ${currencySymbol}`;
+  } catch {
+    return `0.00 ${currencySymbol}`;
+  }
 }
 
 function formatArabicDate(iso: string): string {
@@ -71,7 +74,13 @@ export function InvoiceDocument({ transactionId, onClose }: Props) {
     const invoiceNumber = (transaction as unknown as { invoiceNumber?: string | null }).invoiceNumber;
     if (!invoiceNumber) return;
     const dateStr = formatISODate(transaction.createdAt);
-    const grandTotal = Number(transaction.amount).toFixed(2);
+    const grandTotal = (() => {
+      try {
+        return new Decimal(transaction.amount ?? '0').toFixed(2);
+      } catch {
+        return '0.00';
+      }
+    })();
     const content = `BarakaMobile|${invoiceNumber}|${dateStr}|${grandTotal}${currencySymbol}`;
     QRCode.toDataURL(content, { width: 140, margin: 1 })
       .then(setQrDataUrl)
@@ -150,9 +159,23 @@ export function InvoiceDocument({ transactionId, onClose }: Props) {
     })),
   ];
 
-  const subtotal = combinedRows.reduce((acc, r) => acc + Number(r.lineTotal), 0);
-  const subtotalStr = subtotal.toFixed(2);
-  const grandTotalStr = transaction ? Number(transaction.amount).toFixed(2) : '0.00';
+  const subtotalStr = (() => {
+    try {
+      return combinedRows
+        .reduce((acc, r) => acc.plus(new Decimal(r.lineTotal)), new Decimal(0))
+        .toFixed(2);
+    } catch {
+      return '0.00';
+    }
+  })();
+  const grandTotalStr = (() => {
+    if (!transaction) return '0.00';
+    try {
+      return new Decimal(transaction.amount ?? '0').toFixed(2);
+    } catch {
+      return '0.00';
+    }
+  })();
 
   return (
     <div className="fixed inset-0 z-[9999] flex flex-col items-center overflow-auto bg-white p-4" dir="rtl">
