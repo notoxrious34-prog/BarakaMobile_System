@@ -93,14 +93,14 @@ export function ServicesPage() {
         <button
           type="button"
           onClick={openCreate}
-          className="inline-flex items-center gap-2 rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+          className="inline-flex items-center gap-2 rounded-xl bg-cyan-600 px-4 py-2 text-sm font-extrabold text-navy-950 hover:bg-cyan-500 shadow-lg shadow-cyan-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-navy-950 transition-colors"
         >
           <Plus className="h-4 w-4" aria-hidden="true" />
           إضافة خدمة
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-2 rounded-xl border border-slate-800 bg-slate-900 p-3">
+      <div className="flex flex-wrap gap-2 rounded-2xl border border-navy-border/40 bg-navy-900/60 backdrop-blur-md p-3">
         <div className="relative min-w-[16rem] flex-1">
           <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" aria-hidden="true" />
           <input
@@ -108,13 +108,13 @@ export function ServicesPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="بحث: اسم الخدمة أو المورد..."
-            className="w-full rounded-md border border-slate-700 bg-slate-800 py-2 pr-9 pl-3 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+            className="w-full rounded-xl border border-navy-border/40 bg-navy-950/60 py-2 pr-9 pl-3 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-colors"
           />
         </div>
         <select
           value={pricingFilter}
           onChange={(e) => setPricingFilter(e.target.value as '' | 'FIXED' | 'COMMISSION')}
-          className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+          className="rounded-xl border border-navy-border/40 bg-navy-950/60 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-colors"
         >
           <option value="">كل الأنواع</option>
           <option value="FIXED">ربح ثابت</option>
@@ -127,7 +127,7 @@ export function ServicesPage() {
               setSearch('');
               setPricingFilter('');
             }}
-            className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+            className="rounded-xl border border-navy-border/40 bg-navy-950/60 px-3 py-2 text-sm text-slate-300 hover:bg-navy-800/60 transition-colors"
           >
             مسح
           </button>
@@ -145,7 +145,7 @@ export function ServicesPage() {
       ) : !services || services.length === 0 ? (
         <EmptyState title="لا توجد خدمات" message="ابدأ بإضافة خدمة جديدة." />
       ) : filteredServices.length === 0 ? (
-        <div className="rounded-xl border border-slate-800 bg-slate-900 p-8 text-center text-sm text-slate-500">
+        <div className="rounded-2xl border border-navy-border/40 bg-navy-900/60 p-8 text-center text-sm text-slate-500">
           لا توجد نتائج مطابقة للبحث
         </div>
       ) : (
@@ -161,7 +161,7 @@ export function ServicesPage() {
             role="dialog"
             aria-modal="true"
             aria-label="تأكيد التعطيل"
-            className="relative z-10 w-full max-w-md rounded-lg border border-slate-800 bg-slate-900 p-6 shadow-lg"
+            className="relative z-10 w-full max-w-md rounded-2xl border border-navy-800/80 bg-navy-900/60 p-6 shadow-xl backdrop-blur-md"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
@@ -170,7 +170,7 @@ export function ServicesPage() {
                 type="button"
                 onClick={cancelDeactivate}
                 aria-label="إغلاق"
-                className="rounded-md p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+                className="rounded-md p-1 text-slate-400 hover:bg-navy-800/60 hover:text-slate-100"
               >
                 <X className="h-5 w-5" aria-hidden="true" />
               </button>
@@ -188,7 +188,7 @@ export function ServicesPage() {
                 type="button"
                 onClick={cancelDeactivate}
                 disabled={deactivateMut.isPending}
-                className="rounded-md border border-slate-700 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 disabled:opacity-50"
+                className="rounded-xl border border-navy-800 bg-navy-950/60 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-navy-800/60 disabled:opacity-50"
               >
                 إلغاء
               </button>
@@ -196,7 +196,7 @@ export function ServicesPage() {
                 type="button"
                 onClick={confirmDeactivate}
                 disabled={deactivateMut.isPending}
-                className="rounded-md bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-500 disabled:opacity-50"
+                className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-500 disabled:opacity-50"
               >
                 {deactivateMut.isPending ? 'جاري التعطيل...' : 'تأكيد التعطيل'}
               </button>

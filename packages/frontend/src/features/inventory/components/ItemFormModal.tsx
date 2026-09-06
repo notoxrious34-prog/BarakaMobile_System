@@ -139,7 +139,7 @@ export function ItemFormModal({ open, onClose, item }: Props) {
         role="dialog"
         aria-modal="true"
         aria-label={isEdit ? 'تعديل المنتج' : 'إضافة منتج'}
-        className="relative z-10 w-full max-w-md rounded-xl border border-slate-800 bg-slate-900 p-6 text-slate-100 shadow-xl"
+        className="relative z-10 w-full max-w-md rounded-2xl border border-navy-800/80 bg-navy-900/60 p-6 text-slate-100 shadow-xl backdrop-blur-md"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
@@ -150,7 +150,7 @@ export function ItemFormModal({ open, onClose, item }: Props) {
             type="button"
             onClick={onClose}
             aria-label="إغلاق"
-            className="rounded-md p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+            className="rounded-md p-1 text-slate-400 hover:bg-navy-800/60 hover:text-slate-100"
           >
             <X className="h-5 w-5" aria-hidden="true" />
           </button>
@@ -173,8 +173,8 @@ export function ItemFormModal({ open, onClose, item }: Props) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               disabled={isSubmitting}
-              className={`w-full rounded-md border bg-slate-800/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600 ${
-                fieldErrors.name ? 'border-rose-500/40' : 'border-slate-700'
+              className={`w-full rounded-xl border bg-navy-950/80 px-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-amber-500/80 focus:ring-1 focus:ring-amber-500/80 transition-all ${
+                fieldErrors.name ? 'border-rose-500/50' : 'border-navy-700/80'
               }`}
               placeholder="أدخل اسم المنتج"
             />
@@ -191,7 +191,7 @@ export function ItemFormModal({ open, onClose, item }: Props) {
               value={sku}
               onChange={(e) => setSku(e.target.value)}
               disabled={isSubmitting}
-              className="w-full rounded-md border border-slate-700 bg-slate-800/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600"
+              className="w-full rounded-xl border border-navy-700/80 bg-navy-950/80 px-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-amber-500/80 focus:ring-1 focus:ring-amber-500/80 transition-all"
               placeholder="رمز المنتج (اختياري)"
               dir="ltr"
             />
@@ -208,8 +208,8 @@ export function ItemFormModal({ open, onClose, item }: Props) {
               value={costPrice}
               onChange={(e) => setCostPrice(e.target.value)}
               disabled={isSubmitting}
-              className={`w-full rounded-md border bg-slate-800/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600 ${
-                fieldErrors.costPrice ? 'border-rose-500/40' : 'border-slate-700'
+              className={`w-full rounded-xl border bg-navy-950/80 px-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-amber-500/80 focus:ring-1 focus:ring-amber-500/80 transition-all ${
+                fieldErrors.costPrice ? 'border-rose-500/50' : 'border-navy-700/80'
               }`}
               placeholder="مثال: 50.50"
               dir="ltr"
@@ -228,8 +228,8 @@ export function ItemFormModal({ open, onClose, item }: Props) {
               value={sellingPrice}
               onChange={(e) => setSellingPrice(e.target.value)}
               disabled={isSubmitting}
-              className={`w-full rounded-md border bg-slate-800/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600 ${
-                fieldErrors.sellingPrice ? 'border-rose-500/40' : 'border-slate-700'
+              className={`w-full rounded-xl border bg-navy-950/80 px-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-amber-500/80 focus:ring-1 focus:ring-amber-500/80 transition-all ${
+                fieldErrors.sellingPrice ? 'border-rose-500/50' : 'border-navy-700/80'
               }`}
               placeholder="مثال: 85.00"
               dir="ltr"
@@ -248,8 +248,8 @@ export function ItemFormModal({ open, onClose, item }: Props) {
               value={minStock}
               onChange={(e) => setMinStock(e.target.value)}
               disabled={isSubmitting}
-              className={`w-full rounded-md border bg-slate-800/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600 ${
-                fieldErrors.minStock ? 'border-rose-500/40' : 'border-slate-700'
+              className={`w-full rounded-xl border bg-navy-950/80 px-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-amber-500/80 focus:ring-1 focus:ring-amber-500/80 transition-all ${
+                fieldErrors.minStock ? 'border-rose-500/50' : 'border-navy-700/80'
               }`}
               placeholder="مثال: 5 (اختياري)"
               dir="ltr"
@@ -262,14 +262,14 @@ export function ItemFormModal({ open, onClose, item }: Props) {
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="rounded-md border border-slate-700 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 disabled:opacity-50"
+              className="rounded-xl border border-navy-800 bg-navy-950/60 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-navy-800/60 disabled:opacity-50"
             >
               إلغاء
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="inline-flex items-center justify-center rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500 disabled:opacity-50"
+              className="inline-flex items-center justify-center rounded-xl bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500 disabled:opacity-50"
             >
               {isSubmitting ? 'جاري الحفظ...' : isEdit ? 'حفظ التغييرات' : 'إضافة'}
             </button>

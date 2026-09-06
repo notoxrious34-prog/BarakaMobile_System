@@ -26,11 +26,11 @@ function getValueCell(s: Service) {
 
 export function ServicesTable({ services, onEdit, onDeactivate }: Props) {
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900">
-      <div className="overflow-x-auto">
+    <div className="overflow-hidden rounded-2xl border border-navy-border/40 bg-navy-900/60 backdrop-blur-md">
+      <div className="overflow-x-auto scrollbar-premium">
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="border-b border-slate-800 text-slate-400">
+            <tr className="border-b border-navy-border/40 text-slate-400">
               <th className="px-3 py-2.5 text-right font-semibold">اسم الخدمة</th>
               <th className="px-3 py-2.5 text-right font-semibold">المورد</th>
               <th className="px-3 py-2.5 text-right font-semibold">نوع التسعير</th>
@@ -47,11 +47,15 @@ export function ServicesTable({ services, onEdit, onDeactivate }: Props) {
               return (
                 <tr
                   key={svc.id}
-                  className={`border-b border-slate-800 ${isInactive ? 'opacity-60' : 'hover:bg-slate-800/50'}`}
+                  className={`border-t border-navy-border/30 ${isInactive ? 'opacity-50' : 'hover:bg-navy-800/40'}`}
                 >
                   <td className="px-3 py-2.5 font-medium text-slate-100">{svc.name}</td>
                   <td className="px-3 py-2.5 text-slate-300">{svc.supplier?.name ?? '—'}</td>
-                  <td className="px-3 py-2.5 text-slate-300">{PRICING_LABEL[svc.pricingType] ?? svc.pricingType}</td>
+                  <td className="px-3 py-2.5">
+                    <span className="inline-flex rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-0.5 text-xs font-medium text-cyan-300">
+                      {PRICING_LABEL[svc.pricingType] ?? svc.pricingType}
+                    </span>
+                  </td>
                   <td className="px-3 py-2.5" dir="ltr">
                     {hasValue ? (
                       <PricingBadge pricingType={svc.pricingType} value={value} />
@@ -65,7 +69,7 @@ export function ServicesTable({ services, onEdit, onDeactivate }: Props) {
                         نشط
                       </span>
                     ) : (
-                      <span className="inline-flex rounded-full border border-slate-700 bg-slate-800 px-2.5 py-0.5 text-xs font-medium text-slate-400">
+                      <span className="inline-flex rounded-full border border-navy-700/60 bg-navy-950/60 px-2.5 py-0.5 text-xs font-medium text-slate-400">
                         غير نشط
                       </span>
                     )}
@@ -77,7 +81,7 @@ export function ServicesTable({ services, onEdit, onDeactivate }: Props) {
                         onClick={() => onEdit(svc)}
                         aria-label={`تعديل ${svc.name}`}
                         title="تعديل"
-                        className="rounded-md p-2 text-slate-400 hover:bg-slate-800 hover:text-cyan-400"
+                        className="rounded-md p-2 text-slate-400 hover:bg-navy-800/60 hover:text-slate-100"
                       >
                         <Pencil className="h-4 w-4" aria-hidden="true" />
                       </button>
@@ -87,7 +91,7 @@ export function ServicesTable({ services, onEdit, onDeactivate }: Props) {
                           onClick={() => onDeactivate(svc.id)}
                           aria-label={`تعطيل ${svc.name}`}
                           title="تعطيل"
-                          className="rounded-md p-2 text-rose-400 hover:bg-rose-500/10 hover:text-rose-400"
+                          className="rounded-md p-2 text-rose-400 hover:bg-rose-500/10"
                         >
                           <Trash2 className="h-4 w-4" aria-hidden="true" />
                         </button>

@@ -81,7 +81,7 @@ export function StockMovementModal({ open, onClose, item }: Props) {
         role="dialog"
         aria-modal="true"
         aria-label="حركة مخزون"
-        className="relative z-10 w-full max-w-md rounded-xl border border-slate-800 bg-slate-900 p-6 text-slate-100 shadow-xl"
+        className="relative z-10 w-full max-w-md rounded-2xl border border-navy-800/80 bg-navy-900/60 p-6 text-slate-100 shadow-xl backdrop-blur-md"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
@@ -90,13 +90,13 @@ export function StockMovementModal({ open, onClose, item }: Props) {
             type="button"
             onClick={onClose}
             aria-label="إغلاق"
-            className="rounded-md p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+            className="rounded-md p-1 text-slate-400 hover:bg-navy-800/60 hover:text-slate-100"
           >
             <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
 
-        <div className="mb-4 rounded-md border border-slate-700 bg-slate-800/60 px-3 py-2 text-sm text-slate-300">
+        <div className="mb-4 rounded-xl border border-navy-700/60 bg-navy-950/60 px-3 py-2 text-sm text-slate-300">
           <span className="text-slate-400">المنتج:</span> {item.name}
         </div>
 
@@ -116,8 +116,8 @@ export function StockMovementModal({ open, onClose, item }: Props) {
               value={type}
               onChange={(e) => setType(e.target.value as never)}
               disabled={isSubmitting}
-              className={`w-full rounded-md border bg-slate-800 px-3 py-2 text-sm text-slate-100 outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600 ${
-                fieldErrors.type ? 'border-rose-500/40' : 'border-slate-700'
+              className={`w-full rounded-xl border bg-navy-950/80 px-3.5 py-2.5 text-sm text-slate-100 outline-none focus:border-amber-500/80 focus:ring-1 focus:ring-amber-500/80 transition-all ${
+                fieldErrors.type ? 'border-rose-500/50' : 'border-navy-700/80'
               }`}
             >
               {TYPE_OPTIONS.map((opt) => (
@@ -140,8 +140,8 @@ export function StockMovementModal({ open, onClose, item }: Props) {
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
               disabled={isSubmitting}
-              className={`w-full rounded-md border bg-slate-800/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600 ${
-                fieldErrors.quantity ? 'border-rose-500/40' : 'border-slate-700'
+              className={`w-full rounded-xl border bg-navy-950/80 px-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-amber-500/80 focus:ring-1 focus:ring-amber-500/80 transition-all ${
+                fieldErrors.quantity ? 'border-rose-500/50' : 'border-navy-700/80'
               }`}
               placeholder="مثال: 5"
               dir="ltr"
@@ -159,7 +159,7 @@ export function StockMovementModal({ open, onClose, item }: Props) {
               onChange={(e) => setNote(e.target.value)}
               disabled={isSubmitting}
               rows={2}
-              className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600"
+              className="w-full rounded-xl border border-navy-700/80 bg-navy-950/80 px-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-amber-500/80 focus:ring-1 focus:ring-amber-500/80 transition-all"
               placeholder="ملاحظة اختيارية"
             />
           </div>
@@ -169,14 +169,14 @@ export function StockMovementModal({ open, onClose, item }: Props) {
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="rounded-md border border-slate-700 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 disabled:opacity-50"
+              className="rounded-xl border border-navy-800 bg-navy-950/60 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-navy-800/60 disabled:opacity-50"
             >
               إلغاء
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="inline-flex items-center justify-center rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500 disabled:opacity-50"
+              className="inline-flex items-center justify-center rounded-xl bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500 disabled:opacity-50"
             >
               {isSubmitting ? 'جاري الحفظ...' : 'تسجيل الحركة'}
             </button>
