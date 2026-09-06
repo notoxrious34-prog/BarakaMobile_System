@@ -29,7 +29,7 @@ export function ProfitCard({ data }: Props) {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="avoid-break grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
       <StatCard label="إجمالي الإيرادات" value={data.totalRevenue} suffix={currencySymbol} tone="positive" />
       <StatCard label="إجمالي التكاليف" value={data.totalCost} suffix={currencySymbol} tone="warning" />
       <StatCard label="ربح الخدمات" value={data.serviceProfit} suffix={currencySymbol} tone="positive" />

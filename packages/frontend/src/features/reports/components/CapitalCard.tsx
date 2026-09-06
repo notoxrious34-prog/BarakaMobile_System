@@ -22,7 +22,7 @@ export function CapitalCard({ data }: Props) {
   const { data: settingsData } = useInvoiceSettings();
   const currencySymbol = settingsData?.currency_symbol ?? 'د.ج';
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+    <div className="avoid-break grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
       <StatCard label="إجمالي الذمم المدينة" value={data.totalReceivables} suffix={currencySymbol} tone="positive" />
       <StatCard label="إجمالي الذمم الدائنة" value={data.totalPayables} suffix={currencySymbol} tone="warning" />
       <StatCard label="قيمة المخزون" value={data.inventoryValue} suffix={currencySymbol} tone="neutral" />

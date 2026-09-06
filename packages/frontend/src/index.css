@@ -109,4 +109,8 @@
     page-break-after: avoid !important;
     page-break-inside: avoid !important;
   }
+  /* TB-101: keep report stat blocks together on the printed sheet */
+  #reports-print-area .avoid-break {
+    break-inside: avoid;
+  }
 }

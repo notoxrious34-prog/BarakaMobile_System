@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Decimal from 'decimal.js';
 import { RefreshCw, Printer, FileDown } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
+import { BrandMark } from '@/components/layout/BrandMark';
 import { Loading } from '@/components/feedback/Loading';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { useCapitalQuery, useProfitQuery, useDebtSummaryQuery, useSummaryQuery } from '@/features/reports/hooks/useReports';
@@ -107,7 +108,13 @@ export function ReportsPage() {
   return (
     <div dir="rtl" className="font-sans space-y-4">
       <div className="flex items-center justify-between no-print">
-        <h1 className="text-xl font-bold text-slate-100">التقارير</h1>
+        <div className="flex items-center gap-2.5">
+          <BrandMark className="h-9 w-9" />
+          <div>
+            <h1 className="text-xl font-bold text-slate-100">التقارير</h1>
+            <p className="text-xs text-slate-500">التحليلات الاستراتيجية والأداء المالي</p>
+          </div>
+        </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -154,6 +161,24 @@ export function ReportsPage() {
       </div>
 
       <div id="reports-print-area" className="space-y-6">
+        {/* Official print masthead — print only */}
+        <div className="hidden print:block">
+          <div className="flex items-center gap-3 border-b-2 border-zinc-900 pb-3">
+            <BrandMark className="h-12 w-12" />
+            <div className="flex-1">
+              <p className="text-lg font-extrabold text-zinc-900">{settingsData?.business_name ?? 'BarakaMobile'}</p>
+              <p className="mt-0.5 text-xs text-zinc-600">التقارير الاستراتيجية — {TAB_LABELS[activeTab]}</p>
+            </div>
+            <div className="text-left text-xs text-zinc-600">
+              <p>
+                الفترة: <span dir="ltr" className="font-mono">{profitStart ?? '—'}</span> إلى <span dir="ltr" className="font-mono">{profitEnd ?? '—'}</span>
+              </p>
+              <p className="mt-1">
+                تاريخ الطباعة: <span dir="ltr" className="font-mono">{formatISODate(new Date())}</span>
+              </p>
+            </div>
+          </div>
+        </div>
         {activeTab === 'summary' && (
           <>
             <section className="space-y-3">
@@ -182,7 +207,7 @@ export function ReportsPage() {
                   onRetry={() => summaryQ.refetch()}
                 />
               ) : summaryQ.data ? (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="avoid-break grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   <div className="rounded-2xl border border-navy-800 bg-navy-900/60 p-4 backdrop-blur-sm">
                     <p className="text-xs font-medium text-slate-400">إجمالي المبيعات (عدد)</p>
                     <p className="mt-1 text-lg font-bold font-mono text-slate-100">{summaryQ.data.salesCount}</p>
@@ -293,7 +318,7 @@ export function ReportsPage() {
           <section className="space-y-4">
             <h2 className="text-base font-semibold text-slate-100">الخزينة والمصاريف — ملخص</h2>
             {capitalQ.data && (
-              <div className="rounded-2xl border border-navy-800 bg-navy-900/60 p-5 backdrop-blur-sm">
+              <div className="avoid-break rounded-2xl border border-navy-800 bg-navy-900/60 p-5 backdrop-blur-sm">
                 <p className="text-sm text-slate-400">السيولة في الصندوق</p>
                 <p className="mt-1 text-2xl font-bold font-mono text-slate-100" dir="ltr">
                   {fmt(capitalQ.data.cashInHand)} {currencySymbol}
@@ -302,7 +327,7 @@ export function ReportsPage() {
               </div>
             )}
             {profitQ.data && (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="avoid-break grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="rounded-2xl border border-navy-800 bg-navy-900/60 p-5 backdrop-blur-sm">
                   <p className="text-xs text-slate-400">إجمالي المصاريف (للفترة)</p>
                   <p className="mt-1 text-lg font-bold font-mono text-amber-400" dir="ltr">

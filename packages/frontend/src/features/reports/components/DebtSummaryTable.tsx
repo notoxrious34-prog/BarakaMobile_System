@@ -51,7 +51,7 @@ export function DebtSummaryTable({ data, onViewLedger }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="avoid-break grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-navy-800 bg-navy-900/60 p-4 backdrop-blur-sm">
           <p className="text-xs font-medium text-slate-400">إجمالي المستحقات</p>
           <p className="mt-1 text-lg font-bold font-mono text-emerald-400" dir="ltr">
@@ -117,8 +117,8 @@ export function DebtSummaryTable({ data, onViewLedger }: Props) {
       <div className="overflow-hidden rounded-2xl border border-navy-800 bg-navy-900/60 backdrop-blur-sm">
         <div className="scrollbar-premium overflow-x-auto">
           <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="bg-navy-950/70 text-slate-300">
+            <thead className="sticky top-0 z-10">
+              <tr className="bg-navy-950 text-slate-300">
                 <th className="px-3 py-2.5 text-right font-semibold">جهة الاتصال</th>
                 <th className="px-3 py-2.5 text-right font-semibold">الدور</th>
                 <th className="px-3 py-2.5 text-right font-semibold">رصيد المورد</th>

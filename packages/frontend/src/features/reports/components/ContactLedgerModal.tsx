@@ -121,7 +121,7 @@ export function ContactLedgerModal({ open, onClose, accountId, contactName, role
                 </thead>
                 <tbody>
                   {entries.map((e) => {
-                    const cfg = ENTRY_LABEL[e.entryType] ?? { label: e.entryType, className: 'border-slate-700 bg-slate-800 text-slate-300' };
+                    const cfg = ENTRY_LABEL[e.entryType] ?? { label: e.entryType, className: 'border-navy-700/60 bg-navy-950/60 text-slate-300' };
                     return (
                       <tr key={e.id} className="border-t border-navy-800/60 bg-navy-950/40 hover:bg-navy-800/40">
                         <td className="px-3 py-2 font-mono text-slate-300" dir="ltr">
