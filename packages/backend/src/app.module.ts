@@ -13,9 +13,10 @@ import { SearchModule } from './search/search.module';
 import { CashModule } from './cash/cash.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { RepairModule } from './repair/repair.module';
+import { WalletsModule } from './wallets/wallets.module';
 
 @Module({
-  imports: [PrismaModule, ContactsModule, AccountsModule, InventoryModule, ServicesModule, TransactionsModule, ReportsModule, SettingsModule, SearchModule, CashModule, ExpensesModule, RepairModule],
+  imports: [PrismaModule, ContactsModule, AccountsModule, InventoryModule, ServicesModule, TransactionsModule, ReportsModule, SettingsModule, SearchModule, CashModule, ExpensesModule, RepairModule, WalletsModule],
   controllers: [AppController],
   providers: [AppService],
 })

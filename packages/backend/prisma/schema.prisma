@@ -32,6 +32,7 @@ model Contact {
   accounts  Account[]
   services  Service[]
   repairs   RepairTicket[]
+  wallets   DigitalWallet[]
 }
 
 model Account {
@@ -149,6 +150,8 @@ model Transaction {
   reversedBy     Transaction[]        @relation("ReversalOf")
   itemLines      TransactionItem[]
   serviceLines   TransactionService[]
+  walletPurchases WalletLedgerEntry[] @relation("WalletPurchase")
+  walletSales     WalletLedgerEntry[] @relation("WalletSale")
 }
 
 model LedgerEntry {
@@ -172,8 +175,14 @@ model TransactionItem {
   unitPrice     String
   unitCost      String      @default("0.00")
   totalPrice    String
+  walletServiceId       String?
+  nominalAmount         String?
+  walletDeductionAmount String?
+  commissionProfit      String?
+  beneficiaryPhone      String?
   transaction   Transaction @relation(fields: [transactionId], references: [id])
   item          Item        @relation(fields: [itemId], references: [id])
+  walletService WalletService? @relation(fields: [walletServiceId], references: [id], onDelete: SetNull)
 }
 
 model TransactionService {
@@ -283,4 +292,68 @@ model RepairTicket {
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
   contact              Contact   @relation(fields: [contactId], references: [id])
+}
+
+enum WalletType {
+  FLEXY
+  GAMING
+  FOREIGN_CURRENCY
+  GENERIC
+}
+
+enum WalletServicePricingMode {
+  PERCENTAGE
+  FIXED_MARGIN
+}
+
+enum WalletEntryType {
+  TOPUP
+  SALE_DEDUCTION
+  ADJUSTMENT
+  REVERSAL
+}
+
+model DigitalWallet {
+  id                  String          @id @default(cuid())
+  name                String
+  type                WalletType      @default(FLEXY)
+  currency            String          @default("DZD")
+  defaultSupplierId   String?
+  lowBalanceThreshold String          @default("2000.00")
+  isActive            Boolean         @default(true)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  defaultSupplier     Contact?        @relation(fields: [defaultSupplierId], references: [id], onDelete: SetNull)
+  services            WalletService[]
+  ledgerEntries       WalletLedgerEntry[]
+}
+
+model WalletService {
+  id                String                   @id @default(cuid())
+  walletId          String
+  name              String
+  networkBrandColor String?
+  commissionRate    String                   @default("0.0000")
+  pricingMode       WalletServicePricingMode @default(PERCENTAGE)
+  isActive          Boolean                  @default(true)
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+  wallet            DigitalWallet            @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  transactionItems  TransactionItem[]
+}
+
+model WalletLedgerEntry {
+  id                String          @id @default(cuid())
+  walletId          String
+  entryType         WalletEntryType
+  amount            String
+  relatedPurchaseId String?
+  relatedSaleId     String?
+  balanceAfter      String
+  notes             String?
+  createdBy         String?
+  createdAt         DateTime        @default(now())
+  wallet            DigitalWallet   @relation(fields: [walletId], references: [id], onDelete: Restrict)
+  relatedPurchase   Transaction?    @relation("WalletPurchase", fields: [relatedPurchaseId], references: [id], onDelete: SetNull)
+  relatedSale       Transaction?    @relation("WalletSale", fields: [relatedSaleId], references: [id], onDelete: SetNull)
 }
