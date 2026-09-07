@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import Decimal from 'decimal.js';
-import { Zap, Printer, RotateCcw, AlertTriangle, Wallet } from 'lucide-react';
+import { Zap, Printer, RotateCcw, AlertTriangle, Wallet, Settings2, Scale, ArrowUpLeft } from 'lucide-react';
 import { ApiError } from '@/lib/api';
 import { useWalletsQuery, useWalletDetailsQuery, useWalletLedgerQuery, useFlexySaleMutation, type LedgerEntry } from '@/features/wallets/hooks/useWallets';
 import { WalletTopupModal } from '@/features/wallets/components/WalletTopupModal';
+import { WalletServicesModal } from '@/features/wallets/components/WalletServicesModal';
+import { WalletAdjustmentModal } from '@/features/wallets/components/WalletAdjustmentModal';
+import { WalletAuditLedgerModal } from '@/features/wallets/components/WalletAuditLedgerModal';
 import { FlexyReceipt, type FlexyReceiptData } from '@/features/wallets/components/FlexyReceipt';
 
 const PRESETS = ['100', '200', '300', '500', '1000', '2000'];
@@ -46,6 +49,9 @@ export function FlexyCockpitPage() {
   const [amount, setAmount] = useState('');
   const [autoPrint, setAutoPrint] = useState(true);
   const [topupOpen, setTopupOpen] = useState(false);
+  const [servicesOpen, setServicesOpen] = useState(false);
+  const [adjustOpen, setAdjustOpen] = useState(false);
+  const [auditOpen, setAuditOpen] = useState(false);
   const [receipt, setReceipt] = useState<FlexyReceiptData | null>(null);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -243,6 +249,24 @@ export function FlexyCockpitPage() {
             <Wallet className="h-4 w-4" aria-hidden="true" />
             شحن المحفظة
           </button>
+          <button
+            type="button"
+            onClick={() => setAdjustOpen(true)}
+            title="تسوية الرصيد"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-violet-500/40 bg-violet-500/10 px-3 py-2 text-xs font-extrabold text-violet-300 hover:bg-violet-500/20"
+          >
+            <Scale className="h-4 w-4" aria-hidden="true" />
+            تسوية الرصيد
+          </button>
+          <button
+            type="button"
+            onClick={() => setServicesOpen(true)}
+            title="إعدادات الخدمات والعمولات"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-xs font-extrabold text-cyan-300 hover:bg-cyan-500/20"
+          >
+            <Settings2 className="h-4 w-4" aria-hidden="true" />
+            الخدمات والعمولات
+          </button>
         </div>
       </div>
 
@@ -385,7 +409,17 @@ export function FlexyCockpitPage() {
 
         {/* History & pulse */}
         <section className="flex flex-col gap-3 rounded-2xl border border-navy-border/40 bg-navy-900 p-4">
-          <h2 className="text-sm font-extrabold text-slate-100">عمليات اليوم</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-extrabold text-slate-100">عمليات اليوم</h2>
+            <button
+              type="button"
+              onClick={() => setAuditOpen(true)}
+              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold text-cyan-300 hover:bg-white/[0.06]"
+            >
+              عرض السجل الشامل
+              <ArrowUpLeft className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+          </div>
           <div className="grid grid-cols-3 gap-2">
             <div className="rounded-xl border border-navy-border/30 bg-navy-950/50 p-2.5 text-center">
               <p className="text-[11px] text-slate-400">عدد العمليات</p>
@@ -446,6 +480,9 @@ export function FlexyCockpitPage() {
       </div>
 
       <WalletTopupModal open={topupOpen} onClose={() => setTopupOpen(false)} />
+      <WalletServicesModal open={servicesOpen} walletId={walletId || null} onClose={() => setServicesOpen(false)} />
+      <WalletAdjustmentModal open={adjustOpen} walletId={walletId || null} currentBalance={balance} onClose={() => setAdjustOpen(false)} />
+      <WalletAuditLedgerModal open={auditOpen} walletId={walletId || null} onClose={() => setAuditOpen(false)} />
       {receipt && (
         <div className="hidden print:block">
           <FlexyReceipt data={receipt} />

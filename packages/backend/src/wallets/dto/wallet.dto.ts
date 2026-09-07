@@ -168,3 +168,53 @@ export class SellFlexyDto {
   @MaxLength(500)
   notes?: string;
 }
+
+export class UpdateWalletServicePatchDto {
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(120)
+  name?: string;
+
+  // Decimal rate string ('0.0350') or plain number (0.035); means fraction of 1.
+  @IsOptional()
+  @IsNotEmpty()
+  commissionRate?: string | number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  color?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(HEX_COLOR_RE)
+  networkBrandColor?: string;
+
+  @IsOptional()
+  @IsEnum(['PERCENTAGE', 'FIXED_MARGIN'] as any)
+  pricingMode?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+}
+
+export class AdjustWalletBalanceDto {
+  @IsNotEmpty()
+  amount!: string | number;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(300)
+  reason!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  notes?: string;
+
+  @IsOptional()
+  @IsString()
+  createdBy?: string;
+}

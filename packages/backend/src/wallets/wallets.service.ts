@@ -3,7 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CashService } from '../cash/cash.service';
 import { Prisma, WalletEntryType, TransactionType, LedgerEntryType } from '@prisma/client';
 import Decimal from 'decimal.js';
-import { CreateWalletDto, UpdateWalletDto, CreateWalletServiceDto, UpdateWalletServiceDto, AdjustLedgerDto, TopupWalletDto, SellFlexyDto } from './dto/wallet.dto';
+import { CreateWalletDto, UpdateWalletDto, CreateWalletServiceDto, UpdateWalletServiceDto, AdjustLedgerDto, TopupWalletDto, SellFlexyDto, UpdateWalletServicePatchDto, AdjustWalletBalanceDto } from './dto/wallet.dto';
 
 type PrismaTx = Prisma.TransactionClient;
 
@@ -173,18 +173,27 @@ export class WalletsService {
 
   async getLedger(
     id: string,
-    opts: { entryType?: string; startDate?: string; endDate?: string; page?: number; limit?: number },
+    opts: { entryType?: string; startDate?: string; endDate?: string; page?: number; limit?: number; serviceId?: string; search?: string; skip?: number },
   ) {
     await this.requireWallet(id);
-    const page = Math.max(1, opts.page ?? 1);
     const limit = Math.min(200, Math.max(1, opts.limit ?? 50));
+    const skip = opts.skip !== undefined ? Math.max(0, opts.skip) : (Math.max(1, opts.page ?? 1) - 1) * limit;
+    const page = Math.floor(skip / limit) + 1;
     const where: any = { walletId: id };
     if (opts.entryType) {
+      const alias = opts.entryType === 'SALE' ? 'SALE_DEDUCTION' : opts.entryType;
       const allowed = ['TOPUP', 'SALE_DEDUCTION', 'ADJUSTMENT', 'REVERSAL'];
-      if (!allowed.includes(opts.entryType)) {
+      if (!allowed.includes(alias)) {
         throw new BadRequestException({ code: 'INVALID_ENTRY_TYPE', entryType: opts.entryType });
       }
-      where.entryType = opts.entryType;
+      where.entryType = alias;
+    }
+    if (opts.serviceId) {
+      where.walletServiceId = opts.serviceId;
+    }
+    if (opts.search) {
+      const q = opts.search;
+      where.OR = [{ notes: { contains: q } }, { beneficiaryPhone: { contains: q } }];
     }
     if (opts.startDate || opts.endDate) {
       where.createdAt = {};
@@ -196,7 +205,7 @@ export class WalletsService {
       this.prisma.walletLedgerEntry.findMany({
         where,
         orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * limit,
+        skip,
         take: limit,
         include: { walletService: { select: { id: true, name: true, networkBrandColor: true } } },
       }),
@@ -342,6 +351,96 @@ export class WalletsService {
         ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
       },
     });
+  }
+
+  /**
+   * PATCH-friendly service update: accepts `color` alias and string|number
+   * rates, enforces 0 <= rate <= 1 exactly via Decimal.
+   */
+  async patchService(walletId: string, serviceId: string, dto: UpdateWalletServicePatchDto) {
+    const service = await this.prisma.walletService.findUnique({ where: { id: serviceId } });
+    if (!service || service.walletId !== walletId) {
+      throw new NotFoundException({ code: 'WALLET_SERVICE_NOT_FOUND', serviceId });
+    }
+    const data: any = {};
+    if (dto.name !== undefined) data.name = dto.name;
+    const color = dto.networkBrandColor ?? dto.color ?? undefined;
+    if (color !== undefined) {
+      if (!/^#[0-9A-Fa-f]{6}$/.test(color)) {
+        throw new BadRequestException({ code: 'INVALID_BRAND_COLOR', color });
+      }
+      data.networkBrandColor = color;
+    }
+    if (dto.commissionRate !== undefined) {
+      let rate: Decimal;
+      try {
+        rate = new Decimal(dto.commissionRate);
+      } catch {
+        throw new BadRequestException({ code: 'INVALID_RATE', commissionRate: String(dto.commissionRate) });
+      }
+      if (!rate.isFinite() || rate.lt(0) || rate.gt(1)) {
+        throw new BadRequestException({ code: 'RATE_OUT_OF_RANGE', commissionRate: rate.toString() });
+      }
+      data.commissionRate = rate.toDecimalPlaces(4, Decimal.ROUND_HALF_UP).toFixed(4);
+    }
+    if (dto.pricingMode !== undefined) {
+      if (!['PERCENTAGE', 'FIXED_MARGIN'].includes(dto.pricingMode)) {
+        throw new BadRequestException({ code: 'INVALID_PRICING_MODE', pricingMode: dto.pricingMode });
+      }
+      data.pricingMode = dto.pricingMode;
+    }
+    if (dto.isActive !== undefined) data.isActive = dto.isActive;
+    return this.prisma.walletService.update({ where: { id: serviceId }, data });
+  }
+
+  /**
+   * Reconciliation adjustment with a required reason and a hard zero floor:
+   * the resulting balance may never go negative (409 with payload).
+   */
+  async adjustBalance(id: string, dto: AdjustWalletBalanceDto) {
+    const wallet = await this.requireWallet(id);
+    if (!wallet.isActive) {
+      throw new ConflictException({ code: 'WALLET_INACTIVE', walletId: id });
+    }
+    let amount: Decimal;
+    try {
+      amount = new Decimal(dto.amount);
+    } catch {
+      throw new BadRequestException({ code: 'INVALID_ADJUSTMENT_AMOUNT', amount: String(dto.amount) });
+    }
+    if (!amount.isFinite()) {
+      throw new BadRequestException({ code: 'INVALID_ADJUSTMENT_AMOUNT', amount: String(dto.amount) });
+    }
+    const note = `[${dto.reason}]${dto.notes ? ` ${dto.notes}` : ''}`;
+    const result = await this.prisma.$transaction(async (tx: PrismaTx) => {
+      const current = await this.computeWalletBalance(id, tx);
+      const next = current.plus(amount);
+      if (next.lessThan(new Decimal(0))) {
+        throw new ConflictException({
+          code: 'INSUFFICIENT_WALLET_BALANCE',
+          available_balance: toMoney(current),
+          required_amount: toMoney(amount.abs()),
+          shortfall: toMoney(amount.abs().minus(current)),
+        });
+      }
+      const entry = await tx.walletLedgerEntry.create({
+        data: {
+          walletId: id,
+          entryType: 'ADJUSTMENT',
+          amount: toMoney(amount),
+          balanceAfter: toMoney(next),
+          notes: note,
+          createdBy: dto.createdBy ?? null,
+        },
+      });
+      return { entry, newBalance: toMoney(next) };
+    });
+    const currentBalance = toMoney(await this.computeWalletBalance(id));
+    return {
+      entry: result.entry,
+      wallet: { ...(wallet as object), currentBalance },
+      newBalance: result.newBalance,
+    };
   }
 
   /**

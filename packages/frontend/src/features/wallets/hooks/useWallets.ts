@@ -122,17 +122,20 @@ export function useWalletDetailsQuery(walletId: string | null, enabled = true) {
 
 export function useWalletLedgerQuery(
   walletId: string | null,
-  params?: { entryType?: string; startDate?: string; endDate?: string; limit?: number },
+  params?: { entryType?: string; startDate?: string; endDate?: string; serviceId?: string; search?: string; limit?: number; skip?: number },
   enabled = true,
 ) {
   const qs = toQuery({
     entryType: params?.entryType,
     startDate: params?.startDate,
     endDate: params?.endDate,
+    serviceId: params?.serviceId,
+    search: params?.search,
     limit: params?.limit ?? 100,
+    skip: params?.skip,
   });
-  return useQuery<{ entries: LedgerEntry[]; total: number }>({
-    queryKey: ['wallet-ledger', walletId, params?.entryType, params?.startDate, params?.endDate],
+  return useQuery<{ entries: LedgerEntry[]; total: number; page: number; pages: number }>({
+    queryKey: ['wallet-ledger', walletId, params?.entryType, params?.startDate, params?.endDate, params?.serviceId, params?.search, params?.skip],
     queryFn: () => api.get(`/wallets/${walletId}/ledger${qs}`),
     enabled: enabled && !!walletId,
   });
@@ -151,5 +154,75 @@ export function useFlexySaleMutation() {
       qc.invalidateQueries({ queryKey: ['cash'] });
       qc.invalidateQueries({ queryKey: ['transactions'] });
     },
+  });
+}
+
+export type PatchServicePayload = {
+  walletId: string;
+  serviceId: string;
+  name?: string;
+  commissionRate?: string | number;
+  color?: string;
+  networkBrandColor?: string;
+  isActive?: boolean;
+};
+
+export type AdjustBalancePayload = {
+  walletId: string;
+  amount: string;
+  reason: string;
+  notes?: string;
+};
+
+function invalidateWalletScope(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: ['wallets'] });
+  qc.invalidateQueries({ queryKey: ['wallet-ledger'] });
+  qc.invalidateQueries({ queryKey: ['cash'] });
+  qc.invalidateQueries({ queryKey: ['transactions'] });
+  qc.invalidateQueries({ queryKey: ['contacts'] });
+  qc.invalidateQueries({ queryKey: ['accounts'] });
+}
+
+export function usePatchServiceMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: PatchServicePayload) => {
+      const { walletId, serviceId, ...body } = p;
+      return api.patch(`/wallets/${walletId}/services/${serviceId}`, body);
+    },
+    onSuccess: () => invalidateWalletScope(qc),
+  });
+}
+
+export function useAddServiceMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { walletId: string; name: string; commissionRate: string; networkBrandColor?: string }) => {
+      const { walletId, ...body } = p;
+      return api.post(`/wallets/${walletId}/services`, body);
+    },
+    onSuccess: () => invalidateWalletScope(qc),
+  });
+}
+
+export function usePatchWalletMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { walletId: string; name?: string; lowBalanceThreshold?: string; isActive?: boolean; defaultSupplierId?: string }) => {
+      const { walletId, ...body } = p;
+      return api.patch(`/wallets/${walletId}`, body);
+    },
+    onSuccess: () => invalidateWalletScope(qc),
+  });
+}
+
+export function useAdjustBalanceMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: AdjustBalancePayload) => {
+      const { walletId, ...body } = p;
+      return api.post<{ entry: LedgerEntry; newBalance: string }>(`/wallets/${walletId}/adjustment`, body);
+    },
+    onSuccess: () => invalidateWalletScope(qc),
   });
 }

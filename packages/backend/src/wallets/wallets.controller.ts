@@ -1,6 +1,6 @@
-import { Controller, Get, Post, Put, Body, Param, Query, HttpCode } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Body, Param, Query, HttpCode } from '@nestjs/common';
 import { WalletsService } from './wallets.service';
-import { CreateWalletDto, UpdateWalletDto, CreateWalletServiceDto, UpdateWalletServiceDto, AdjustLedgerDto, TopupWalletDto, SellFlexyDto } from './dto/wallet.dto';
+import { CreateWalletDto, UpdateWalletDto, CreateWalletServiceDto, UpdateWalletServiceDto, AdjustLedgerDto, TopupWalletDto, SellFlexyDto, UpdateWalletServicePatchDto, AdjustWalletBalanceDto } from './dto/wallet.dto';
 
 @Controller('wallets')
 export class WalletsController {
@@ -34,6 +34,9 @@ export class WalletsController {
     @Query('endDate') endDate?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('serviceId') serviceId?: string,
+    @Query('search') search?: string,
+    @Query('skip') skip?: string,
   ) {
     return this.walletsService.getLedger(id, {
       entryType,
@@ -41,6 +44,9 @@ export class WalletsController {
       endDate,
       page: page !== undefined ? Number(page) : undefined,
       limit: limit !== undefined ? Number(limit) : undefined,
+      serviceId,
+      search,
+      skip: skip !== undefined ? Number(skip) : undefined,
     });
   }
 
@@ -69,5 +75,25 @@ export class WalletsController {
   @Put('services/:serviceId')
   updateService(@Param('serviceId') serviceId: string, @Body() dto: UpdateWalletServiceDto) {
     return this.walletsService.updateService(serviceId, dto);
+  }
+
+  @Patch(':id')
+  patchWallet(@Param('id') id: string, @Body() dto: UpdateWalletDto) {
+    return this.walletsService.updateWallet(id, dto);
+  }
+
+  @Patch(':id/services/:serviceId')
+  patchService(
+    @Param('id') id: string,
+    @Param('serviceId') serviceId: string,
+    @Body() dto: UpdateWalletServicePatchDto,
+  ) {
+    return this.walletsService.patchService(id, serviceId, dto);
+  }
+
+  @Post(':id/adjustment')
+  @HttpCode(201)
+  adjustBalance(@Param('id') id: string, @Body() dto: AdjustWalletBalanceDto) {
+    return this.walletsService.adjustBalance(id, dto);
   }
 }

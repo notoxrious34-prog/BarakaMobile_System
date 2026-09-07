@@ -4,6 +4,8 @@ import { ErrorState } from '@/components/feedback/ErrorState';
 import { Skeleton } from '@/components/feedback/Skeleton';
 import { ReceiptPreview } from '@/features/settings/components/ReceiptPreview';
 import { BrandMark } from '@/components/layout/BrandMark';
+import { useWalletsQuery } from '@/features/wallets/hooks/useWallets';
+import { WalletServicesPanel } from '@/features/wallets/components/WalletServicesPanel';
 
 type FormState = {
   business_name: string;
@@ -51,6 +53,37 @@ const INPUT_CLS =
 const LABEL_CLS = 'text-sm font-semibold text-slate-300';
 const CARD_CLS =
   'rounded-2xl border border-navy-800/80 bg-navy-900/60 p-6 backdrop-blur-md shadow-lg shadow-navy-950/30';
+
+function WalletSettingsSection() {
+  const { data: wallets } = useWalletsQuery(true);
+  const active = (wallets ?? []).filter((w) => w.isActive);
+  const [walletId, setWalletId] = useState('');
+  const selected = walletId || active.find((w) => w.type === 'FLEXY')?.id || active[0]?.id || null;
+  return (
+    <section className={CARD_CLS} aria-label="المحافظ والخدمات الرقمية">
+      <h2 className="mb-1 text-sm font-bold text-slate-100">المحافظ والخدمات الرقمية</h2>
+      <p className="mb-4 text-xs text-slate-400">عمولات الشبكات، الخدمات المفعّلة، وحد تنبيه الرصيد</p>
+      <div className="mb-3 max-w-xs space-y-1.5">
+        <label htmlFor="settings-wallet" className={LABEL_CLS}>
+          المحفظة
+        </label>
+        <select
+          id="settings-wallet"
+          value={selected ?? ''}
+          onChange={(e) => setWalletId(e.target.value)}
+          className="w-full rounded-xl border border-navy-700/80 bg-navy-950/80 px-3 py-2 text-sm text-slate-100"
+        >
+          {active.map((w) => (
+            <option key={w.id} value={w.id}>
+              {w.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      <WalletServicesPanel walletId={selected} />
+    </section>
+  );
+}
 
 export function SettingsPage() {
   const { data, isLoading, isError, refetch } = useSettings();
@@ -409,6 +442,8 @@ export function SettingsPage() {
                 />
               </div>
             </section>
+
+            <WalletSettingsSection />
           </div>
 
           {/* Preview column — sticky on desktop, stacked on mobile */}
