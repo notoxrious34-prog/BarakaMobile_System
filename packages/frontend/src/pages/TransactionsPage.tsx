@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
-import { Plus, Search, ArrowLeftRight } from 'lucide-react';
+import { Plus, Search, ArrowLeftRight, Zap } from 'lucide-react';
 import { BrandMark } from '@/components/layout/BrandMark';
+import { WalletTopupModal } from '@/features/wallets/components/WalletTopupModal';
 import { useTransactionsQuery } from '@/features/transactions/hooks/useTransactions';
 import { TransactionsList } from '@/features/transactions/components/TransactionsList';
 import { TransactionDetail } from '@/features/transactions/components/TransactionDetail';
@@ -32,6 +33,7 @@ export function TransactionsPage() {
   });
 
   const [purchaseOpen, setPurchaseOpen] = useState(false);
+  const [topupOpen, setTopupOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [offsetOpen, setOffsetOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -128,6 +130,14 @@ export function TransactionsPage() {
           >
             <Plus className="h-4 w-4" aria-hidden="true" />
             شراء بضاعة
+          </button>
+          <button
+            type="button"
+            onClick={() => setTopupOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 px-4 py-2 text-xs font-extrabold text-navy-950 hover:bg-amber-400"
+          >
+            <Zap className="h-4 w-4" aria-hidden="true" />
+            شحن محفظة رقمية
           </button>
           <button
             type="button"
@@ -254,6 +264,7 @@ export function TransactionsPage() {
       </div>
 
       <PurchaseForm open={purchaseOpen} onClose={() => setPurchaseOpen(false)} />
+      <WalletTopupModal open={topupOpen} onClose={() => setTopupOpen(false)} />
       <PaymentForm open={paymentOpen} onClose={() => setPaymentOpen(false)} />
       <OffsetForm open={offsetOpen} onClose={() => setOffsetOpen(false)} />
       <InvoiceDocument transactionId={printA4Id} onClose={() => setPrintA4Id(null)} />

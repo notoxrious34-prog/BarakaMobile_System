@@ -121,3 +121,28 @@ export class AdjustLedgerDto {
   @IsString()
   createdBy?: string;
 }
+
+export class TopupWalletDto {
+  @IsOptional()
+  @IsString()
+  supplierId?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @Matches(MONEY_RE)
+  topupAmount!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @Matches(MONEY_RE)
+  paidAmount!: string;
+
+  @IsOptional()
+  @IsEnum(['CASH', 'BANK_TRANSFER'] as any)
+  paymentMethod?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  notes?: string;
+}

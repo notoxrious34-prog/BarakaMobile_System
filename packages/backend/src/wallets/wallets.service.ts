@@ -1,8 +1,9 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Prisma, WalletEntryType } from '@prisma/client';
+import { CashService } from '../cash/cash.service';
+import { Prisma, WalletEntryType, TransactionType, LedgerEntryType } from '@prisma/client';
 import Decimal from 'decimal.js';
-import { CreateWalletDto, UpdateWalletDto, CreateWalletServiceDto, UpdateWalletServiceDto, AdjustLedgerDto } from './dto/wallet.dto';
+import { CreateWalletDto, UpdateWalletDto, CreateWalletServiceDto, UpdateWalletServiceDto, AdjustLedgerDto, TopupWalletDto } from './dto/wallet.dto';
 
 type PrismaTx = Prisma.TransactionClient;
 
@@ -16,7 +17,10 @@ function toRate(v: string): string {
 
 @Injectable()
 export class WalletsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cashService: CashService,
+  ) {}
 
   /** Ground-truth quote: deduction + profit from nominal + commission rate. */
   quoteDeduction(nominalAmount: string, commissionRate: string): { walletDeductionAmount: string; commissionProfit: string } {
@@ -282,6 +286,130 @@ export class WalletsService {
         ...(dto.pricingMode !== undefined ? { pricingMode: dto.pricingMode as any } : {}),
         ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
       },
+    });
+  }
+
+  /**
+   * Atomic wallet top-up: supplier PURCHASE invoice + optional Treasury
+   * outflow + TOPUP wallet credit, all inside one Prisma transaction.
+   * Mirrors the TransactionsService PURCHASE posting pattern (CREDIT invoice
+   * leg, DEBIT paid leg, PURCHASE_PAYMENT cash leg, account balance update).
+   */
+  async topupWallet(walletId: string, dto: TopupWalletDto) {
+    const wallet = await this.requireWallet(walletId);
+    if (!wallet.isActive) {
+      throw new ConflictException({ code: 'WALLET_INACTIVE', walletId });
+    }
+    const topup = new Decimal(dto.topupAmount);
+    const paid = new Decimal(dto.paidAmount);
+    if (topup.lte(0) || paid.lt(0) || paid.gt(topup)) {
+      throw new BadRequestException({
+        code: 'INVALID_TOPUP_AMOUNTS',
+        topupAmount: toMoney(topup),
+        paidAmount: toMoney(paid),
+      });
+    }
+    const debt = topup.minus(paid);
+    const method = dto.paymentMethod ?? 'CASH';
+    const purchaseNote = dto.notes ?? `Top-up for wallet: ${wallet.name}`;
+
+    return this.prisma.$transaction(async (tx: PrismaTx) => {
+      // Resolve supplier SUPPLIER account (explicit → wallet default → generic fallback).
+      const supplierContactId = dto.supplierId ?? wallet.defaultSupplierId ?? null;
+      let contactId: string;
+      if (supplierContactId) {
+        const contact = await tx.contact.findUnique({ where: { id: supplierContactId } });
+        if (!contact) {
+          throw new NotFoundException({ code: 'SUPPLIER_NOT_FOUND', supplierId: supplierContactId });
+        }
+        contactId = contact.id;
+      } else {
+        let generic = await tx.contact.findFirst({ where: { name: 'مورد الشحن العام', role: 'SUPPLIER' } });
+        if (!generic) {
+          generic = await tx.contact.create({ data: { name: 'مورد الشحن العام', role: 'SUPPLIER', isActive: true } });
+        }
+        contactId = generic.id;
+      }
+      let account = await tx.account.findFirst({ where: { contactId, role: 'SUPPLIER' } });
+      if (!account) {
+        account = await tx.account.create({
+          data: { contactId, role: 'SUPPLIER', openingBalance: '0.00', currentBalance: '0.00' },
+        });
+      }
+
+      const amountStr = toMoney(topup);
+      const paidStr = toMoney(paid);
+
+      const transaction = await tx.transaction.create({
+        data: {
+          type: TransactionType.PURCHASE,
+          accountId: account.id,
+          amount: amountStr,
+          amountPaidNow: paidStr,
+          note: purchaseNote,
+          reference: `WALLET-TOPUP:${walletId}`,
+        },
+      });
+
+      // CREDIT leg: supplier invoice liability (+topup on account balance).
+      const beforeDec = new Decimal(account.currentBalance);
+      const afterInvoice = beforeDec.plus(topup);
+      const afterInvoiceStr = toMoney(afterInvoice);
+      await tx.ledgerEntry.create({
+        data: {
+          transactionId: transaction.id,
+          accountId: account.id,
+          entryType: LedgerEntryType.CREDIT,
+          amount: amountStr,
+          balanceBefore: toMoney(beforeDec),
+          balanceAfter: afterInvoiceStr,
+        },
+      });
+
+      let finalAccountBalance = afterInvoiceStr;
+      if (paid.gt(0)) {
+        // DEBIT leg: immediate payment reduces supplier liability.
+        const afterPaid = afterInvoice.minus(paid);
+        const afterPaidStr = toMoney(afterPaid);
+        await tx.ledgerEntry.create({
+          data: {
+            transactionId: transaction.id,
+            accountId: account.id,
+            entryType: LedgerEntryType.DEBIT,
+            amount: paidStr,
+            balanceBefore: afterInvoiceStr,
+            balanceAfter: afterPaidStr,
+          },
+        });
+        finalAccountBalance = afterPaidStr;
+        // Treasury outflow (throws 400 when cash is insufficient).
+        await this.cashService.postCashMovement(tx, {
+          type: 'OUT',
+          category: 'PURCHASE_PAYMENT',
+          amount: paidStr,
+          relatedTransactionId: transaction.id,
+          note: `${purchaseNote} [${method}]`,
+        });
+      }
+      await tx.account.update({ where: { id: account.id }, data: { currentBalance: finalAccountBalance } });
+
+      // Wallet TOPUP credit (entry 4 of the atomic bundle).
+      const topupEntry = await this.appendEntry(tx, walletId, 'TOPUP', topup, {
+        notes: dto.notes ?? 'Wallet Top-up',
+        relatedPurchaseId: transaction.id,
+      });
+      const newWalletBalance = toMoney(await this.computeWalletBalance(walletId, tx));
+
+      return {
+        success: true,
+        transactionId: transaction.id,
+        ledgerEntryId: topupEntry.id,
+        newWalletBalance,
+        topupAmount: amountStr,
+        paidAmount: paidStr,
+        debtAmount: toMoney(debt),
+        status: debt.isZero() ? 'COMPLETED' : 'PARTIALLY_PAID',
+      };
     });
   }
 

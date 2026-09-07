@@ -1,6 +1,6 @@
-import { Controller, Get, Post, Put, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Param, Query, HttpCode } from '@nestjs/common';
 import { WalletsService } from './wallets.service';
-import { CreateWalletDto, UpdateWalletDto, CreateWalletServiceDto, UpdateWalletServiceDto, AdjustLedgerDto } from './dto/wallet.dto';
+import { CreateWalletDto, UpdateWalletDto, CreateWalletServiceDto, UpdateWalletServiceDto, AdjustLedgerDto, TopupWalletDto } from './dto/wallet.dto';
 
 @Controller('wallets')
 export class WalletsController {
@@ -47,6 +47,12 @@ export class WalletsController {
   @Post(':id/ledger/adjust')
   adjustLedger(@Param('id') id: string, @Body() dto: AdjustLedgerDto) {
     return this.walletsService.adjustLedger(id, dto);
+  }
+
+  @Post(':id/topup')
+  @HttpCode(201)
+  topupWallet(@Param('id') id: string, @Body() dto: TopupWalletDto) {
+    return this.walletsService.topupWallet(id, dto);
   }
 
   @Post(':id/services')
