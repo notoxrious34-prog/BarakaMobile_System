@@ -3,7 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CashService } from '../cash/cash.service';
 import { Prisma, WalletEntryType, TransactionType, LedgerEntryType } from '@prisma/client';
 import Decimal from 'decimal.js';
-import { CreateWalletDto, UpdateWalletDto, CreateWalletServiceDto, UpdateWalletServiceDto, AdjustLedgerDto, TopupWalletDto } from './dto/wallet.dto';
+import { CreateWalletDto, UpdateWalletDto, CreateWalletServiceDto, UpdateWalletServiceDto, AdjustLedgerDto, TopupWalletDto, SellFlexyDto } from './dto/wallet.dto';
 
 type PrismaTx = Prisma.TransactionClient;
 
@@ -198,6 +198,7 @@ export class WalletsService {
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
+        include: { walletService: { select: { id: true, name: true, networkBrandColor: true } } },
       }),
     ]);
     return { page, limit, total, pages: Math.ceil(total / limit), entries };
@@ -209,7 +210,7 @@ export class WalletsService {
     walletId: string,
     entryType: WalletEntryType,
     amount: Decimal,
-    extra: { notes?: string | null; createdBy?: string | null; relatedPurchaseId?: string | null; relatedSaleId?: string | null } = {},
+    extra: { notes?: string | null; createdBy?: string | null; relatedPurchaseId?: string | null; relatedSaleId?: string | null; walletServiceId?: string | null; nominalAmount?: string | null; commissionProfit?: string | null; beneficiaryPhone?: string | null } = {},
   ) {
     const current = await this.computeWalletBalance(walletId, tx);
     const next = current.plus(amount);
@@ -232,6 +233,10 @@ export class WalletsService {
         createdBy: extra.createdBy ?? null,
         relatedPurchaseId: extra.relatedPurchaseId ?? null,
         relatedSaleId: extra.relatedSaleId ?? null,
+        walletServiceId: extra.walletServiceId ?? null,
+        nominalAmount: extra.nominalAmount ?? null,
+        commissionProfit: extra.commissionProfit ?? null,
+        beneficiaryPhone: extra.beneficiaryPhone ?? null,
       },
     });
   }
@@ -263,9 +268,10 @@ export class WalletsService {
       serviceId?: string;
       relatedSaleId?: string;
       beneficiaryPhone?: string;
-      notes?: string;
+      notes?: string | null;
       createdBy?: string;
     },
+    outerTx?: PrismaTx,
   ) {
     const wallet = await this.requireWallet(walletId);
     if (!wallet.isActive) {
@@ -283,15 +289,20 @@ export class WalletsService {
       rate = service.commissionRate;
     }
     const { walletDeductionAmount, commissionProfit } = this.quoteDeduction(input.nominalAmount, toRate(rate));
-    const result = await this.prisma.$transaction(async (tx: PrismaTx) => {
+    const execute = async (tx: PrismaTx) => {
       const entry = await this.appendEntry(tx, walletId, 'SALE_DEDUCTION', new Decimal(walletDeductionAmount).neg(), {
         notes: input.notes ?? null,
         createdBy: input.createdBy ?? null,
         relatedSaleId: input.relatedSaleId ?? null,
+        walletServiceId: input.serviceId ?? null,
+        nominalAmount: toMoney(input.nominalAmount),
+        commissionProfit,
+        beneficiaryPhone: input.beneficiaryPhone ?? null,
       });
       const currentBalance = toMoney(await this.computeWalletBalance(walletId, tx));
       return { entry, currentBalance };
-    });
+    };
+    const result = outerTx ? await execute(outerTx) : await this.prisma.$transaction(execute);
     return {
       ...result,
       walletDeductionAmount,
@@ -453,6 +464,48 @@ export class WalletsService {
         paidAmount: paidStr,
         debtAmount: toMoney(debt),
         status: debt.isZero() ? 'COMPLETED' : 'PARTIALLY_PAID',
+      };
+    });
+  }
+
+  /**
+   * Atomic Flexy sale: wallet SALE_DEDUCTION + Treasury cash inflow
+   * (customer cash collected), inside one Prisma transaction.
+   */
+  async sellFlexy(walletId: string, dto: SellFlexyDto) {
+    const nominal = new Decimal(dto.nominalAmount);
+    if (nominal.lte(0)) {
+      throw new BadRequestException({
+        code: 'INVALID_SALE_AMOUNT',
+        nominalAmount: dto.nominalAmount,
+      });
+    }
+    return this.prisma.$transaction(async (tx: PrismaTx) => {
+      const deduction = await this.applyDeduction(
+        walletId,
+        {
+          nominalAmount: toMoney(nominal),
+          serviceId: dto.walletServiceId,
+          beneficiaryPhone: dto.beneficiaryPhone ?? undefined,
+          notes: dto.notes ?? null,
+        },
+        tx,
+      );
+      await this.cashService.postCashMovement(tx, {
+        type: 'IN',
+        category: 'SALE_PAYMENT',
+        amount: deduction.nominalAmount,
+        note: dto.notes ?? `Flexy sale via wallet ${walletId}`,
+      });
+      return {
+        success: true,
+        entryId: deduction.entry.id,
+        nominalAmount: deduction.nominalAmount,
+        walletDeductionAmount: deduction.walletDeductionAmount,
+        commissionProfit: deduction.commissionProfit,
+        newWalletBalance: deduction.currentBalance,
+        serviceId: deduction.serviceId,
+        beneficiaryPhone: deduction.beneficiaryPhone,
       };
     });
   }

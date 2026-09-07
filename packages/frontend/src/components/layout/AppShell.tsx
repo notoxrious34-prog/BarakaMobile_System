@@ -127,6 +127,10 @@ export function AppShell() {
         e.preventDefault();
         if (location.pathname !== '/pos') navigate('/pos');
       }
+      if (e.key === 'F3') {
+        e.preventDefault();
+        if (location.pathname !== '/flexy') navigate('/flexy');
+      }
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);

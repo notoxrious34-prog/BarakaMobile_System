@@ -48,6 +48,11 @@ export function Sidebar() {
               <span className={`${collapsed ? 'hidden lg:hidden' : 'hidden lg:inline'} truncate`}>
                 {item.label}
               </span>
+              {item.shortcut && (
+                <kbd className="hidden lg:inline ms-auto rounded bg-white/[0.06] px-1.5 py-0.5 font-mono text-[10px] text-slate-400">
+                  {item.shortcut}
+                </kbd>
+              )}
               {collapsed && <span className="lg:hidden sr-only">{item.label}</span>}
             </NavLink>
           );

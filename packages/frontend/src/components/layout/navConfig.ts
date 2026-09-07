@@ -17,13 +17,15 @@ export type NavItem = {
   to: string;
   label: string;
   icon: ComponentType<{ className?: string }>;
+  shortcut?: string;
 };
 
-// 4-Pillar Primary Navigation (AD-57)
+// 4-Pillar Primary Navigation (AD-57) + Flexy operations module (TB-108)
 export const PILLAR_NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'الرئيسية', icon: LayoutDashboard },
-  { to: '/pos', label: 'نقطة البيع', icon: Receipt },
+  { to: '/pos', label: 'نقطة البيع', icon: Receipt, shortcut: 'F2' },
   { to: '/repairs', label: 'الإصلاحات', icon: Wrench },
+  { to: '/flexy', label: 'فليكسي', icon: Zap, shortcut: 'F3' },
   { to: '/admin', label: 'الإدارة', icon: Shield },
 ];
 

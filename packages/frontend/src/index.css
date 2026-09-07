@@ -78,6 +78,8 @@
   #thermal-receipt-root *,
   #reports-print-area,
   #reports-print-area *,
+  #flexy-receipt,
+  #flexy-receipt *,
   #invoice-paper,
   #invoice-paper * {
     visibility: visible;
@@ -87,6 +89,7 @@
   #contact-statement,
   #thermal-receipt-root,
   #reports-print-area,
+  #flexy-receipt,
   #invoice-paper {
     position: fixed;
     top: 0;

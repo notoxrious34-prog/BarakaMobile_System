@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Put, Body, Param, Query, HttpCode } from '@nestjs/common';
 import { WalletsService } from './wallets.service';
-import { CreateWalletDto, UpdateWalletDto, CreateWalletServiceDto, UpdateWalletServiceDto, AdjustLedgerDto, TopupWalletDto } from './dto/wallet.dto';
+import { CreateWalletDto, UpdateWalletDto, CreateWalletServiceDto, UpdateWalletServiceDto, AdjustLedgerDto, TopupWalletDto, SellFlexyDto } from './dto/wallet.dto';
 
 @Controller('wallets')
 export class WalletsController {
@@ -58,6 +58,12 @@ export class WalletsController {
   @Post(':id/services')
   addService(@Param('id') id: string, @Body() dto: CreateWalletServiceDto) {
     return this.walletsService.addService(id, dto);
+  }
+
+  @Post(':id/sale')
+  @HttpCode(201)
+  sellFlexy(@Param('id') id: string, @Body() dto: SellFlexyDto) {
+    return this.walletsService.sellFlexy(id, dto);
   }
 
   @Put('services/:serviceId')

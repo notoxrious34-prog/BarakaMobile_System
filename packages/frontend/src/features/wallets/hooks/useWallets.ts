@@ -58,3 +58,98 @@ export function useTopupMutation() {
     },
   });
 }
+
+export type WalletServiceFull = {
+  id: string;
+  name: string;
+  networkBrandColor: string | null;
+  commissionRate: string;
+  pricingMode: string;
+  isActive: boolean;
+};
+
+export type WalletDetails = Omit<WalletSummary, 'services'> & {
+  services: WalletServiceFull[];
+};
+
+export type LedgerEntry = {
+  id: string;
+  entryType: 'TOPUP' | 'SALE_DEDUCTION' | 'ADJUSTMENT' | 'REVERSAL';
+  amount: string;
+  balanceAfter: string;
+  notes: string | null;
+  nominalAmount: string | null;
+  commissionProfit: string | null;
+  beneficiaryPhone: string | null;
+  createdAt: string;
+  walletService: { id: string; name: string; networkBrandColor: string | null } | null;
+};
+
+export type FlexySalePayload = {
+  walletId: string;
+  walletServiceId: string;
+  nominalAmount: string;
+  beneficiaryPhone?: string;
+  notes?: string;
+};
+
+export type FlexySaleResult = {
+  success: boolean;
+  entryId: string;
+  nominalAmount: string;
+  walletDeductionAmount: string;
+  commissionProfit: string;
+  newWalletBalance: string;
+  serviceId: string | null;
+  beneficiaryPhone: string | null;
+};
+
+function toQuery(params: Record<string, string | number | undefined>): string {
+  const q = Object.entries(params)
+    .filter(([, v]) => v !== undefined && v !== '')
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+    .join('&');
+  return q ? `?${q}` : '';
+}
+
+export function useWalletDetailsQuery(walletId: string | null, enabled = true) {
+  return useQuery<WalletDetails>({
+    queryKey: ['wallets', walletId],
+    queryFn: () => api.get<WalletDetails>(`/wallets/${walletId}`),
+    enabled: enabled && !!walletId,
+  });
+}
+
+export function useWalletLedgerQuery(
+  walletId: string | null,
+  params?: { entryType?: string; startDate?: string; endDate?: string; limit?: number },
+  enabled = true,
+) {
+  const qs = toQuery({
+    entryType: params?.entryType,
+    startDate: params?.startDate,
+    endDate: params?.endDate,
+    limit: params?.limit ?? 100,
+  });
+  return useQuery<{ entries: LedgerEntry[]; total: number }>({
+    queryKey: ['wallet-ledger', walletId, params?.entryType, params?.startDate, params?.endDate],
+    queryFn: () => api.get(`/wallets/${walletId}/ledger${qs}`),
+    enabled: enabled && !!walletId,
+  });
+}
+
+export function useFlexySaleMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: FlexySalePayload) => {
+      const { walletId, ...body } = payload;
+      return api.post<FlexySaleResult>(`/wallets/${walletId}/sale`, body);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['wallets'] });
+      qc.invalidateQueries({ queryKey: ['wallet-ledger'] });
+      qc.invalidateQueries({ queryKey: ['cash'] });
+      qc.invalidateQueries({ queryKey: ['transactions'] });
+    },
+  });
+}

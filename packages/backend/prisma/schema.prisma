@@ -340,6 +340,7 @@ model WalletService {
   updatedAt         DateTime                 @updatedAt
   wallet            DigitalWallet            @relation(fields: [walletId], references: [id], onDelete: Cascade)
   transactionItems  TransactionItem[]
+  ledgerEntries     WalletLedgerEntry[]
 }
 
 model WalletLedgerEntry {
@@ -356,4 +357,9 @@ model WalletLedgerEntry {
   wallet            DigitalWallet   @relation(fields: [walletId], references: [id], onDelete: Restrict)
   relatedPurchase   Transaction?    @relation("WalletPurchase", fields: [relatedPurchaseId], references: [id], onDelete: SetNull)
   relatedSale       Transaction?    @relation("WalletSale", fields: [relatedSaleId], references: [id], onDelete: SetNull)
+  walletServiceId   String?
+  nominalAmount     String?
+  commissionProfit  String?
+  beneficiaryPhone  String?
+  walletService     WalletService?  @relation(fields: [walletServiceId], references: [id], onDelete: SetNull)
 }

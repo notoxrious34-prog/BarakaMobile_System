@@ -7,6 +7,7 @@ import { ServicesPage } from '@/pages/ServicesPage';
 import { TransactionsPage } from '@/pages/TransactionsPage';
 import { PosPage } from '@/pages/PosPage';
 import { RepairsPage } from '@/pages/RepairsPage';
+import { FlexyCockpitPage } from '@/pages/FlexyCockpitPage';
 import { TreasuryPage } from '@/pages/TreasuryPage';
 import { ExpensesPage } from '@/pages/ExpensesPage';
 import { ReportsPage } from '@/pages/ReportsPage';
@@ -23,6 +24,7 @@ export default function App() {
         <Route index element={<Dashboard />} />
         <Route path="pos" element={<PosPage />} />
         <Route path="repairs" element={<RepairsPage />} />
+        <Route path="flexy" element={<FlexyCockpitPage />} />
 
         {/* Admin pillar */}
         <Route path="admin">

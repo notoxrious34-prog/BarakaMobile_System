@@ -146,3 +146,25 @@ export class TopupWalletDto {
   @MaxLength(500)
   notes?: string;
 }
+
+export class SellFlexyDto {
+  @IsString()
+  @IsNotEmpty()
+  walletServiceId!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @Matches(MONEY_RE)
+  nominalAmount!: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^0[567]\d{8}$/)
+  @MaxLength(20)
+  beneficiaryPhone?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  notes?: string;
+}
