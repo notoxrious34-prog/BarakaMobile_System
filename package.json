@@ -8,7 +8,7 @@
     "dev:desktop": "pnpm --filter desktop run dev",
     "dev": "concurrently \"pnpm:dev:backend\" \"pnpm:dev:frontend\" \"pnpm:dev:desktop\"",
     "build:all": "pnpm --filter backend run build && pnpm --filter frontend run build && pnpm --filter desktop run build",
-    "electron:pack": "pnpm --filter backend run build && pnpm --filter backend run bundle && pnpm --filter frontend run build && node packages/desktop/scripts/build-win.js && pnpm --filter desktop run build && pnpm --filter desktop exec electron-builder --config electron-builder.generated.yml --win --x64",
+    "electron:pack": "pnpm --filter desktop run seed && pnpm --filter backend run build && pnpm --filter backend run bundle && pnpm --filter frontend run build && node packages/desktop/scripts/build-win.js && pnpm --filter desktop run build && pnpm --filter desktop exec electron-builder --config electron-builder.generated.yml --win --x64",
     "postinstall": "pnpm --filter backend exec prisma generate"
   },
   "devDependencies": {

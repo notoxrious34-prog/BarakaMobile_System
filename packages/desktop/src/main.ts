@@ -170,6 +170,7 @@ async function createWindow(): Promise<void> {
     minWidth: 1024,
     minHeight: 600,
     title: 'BarakaMobile',
+    icon: path.join(__dirname, '..', 'build', 'icon.png'),
     show: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),

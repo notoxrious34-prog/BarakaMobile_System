@@ -5,6 +5,7 @@ directories:
   buildResources: build
 files:
   - dist/**
+  - build/icon.png
   - "!**/*.ts"
   - "!**/*.map"
   - package.json
@@ -31,6 +32,7 @@ asar: true
 asarUnpack: []
 win:
   target: nsis
+  icon: build/icon.ico
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
@@ -40,4 +42,4 @@ nsis:
   installerLanguages:
     - ar
     - en
-  artifactName: BarakaMobile-Setup-${version}-${arch}.${ext}
+  artifactName: BarakaMobile-Setup-${version}.${ext}
