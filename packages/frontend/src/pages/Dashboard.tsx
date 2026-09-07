@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, Link, useNavigate } from 'react-router-dom';
 import Decimal from 'decimal.js';
-import { Wallet, TrendingUp, CreditCard, Wrench, AlertTriangle, RefreshCw, Package, Users, ChevronLeft } from 'lucide-react';
+import { Wallet, TrendingUp, CreditCard, Wrench, Zap, AlertTriangle, RefreshCw, Package, Users, ChevronLeft } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useDashboard } from '@/features/reports/hooks/useDashboard';
 import { useSalesTrend } from '@/features/reports/hooks/useSalesTrend';
@@ -195,6 +195,16 @@ export function Dashboard() {
   const dailyExpenses = s?.totalExpenses ?? '0';
   const repairProfit = s?.repairProfit ?? '0';
   const liveCash = cashQ.data?.currentBalance ?? s?.cashBalance ?? '0';
+  // Digital liquidity merged into store liquidity (no bank accounts exist on disk).
+  const digitalLiquidity = s?.digital?.liquidity ?? '0';
+  let totalLiquidity = '0.00';
+  try {
+    totalLiquidity = new Decimal(liveCash).plus(new Decimal(digitalLiquidity)).toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2);
+  } catch {
+    totalLiquidity = formatMoney(liveCash);
+  }
+  const digitalNominal = s?.digital?.nominalToday ?? '0';
+  const digitalProfit = s?.digital?.profitToday ?? '0';
 
   // Pipeline distribution
   const tickets: RepairTicket[] = Array.isArray(repairsQ.data) ? (repairsQ.data as RepairTicket[]) : [];
@@ -214,7 +224,8 @@ export function Dashboard() {
   if (isLoading) {
     return (
       <div dir="rtl" className="font-sans space-y-6">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <KpiSkeleton />
           <KpiSkeleton />
           <KpiSkeleton />
           <KpiSkeleton />
@@ -269,8 +280,8 @@ export function Dashboard() {
         </div>
       ) : null}
 
-      {/* Top 4 KPI metric cards — Deep Navy gradients */}
-      <div className={`grid gap-4 sm:grid-cols-2 lg:grid-cols-4 ${ENTRANCE}`} style={{ animationDelay: '60ms' }}>
+      {/* Top 5 KPI metric cards — Deep Navy gradients */}
+      <div className={`grid gap-4 sm:grid-cols-2 lg:grid-cols-5 ${ENTRANCE}`} style={{ animationDelay: '60ms' }}>
         <KpiCard
           title="مبيعات اليوم"
           value={formatMoney(dailySales)}
@@ -294,11 +305,20 @@ export function Dashboard() {
         />
         <KpiCard
           title="النقد في الصندوق"
-          value={formatMoney(liveCash)}
-          sub="رصيد مباشر"
+          value={formatMoney(totalLiquidity)}
+          sub={`نقدًا ${formatMoney(liveCash)} · محافظ ${formatMoney(digitalLiquidity)}`}
           icon={Wallet}
           accent="cyan"
         />
+        <Link to="/flexy" aria-label="فتح قمرة الفليكسي" className="rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50">
+          <KpiCard
+            title="أداء الفليكسي [F3]"
+            value={formatMoney(digitalProfit)}
+            sub={`مبيعات ${formatMoney(digitalNominal)} — فتح القمرة ↗`}
+            icon={Zap}
+            accent="amber"
+          />
+        </Link>
       </div>
 
       {/* Smart Alerts — C2 layout balance: 0=nothing, 1=full-width banner, 2-3=grid; C1 arPlural */}

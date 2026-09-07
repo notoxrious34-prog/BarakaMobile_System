@@ -226,3 +226,19 @@ export function useAdjustBalanceMutation() {
     onSuccess: () => invalidateWalletScope(qc),
   });
 }
+
+export type WalletStats = {
+  date: string;
+  sales: { count: number; nominalVolume: string; commissionProfit: string };
+  liquidity: { total: string; wallets: Array<{ id: string; name: string; balance: string }> };
+  flexyCashInflow: string;
+};
+
+export function useWalletStatsQuery(date?: string, enabled = true) {
+  return useQuery<WalletStats>({
+    queryKey: ['wallet-stats', date ?? 'today'],
+    queryFn: () => api.get<WalletStats>(`/wallets/stats/summary${date ? `?date=${encodeURIComponent(date)}` : ''}`),
+    enabled,
+    staleTime: 30000,
+  });
+}

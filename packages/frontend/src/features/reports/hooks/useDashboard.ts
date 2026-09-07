@@ -48,6 +48,12 @@ export type DashboardSummary = {
   totalExpenses: string;
   repairProfit: string;
   cashBalance: string;
+  digital?: {
+    nominalToday: string;
+    profitToday: string;
+    countToday: number;
+    liquidity: string;
+  };
 };
 
 export function useDashboard() {

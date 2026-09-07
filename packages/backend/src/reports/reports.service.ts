@@ -134,6 +134,43 @@ export class ReportsService {
     return { serviceProfit, itemProfit, totalProfit };
   }
 
+  /** Digital (Flexy) aggregates for a range + active-wallet liquidity. */
+  private async getDigitalStats(start: Date, end: Date): Promise<{ nominal: Decimal; profit: Decimal; count: number }> {
+    const entries = await this.prisma.walletLedgerEntry.findMany({
+      where: { entryType: 'SALE_DEDUCTION', createdAt: { gte: start, lte: end } },
+    });
+    let nominal = new Decimal(0);
+    let profit = new Decimal(0);
+    for (const e of entries) {
+      try {
+        if (e.nominalAmount) nominal = nominal.plus(new Decimal(e.nominalAmount));
+        if (e.commissionProfit) profit = profit.plus(new Decimal(e.commissionProfit));
+      } catch {
+        /* ignore malformed legacy rows */
+      }
+    }
+    return { nominal, profit, count: entries.length };
+  }
+
+  private async getDigitalLiquidity(): Promise<Decimal> {
+    const wallets = await this.prisma.digitalWallet.findMany({ where: { isActive: true } });
+    let total = new Decimal(0);
+    for (const w of wallets) {
+      const entries = await this.prisma.walletLedgerEntry.findMany({
+        where: { walletId: w.id },
+        select: { amount: true },
+      });
+      for (const e of entries) {
+        try {
+          total = total.plus(new Decimal(e.amount));
+        } catch {
+          /* ignore malformed rows */
+        }
+      }
+    }
+    return total;
+  }
+
   async getContactPosition(contactId: string) {
     const contact = await this.prisma.contact.findFirst({
       where: { id: contactId, isActive: true },
@@ -337,7 +374,10 @@ export class ReportsService {
     }
 
     const repairData = await this.repairService.getRepairProfit(startDate, endDate);
-    const grossProfit = serviceProfit.plus(itemProfit).plus(new Decimal(repairData.totalRepairProfit));
+    const digitalStart = hasRange && start && end ? start : new Date('1970-01-01T00:00:00.000Z');
+    const digitalEnd = hasRange && start && end ? end : new Date('2100-01-01T00:00:00.000Z');
+    const digitalRange = await this.getDigitalStats(digitalStart, digitalEnd);
+    const grossProfit = serviceProfit.plus(itemProfit).plus(new Decimal(repairData.totalRepairProfit)).plus(digitalRange.profit);
     const netProfit = grossProfit;
 
     let expenseWhere: any = {};
@@ -361,6 +401,8 @@ export class ReportsService {
       serviceProfit: this.to2dp(serviceProfit),
       itemProfit: this.to2dp(itemProfit),
       repairProfit: this.to2dp(new Decimal(repairData.totalRepairProfit)),
+      digitalProfit: this.to2dp(digitalRange.profit),
+      digitalNominal: this.to2dp(digitalRange.nominal),
       totalRepairRevenue: this.to2dp(new Decimal(repairData.totalRepairRevenue)),
       grossProfit: this.to2dp(grossProfit),
       netProfit: this.to2dp(netProfit),
@@ -543,6 +585,8 @@ export class ReportsService {
       flatTotalExpenses = flatTotalExpenses.plus(new Decimal(b.totalAmount));
     }
     const flatCashBalance = this.to2dp(capitalData.cashInHand);
+    const digitalToday = await this.getDigitalStats(todayStart, now);
+    const digitalLiquidity = await this.getDigitalLiquidity();
 
     return {
       capital: {
@@ -572,6 +616,12 @@ export class ReportsService {
       repairStats: {
         openTickets,
         deliveredToday,
+      },
+      digital: {
+        nominalToday: this.to2dp(digitalToday.nominal),
+        profitToday: this.to2dp(digitalToday.profit),
+        countToday: digitalToday.count,
+        liquidity: this.to2dp(digitalLiquidity),
       },
       // flat aliases for Dashboard/Reports hooks expecting top-level shape
       todayProfit: flatTodayProfit,

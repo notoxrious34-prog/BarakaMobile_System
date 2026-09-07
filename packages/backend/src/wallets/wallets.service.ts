@@ -609,4 +609,77 @@ export class WalletsService {
     });
   }
 
+  private getAlgeriaDayRange(day?: Date): { start: Date; end: Date } {
+    const now = day ?? new Date();
+    const algMs = now.getTime() + 60 * 60 * 1000;
+    const alg = new Date(algMs);
+    const start = new Date(Date.UTC(alg.getUTCFullYear(), alg.getUTCMonth(), alg.getUTCDate(), 0, 0, 0) - 60 * 60 * 1000);
+    return { start, end: new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1) };
+  }
+
+  /**
+   * Wallet stats for dashboard / shift reconciliation: today's digital
+   * sales (nominal, commission profit, count), active-wallet liquidity,
+   * and Flexy cash inflow (SALE_PAYMENT movements with no linked
+   * merchandise transaction — POS sales always link one).
+   */
+  async getWalletStats(dateISO?: string) {
+    let day: Date | undefined;
+    if (dateISO) {
+      const parsed = new Date(dateISO);
+      if (!Number.isNaN(parsed.getTime())) day = parsed;
+    }
+    const { start, end } = this.getAlgeriaDayRange(day);
+    const entries = await this.prisma.walletLedgerEntry.findMany({
+      where: { entryType: 'SALE_DEDUCTION', createdAt: { gte: start, lte: end } },
+    });
+    let nominal = new Decimal(0);
+    let profit = new Decimal(0);
+    for (const e of entries) {
+      try {
+        if (e.nominalAmount) nominal = nominal.plus(new Decimal(e.nominalAmount));
+        if (e.commissionProfit) profit = profit.plus(new Decimal(e.commissionProfit));
+      } catch {
+        /* ignore malformed legacy rows */
+      }
+    }
+    const wallets = await this.prisma.digitalWallet.findMany({ where: { isActive: true } });
+    let liquidity = new Decimal(0);
+    const perWallet: Array<{ id: string; name: string; balance: string }> = [];
+    for (const w of wallets) {
+      const bal = await this.computeWalletBalance(w.id);
+      liquidity = liquidity.plus(bal);
+      perWallet.push({ id: w.id, name: w.name, balance: toMoney(bal) });
+    }
+    const salePayments = await this.prisma.cashMovement.findMany({
+      where: {
+        type: 'IN',
+        category: 'SALE_PAYMENT',
+        relatedTransactionId: null,
+        createdAt: { gte: start, lte: end },
+      },
+    });
+    let inflow = new Decimal(0);
+    for (const m of salePayments) {
+      try {
+        inflow = inflow.plus(new Decimal(m.amount));
+      } catch {
+        /* ignore malformed rows */
+      }
+    }
+    return {
+      date: start.toISOString().slice(0, 10),
+      sales: {
+        count: entries.length,
+        nominalVolume: toMoney(nominal),
+        commissionProfit: toMoney(profit),
+      },
+      liquidity: {
+        total: toMoney(liquidity),
+        wallets: perWallet,
+      },
+      flexyCashInflow: toMoney(inflow),
+    };
+  }
+
 }

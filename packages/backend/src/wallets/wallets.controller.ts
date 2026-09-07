@@ -16,6 +16,11 @@ export class WalletsController {
     return this.walletsService.createWallet(dto);
   }
 
+  @Get('stats/summary')
+  getWalletStats(@Query('date') date?: string) {
+    return this.walletsService.getWalletStats(date);
+  }
+
   @Get(':id')
   getWallet(@Param('id') id: string) {
     return this.walletsService.getWallet(id);

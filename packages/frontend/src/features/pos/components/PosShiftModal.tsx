@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Printer, RefreshCw, X } from 'lucide-react';
+import { Printer, RefreshCw, X, Zap } from 'lucide-react';
 import { BrandMark } from '@/components/layout/BrandMark';
 import { useInvoiceSettings } from '@/features/settings/hooks/useInvoiceSettings';
 import { useShiftReport, type VarianceTone } from '../hooks/useShiftReport';
+import { useWalletStatsQuery } from '@/features/wallets/hooks/useWallets';
 
 type Props = {
   onClose: () => void;
@@ -44,6 +45,7 @@ function SlipRow({ label, value, bold }: { label: string; value: string; bold?: 
 export function PosShiftModal({ onClose }: Props) {
   const report = useShiftReport();
   const { data: settings } = useInvoiceSettings();
+  const { data: flexy } = useWalletStatsQuery(report.date || undefined, !report.isLoading);
   const [counted, setCounted] = useState('');
   const [cashier, setCashier] = useState('');
 
@@ -149,6 +151,24 @@ export function PosShiftModal({ onClose }: Props) {
                 </p>
               )}
 
+              <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.07] p-3">
+                <p className="mb-1 flex items-center gap-1.5 text-[11px] font-bold text-amber-300">
+                  <Zap className="h-3.5 w-3.5" aria-hidden="true" />
+                  خدمات الدفع والتعبئة الرقمية (فليكسي)
+                </p>
+                <div className="flex items-center justify-between py-0.5 text-xs">
+                  <span className="text-slate-300">نقدية الفليكسي المحصلة بالدرج ({flexy?.sales.count ?? 0})</span>
+                  <span dir="ltr" className="font-mono font-bold text-emerald-300">+{flexy?.flexyCashInflow ?? '0.00'} د.ج</span>
+                </div>
+                <div className="flex items-center justify-between py-0.5 text-xs">
+                  <span className="text-slate-300">صافي ربح العمولات</span>
+                  <span dir="ltr" className="font-mono font-bold text-emerald-300">+{flexy?.sales.commissionProfit ?? '0.00'} د.ج</span>
+                </div>
+                <p className="mt-1 text-[10px] leading-relaxed text-slate-500">
+                  الدرج يشمل نقدية الفليكسي — المبلغ أعلاه جزء من إجمالي المقبوضات.
+                </p>
+              </div>
+
               <div className="rounded-xl border border-navy-border/30 bg-navy-900/60 p-3">
                 <p className="mb-1 text-[11px] text-slate-500">تفصيل الحركات حسب الفئة</p>
                 {report.breakdown.length === 0 ? (
@@ -221,6 +241,12 @@ export function PosShiftModal({ onClose }: Props) {
             <SlipRow label="منها آجل" value={`${report.salesCredit} د.ج`} />
             <SlipRow label="تدفقات داخلة" value={`+${report.totalIn} د.ج`} />
             <SlipRow label="تدفقات خارجة" value={`-${report.totalOut} د.ج`} />
+            <hr className="my-2 border-dashed border-black/40" />
+            <div className="font-sans text-[11px] font-bold">خدمات الدفع الإلكتروني (فليكسي)</div>
+            <SlipRow label="مبيعات التعبئة (كاش)" value={`${flexy?.flexyCashInflow ?? '0.00'} د.ج`} />
+            <SlipRow label="أرباح العمولات" value={`${flexy?.sales.commissionProfit ?? '0.00'} د.ج`} />
+            <SlipRow label="عدد العمليات" value={`${flexy?.sales.count ?? 0}`} />
+            <hr className="my-2 border-dashed border-black/40" />
             <SlipRow label="النقد المتوقع" value={`${report.expected} د.ج`} bold />
             <SlipRow label="المبلغ المعدود" value={counted.trim() ? `${counted.trim()} د.ج` : '—'} />
             <SlipRow
