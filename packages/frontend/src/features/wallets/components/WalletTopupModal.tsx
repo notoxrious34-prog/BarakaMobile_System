@@ -32,7 +32,7 @@ function to2dp(raw: string | Decimal): string {
 
 export function WalletTopupModal({ open, onClose }: Props) {
   const topupMut = useTopupMutation();
-  const { data: wallets } = useWalletsQuery(open);
+  const { data: wallets, isLoading: walletsLoading } = useWalletsQuery(open);
   const { data: contacts } = useQuery<Contact[]>({
     queryKey: ['contacts'],
     queryFn: () => api.get<Contact[]>('/contacts'),
@@ -68,6 +68,13 @@ export function WalletTopupModal({ open, onClose }: Props) {
     }
   }, [open, wallets]);
 
+  // Fallback auto-select: covers late query resolution after the open-reset ran.
+  useEffect(() => {
+    if (!open || walletId || activeWallets.length === 0) return;
+    const first = activeWallets[0];
+    setWalletId(first.id);
+    setSupplierId((prev) => prev || first.defaultSupplierId || '');
+  }, [open, walletId, activeWallets]);
   // Keep paid synced while "paid in full" is on.
   useEffect(() => {
     if (paidInFull) setPaidAmount(topupAmount);
@@ -192,14 +199,21 @@ export function WalletTopupModal({ open, onClose }: Props) {
             <select
               id="topup-wallet"
               value={walletId}
+              disabled={walletsLoading}
               onChange={(e) => {
                 setWalletId(e.target.value);
                 const w = activeWallets.find((x) => x.id === e.target.value);
                 setSupplierId(w?.defaultSupplierId ?? '');
               }}
-              className={inputCls(fieldErrors.walletId)}
+              className={`${inputCls(fieldErrors.walletId)} disabled:opacity-50`}
             >
-              <option value="">— اختر —</option>
+              {walletsLoading ? (
+                <option value="">جارٍ تحميل المحافظ…</option>
+              ) : activeWallets.length === 0 ? (
+                <option value="">لا توجد محافظ متاحة</option>
+              ) : (
+                <option value="">— اختر —</option>
+              )}
               {activeWallets.map((w) => (
                 <option key={w.id} value={w.id}>
                   {w.name} — {to2dp(w.currentBalance)} د.ج

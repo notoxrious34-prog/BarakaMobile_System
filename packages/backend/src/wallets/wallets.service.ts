@@ -58,6 +58,7 @@ export class WalletsService {
   }
 
   async listWallets() {
+    await this.ensureDefaultWallet();
     const wallets = await this.prisma.digitalWallet.findMany({
       orderBy: { createdAt: 'asc' },
       include: {
@@ -79,6 +80,49 @@ export class WalletsService {
         };
       }),
     );
+  }
+
+  /**
+   * Self-healing bootstrap: guarantees the wallet list is never empty.
+   * Fixed-id upsert + skipDuplicates make concurrent first-calls race-safe.
+   */
+  private async ensureDefaultWallet(): Promise<void> {
+    const count = await this.prisma.digitalWallet.count();
+    if (count > 0) return;
+    await this.prisma.$transaction(async (tx: PrismaTx) => {
+      await tx.digitalWallet.upsert({
+        where: { id: 'wallet-main-flexy' },
+        update: {},
+        create: {
+          id: 'wallet-main-flexy',
+          name: 'المحفظة الرئيسية (فليكسي)',
+          type: 'FLEXY',
+          currency: 'DZD',
+          lowBalanceThreshold: '2000.00',
+          isActive: true,
+        },
+      });
+      const defaultServices = [
+        { id: 'ws-djezzy', name: 'Djezzy', networkBrandColor: '#E30613', commissionRate: '0.0050' },
+        { id: 'ws-mobilis', name: 'Mobilis', networkBrandColor: '#00A651', commissionRate: '0.0400' },
+        { id: 'ws-ooredoo', name: 'Ooredoo', networkBrandColor: '#ED1C24', commissionRate: '0.0075' },
+      ];
+      for (const s of defaultServices) {
+        await tx.walletService.upsert({
+          where: { id: s.id },
+          update: {},
+          create: {
+            id: s.id,
+            walletId: 'wallet-main-flexy',
+            name: s.name,
+            networkBrandColor: s.networkBrandColor,
+            commissionRate: s.commissionRate,
+            pricingMode: 'PERCENTAGE',
+            isActive: true,
+          },
+        });
+      }
+    });
   }
 
   async createWallet(dto: CreateWalletDto) {
