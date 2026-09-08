@@ -17,8 +17,14 @@ export class RepairController {
     @Query('status') status?: string,
     @Query('contactId') contactId?: string,
     @Query('repairType') repairType?: string,
+    @Query('search') search?: string,
   ) {
-    return this.repairService.findAll({ status, contactId, repairType });
+    return this.repairService.findAll({ status, contactId, repairType, search });
+  }
+
+  @Get('metrics')
+  metrics() {
+    return this.repairService.getMetrics();
   }
 
   @Get(':id')
@@ -34,6 +40,27 @@ export class RepairController {
   @Post(':id/external-cost')
   recordExternalCost(@Param('id') id: string, @Body() dto: { externalCost: string; note?: string }) {
     return this.repairService.recordExternalCost(id, dto);
+  }
+
+  @Post(':id/parts')
+  addPart(
+    @Param('id') id: string,
+    @Body() dto: { inventoryItemId: string; quantity: number; unitPrice?: string },
+  ) {
+    return this.repairService.addPart(id, dto);
+  }
+
+  @Delete(':id/parts/:partId')
+  removePart(@Param('id') id: string, @Param('partId') partId: string) {
+    return this.repairService.removePart(id, partId);
+  }
+
+  @Patch(':id/financials')
+  updateFinancials(
+    @Param('id') id: string,
+    @Body() dto: { laborCost?: string; discountAmount?: string },
+  ) {
+    return this.repairService.updateFinancials(id, dto);
   }
 
   @Delete(':id')

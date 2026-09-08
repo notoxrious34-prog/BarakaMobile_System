@@ -1,6 +1,20 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 
+export type RepairPartItem = {
+  id: string;
+  ticketId: string;
+  inventoryItemId: string;
+  quantity: number;
+  unitCostPrice: string;
+  unitPrice: string;
+  totalCost: string;
+  totalPrice: string;
+  stockMovementId?: string | null;
+  createdAt: string;
+  inventoryItem?: { id: string; name: string; sku: string | null };
+};
+
 export type RepairTicket = {
   id: string;
   ticketNumber: string;
@@ -17,6 +31,12 @@ export type RepairTicket = {
   externalCost: string;
   depositAmount: string;
   depositPaid: boolean;
+  laborCost?: string;
+  partsCost?: string;
+  partsTotal?: string;
+  discountAmount?: string;
+  paidAmount?: string;
+  completedAt?: string | null;
   invoiceNumber?: string | null;
   notes?: string | null;
   physicalCondition?: string | null;
@@ -26,6 +46,17 @@ export type RepairTicket = {
   deliveredAt?: string | null;
   createdAt: string;
   contact?: { id: string; name: string };
+  parts?: RepairPartItem[];
+};
+
+export type RepairMetrics = {
+  active: number;
+  ready: number;
+  deliveredToday: number;
+  monthRevenue: string;
+  monthPartsCost: string;
+  monthNetProfit: string;
+  consumedPartsQty: number;
 };
 
 export type CreateRepairTicketDto = {
@@ -50,7 +81,7 @@ export type UpdateRepairStatusDto = {
   notes?: string;
 };
 
-export function useRepairsQuery(filters?: { status?: string; contactId?: string; repairType?: string }) {
+export function useRepairsQuery(filters?: { status?: string; contactId?: string; repairType?: string; search?: string }) {
   return useQuery<RepairTicket[]>({
     queryKey: ['repairs', filters ?? null],
     queryFn: () => {
@@ -58,9 +89,48 @@ export function useRepairsQuery(filters?: { status?: string; contactId?: string;
       if (filters?.status) p.set('status', filters.status);
       if (filters?.contactId) p.set('contactId', filters.contactId);
       if (filters?.repairType) p.set('repairType', filters.repairType);
+      if (filters?.search) p.set('search', filters.search);
       const qs = p.toString();
       return api.get<RepairTicket[]>(`/repair${qs ? `?${qs}` : ''}`);
     },
+  });
+}
+
+export function useRepairMetricsQuery() {
+  return useQuery<RepairMetrics>({ queryKey: ['repairs', 'metrics'], queryFn: () => api.get<RepairMetrics>('/repair/metrics') });
+}
+
+function invalidateRepair(id?: string) {
+  return (qc: ReturnType<typeof useQueryClient>) => {
+    qc.invalidateQueries({ queryKey: ['repairs'] });
+    if (id) qc.invalidateQueries({ queryKey: ['repair', id] });
+    else qc.invalidateQueries({ queryKey: ['repair'] });
+  };
+}
+
+export function useAddPartMutation(ticketId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { inventoryItemId: string; quantity: number; unitPrice?: string }) =>
+      api.post<RepairTicket>(`/repair/${ticketId}/parts`, body),
+    onSuccess: () => invalidateRepair(ticketId)(qc),
+  });
+}
+
+export function useRemovePartMutation(ticketId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (partId: string) => api.delete<RepairTicket>(`/repair/${ticketId}/parts/${partId}`),
+    onSuccess: () => invalidateRepair(ticketId)(qc),
+  });
+}
+
+export function useUpdateFinancialsMutation(ticketId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { laborCost?: string; discountAmount?: string }) =>
+      api.patch<RepairTicket>(`/repair/${ticketId}/financials`, body),
+    onSuccess: () => invalidateRepair(ticketId)(qc),
   });
 }
 

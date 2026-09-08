@@ -8,6 +8,8 @@ import {
 } from '../hooks/useRepairs';
 import { useContactsQuery } from '@/features/contacts/hooks/useContacts';
 import { RepairTicketSlip } from './RepairTicketSlip';
+import { RepairDeliverySlip } from './RepairDeliverySlip';
+import { RepairPartsSection } from './RepairPartsSection';
 import {
   STEPPER_STAGES,
   statusBox,
@@ -37,13 +39,14 @@ export function RepairDetailModal({ ticketId, onClose }: Props) {
   const externalMut = useRecordExternalCostMutation();
   const contactsQ = useContactsQuery();
 
-  const [tab, setTab] = useState<'advance' | 'external'>('advance');
+  const [tab, setTab] = useState<'advance' | 'parts' | 'external'>('advance');
   const [actualCost, setActualCost] = useState('');
   const [notes, setNotes] = useState('');
   const [externalCost, setExternalCost] = useState('');
   const [externalNote, setExternalNote] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [slipOpen, setSlipOpen] = useState(false);
+  const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [cancelArm, setCancelArm] = useState(false);
 
   const phone = useMemo(
@@ -78,29 +81,40 @@ export function RepairDetailModal({ ticketId, onClose }: Props) {
   const nextStage = stageIdx >= 0 && stageIdx < STEPPER_STAGES.length - 1 ? STEPPER_STAGES[stageIdx + 1] : null;
 
   let remainder: string | null = null;
+  let computedTotal: string | null = null;
   try {
+    const partsTotal = new Decimal(ticket.partsTotal ?? '0.00');
+    const labor = new Decimal(ticket.laborCost ?? '0.00');
+    const discount = new Decimal(ticket.discountAmount ?? '0.00');
+    computedTotal = D2(partsTotal.plus(labor).minus(discount));
     if (actualCost.trim() !== '') {
       const rem = new Decimal(actualCost.trim()).minus(new Decimal(ticket.depositAmount ?? '0.00'));
+      remainder = D2(rem.greaterThan(new Decimal(0)) ? rem : new Decimal(0));
+    } else if (computedTotal !== '0.00') {
+      const paid = new Decimal(ticket.depositAmount ?? '0.00').plus(new Decimal(ticket.paidAmount ?? '0.00'));
+      const rem = new Decimal(computedTotal).minus(paid);
       remainder = D2(rem.greaterThan(new Decimal(0)) ? rem : new Decimal(0));
     }
   } catch {
     remainder = null;
   }
+  const needsLegacyCost = computedTotal === '0.00';
 
   async function advance(to: string): Promise<void> {
     setError(null);
     try {
       if (to === 'DELIVERED') {
-        if (actualCost.trim() === '') {
+        if (needsLegacyCost && actualCost.trim() === '') {
           setError('التكلفة الفعلية مطلوبة عند التسليم');
           return;
         }
         await updateMut.mutateAsync({
           id: ticketId,
           status: to,
-          actualCost: to2dp(actualCost.trim()),
+          ...(needsLegacyCost ? { actualCost: to2dp(actualCost.trim()) } : {}),
           notes: notes.trim() || undefined,
         });
+        setDeliveryOpen(true);
       } else {
         await updateMut.mutateAsync({ id: ticketId, status: to, notes: notes.trim() || undefined });
       }
@@ -187,21 +201,35 @@ export function RepairDetailModal({ ticketId, onClose }: Props) {
           {/* Tabs */}
           <div className="flex overflow-hidden rounded-xl border border-navy-border/40 text-xs font-bold">
             <button type="button" onClick={() => setTab('advance')} className={`flex-1 px-3 py-2 ${tab === 'advance' ? 'bg-cyan-500/20 text-cyan-300' : 'text-slate-400'}`}>تقديم الحالة</button>
+            <button type="button" onClick={() => setTab('parts')} className={`flex-1 px-3 py-2 ${tab === 'parts' ? 'bg-cyan-500/20 text-cyan-300' : 'text-slate-400'}`}>قطع الغيار والمالية</button>
             {ticket.repairType === 'EXTERNAL' && (
               <button type="button" onClick={() => setTab('external')} className={`flex-1 px-3 py-2 ${tab === 'external' ? 'bg-cyan-500/20 text-cyan-300' : 'text-slate-400'}`}>تكلفة خارجية</button>
             )}
           </div>
 
+          {tab === 'parts' && (
+            <RepairPartsSection ticket={ticket} onChanged={() => void refetch()} />
+          )}
+
           {tab === 'advance' && !isTerminal && (
             <div className="space-y-2">
               {nextStage === 'DELIVERED' ? (
                 <div className="space-y-2 rounded-xl border border-amber-500/30 bg-amber-500/[0.06] p-3">
-                  <p className="text-xs font-bold text-amber-300">التسليم يتطلب التكلفة الفعلية</p>
-                  <input type="text" inputMode="decimal" value={actualCost} onChange={(e) => setActualCost(e.target.value)} placeholder="التكلفة الفعلية (د.ج)" aria-label="التكلفة الفعلية" className="w-full rounded-xl border border-navy-border/40 bg-navy-950/60 px-3 py-2 font-mono text-sm text-slate-100 outline-none focus:border-cyan-500/50" dir="ltr" />
-                  {remainder !== null && (
-                    <p className="text-xs text-slate-300">المتبقي للتحصيل عند التسليم: <span dir="ltr" className="font-mono font-bold text-emerald-400">{remainder} د.ج</span> <span className="text-slate-500">(الفعلية − العربون)</span></p>
+                  <p className="text-xs font-bold text-amber-300">
+                    التسوية بالإجمالي المحسوب: <span dir="ltr" className="font-mono">{computedTotal} د.ج</span> (قطع + يد عاملة − خصم)
+                  </p>
+                  {needsLegacyCost ? (
+                    <>
+                      <p className="text-xs text-slate-400">لا توجد قطع/أتعاب — التسليم يتطلب التكلفة الفعلية</p>
+                      <input type="text" inputMode="decimal" value={actualCost} onChange={(e) => setActualCost(e.target.value)} placeholder="التكلفة الفعلية (د.ج)" aria-label="التكلفة الفعلية" className="w-full rounded-xl border border-navy-border/40 bg-navy-950/60 px-3 py-2 font-mono text-sm text-slate-100 outline-none focus:border-cyan-500/50" dir="ltr" />
+                    </>
+                  ) : (
+                    <p className="text-xs text-slate-400">التحصيل تلقائي بالفرق المتبقي — يُسجَّل في الصندوق كتحصيل صيانة.</p>
                   )}
-                  <button type="button" onClick={() => void advance('DELIVERED')} disabled={updateMut.isPending} className="w-full rounded-xl bg-emerald-600 px-4 py-2 text-sm font-extrabold text-white hover:bg-emerald-500 disabled:opacity-50">تسليم الجهاز</button>
+                  {remainder !== null && (
+                    <p className="text-xs text-slate-300">المتبقي للتحصيل عند التسليم: <span dir="ltr" className="font-mono font-bold text-emerald-400">{remainder} د.ج</span> <span className="text-slate-500">(الإجمالي − العربون − المدفوع)</span></p>
+                  )}
+                  <button type="button" onClick={() => void advance('DELIVERED')} disabled={updateMut.isPending} className="w-full rounded-xl bg-emerald-600 px-4 py-2 text-sm font-extrabold text-white hover:bg-emerald-500 disabled:opacity-50">تسليم الجهاز وتحصيل المتبقي</button>
                 </div>
               ) : nextStage ? (
                 <button type="button" onClick={() => void advance(nextStage)} disabled={updateMut.isPending} className="w-full rounded-xl bg-cyan-600 px-4 py-2 text-sm font-extrabold text-navy-950 hover:bg-cyan-500 disabled:opacity-50">
@@ -213,7 +241,7 @@ export function RepairDetailModal({ ticketId, onClose }: Props) {
                 <button type="button" onClick={() => setCancelArm(true)} className="w-full rounded-xl border border-rose-500/30 px-4 py-2 text-xs font-bold text-rose-400 hover:bg-rose-500/10">إلغاء التذكرة</button>
               ) : (
                 <div className="space-y-2 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3">
-                  <p className="text-xs font-bold text-rose-300">سيتم رد العربون ({ticket.depositAmount} د.ج) تلقائياً من الصندوق. تأكيد الإلغاء؟</p>
+                  <p className="text-xs font-bold text-rose-300">سيتم إرجاع {(ticket.parts ?? []).length} قطعة مستهلكة للمخزون تلقائياً + رد العربون ({ticket.depositAmount} د.ج) من الصندوق. تأكيد الإلغاء؟</p>
                   <div className="flex gap-2">
                     <button type="button" onClick={() => void advance('CANCELLED')} disabled={updateMut.isPending} className="flex-1 rounded-xl bg-rose-600 px-4 py-2 text-sm font-extrabold text-white hover:bg-rose-500 disabled:opacity-50">تأكيد الإلغاء</button>
                     <button type="button" onClick={() => setCancelArm(false)} className="rounded-xl border border-navy-border/40 px-4 py-2 text-sm text-slate-300">تراجع</button>
@@ -241,9 +269,20 @@ export function RepairDetailModal({ ticketId, onClose }: Props) {
             <Printer className="h-4 w-4" aria-hidden="true" />
             طباعة تذكرة الاستلام
           </button>
+          {ticket.status === 'DELIVERED' && (
+            <button
+              type="button"
+              onClick={() => setDeliveryOpen(true)}
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm font-bold text-emerald-300 hover:bg-emerald-500/20"
+            >
+              <Printer className="h-4 w-4" aria-hidden="true" />
+              طباعة فاتورة التسليم والضمان
+            </button>
+          )}
         </div>
       </div>
       {slipOpen && <RepairTicketSlip ticket={ticket} customerPhone={phone} onClose={() => setSlipOpen(false)} />}
+      {deliveryOpen && <RepairDeliverySlip ticket={ticket} customerPhone={phone} onClose={() => setDeliveryOpen(false)} />}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { PackageSearch, Plus } from 'lucide-react';
 import { BrandMark } from '@/components/layout/BrandMark';
 import {
   useRepairsQuery,
+  useRepairMetricsQuery,
   type RepairTicket,
 } from '@/features/repairs/hooks/useRepairs';
 import { RepairDetailModal } from '@/features/repairs/components/RepairDetailModal';
@@ -46,6 +47,7 @@ export function RepairsPage() {
     status: statusFilter || undefined,
     repairType: repairTypeFilter || undefined,
   });
+  const finMetrics = useRepairMetricsQuery();
   const metricsQ = useRepairsQuery();
 
   const metrics = useMemo(() => {
@@ -77,11 +79,20 @@ export function RepairsPage() {
     setSelectedId(id);
   }
 
-  function Metric({ label, value, tone }: { label: string; value: number; tone: string }) {
+  function Metric({ label, value, tone }: { label: string; value: number | string; tone: string }) {
     return (
       <div className="rounded-xl border border-navy-border/30 bg-navy-900/60 px-3 py-2">
         <p className="text-[11px] text-slate-500">{label}</p>
         <p dir="ltr" className={`mt-0.5 font-mono text-base font-bold ${tone}`}>{value}</p>
+      </div>
+    );
+  }
+
+  function MoneyMetric({ label, value, tone, suffix }: { label: string; value: string | undefined; tone: string; suffix: string }) {
+    return (
+      <div className="rounded-xl border border-navy-border/30 bg-navy-900/60 px-3 py-2">
+        <p className="text-[11px] text-slate-500">{label}</p>
+        <p dir="ltr" className={`mt-0.5 font-mono text-base font-bold ${tone}`}>{value ?? '…'} <span className="text-[10px]">{suffix}</span></p>
       </div>
     );
   }
@@ -141,6 +152,14 @@ export function RepairsPage() {
         <Metric label="قيد التشخيص" value={metrics.diagnosing} tone="text-amber-400" />
         <Metric label="قيد الإصلاح" value={metrics.inRepair} tone="text-violet-300" />
         <Metric label="جاهزة للاستلام" value={metrics.ready} tone="text-emerald-400" />
+      </div>
+
+      {/* Financial badges (TB-119) */}
+      <div className="grid shrink-0 grid-cols-2 gap-2 sm:grid-cols-4">
+        <MoneyMetric label="صافي أرباح الصيانة (الشهر)" value={finMetrics.data?.monthNetProfit} tone="text-cyan-300" suffix="د.ج" />
+        <MoneyMetric label="إيراد الصيانة (الشهر)" value={finMetrics.data?.monthRevenue} tone="text-slate-100" suffix="د.ج" />
+        <MoneyMetric label="تكلفة القطع (الشهر)" value={finMetrics.data?.monthPartsCost} tone="text-rose-400" suffix="د.ج" />
+        <Metric label="قطع مستهلكة (كمية)" value={finMetrics.data?.consumedPartsQty ?? '…'} tone="text-amber-400" />
       </div>
 
       {/* Toolbar: view toggle + omnisearch */}

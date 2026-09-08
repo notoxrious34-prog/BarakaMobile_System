@@ -29,6 +29,47 @@ export class RepairService {
     return new Date(s.getTime() + 24 * 60 * 60 * 1000 - 1);
   }
 
+  // Live stock per inventory semantics: last ADJUSTMENT sets base, then +IN −OUT after it.
+  private async computeStock(itemId: string, tx: PrismaTx): Promise<number> {
+    const lastAdj = await tx.stockMovement.findFirst({
+      where: { itemId, type: 'ADJUSTMENT' },
+      orderBy: { createdAt: 'desc' },
+    });
+    const baseDate: Date | null = lastAdj ? lastAdj.createdAt : null;
+    const baseQty: number = lastAdj ? lastAdj.quantity : 0;
+    const inAgg = await tx.stockMovement.aggregate({
+      where: { itemId, type: 'IN', ...(baseDate ? { createdAt: { gt: baseDate } } : {}) },
+      _sum: { quantity: true },
+    });
+    const outAgg = await tx.stockMovement.aggregate({
+      where: { itemId, type: 'OUT', ...(baseDate ? { createdAt: { gt: baseDate } } : {}) },
+      _sum: { quantity: true },
+    });
+    return baseQty + (inAgg._sum.quantity ?? 0) - (outAgg._sum.quantity ?? 0);
+  }
+
+  private ticketTotals(parts: { totalCost: string; totalPrice: string }[], laborCost: string, discountAmount: string) {
+    let partsCost = new Decimal(0);
+    let partsTotal = new Decimal(0);
+    for (const p of parts) {
+      partsCost = partsCost.plus(new Decimal(p.totalCost));
+      partsTotal = partsTotal.plus(new Decimal(p.totalPrice));
+    }
+    const labor = new Decimal(laborCost);
+    const discount = new Decimal(discountAmount);
+    if (labor.lt(0) || discount.lt(0)) throw new BadRequestException('laborCost and discountAmount must be >= 0');
+    if (discount.gt(partsTotal.plus(labor))) throw new BadRequestException('الخصم يتجاوز الإجمالي المستحق');
+    const total = partsTotal.plus(labor).minus(discount);
+    return { partsCost: this.to2dp(partsCost), partsTotal: this.to2dp(partsTotal), totalAmount: this.to2dp(total) };
+  }
+
+  private async recalcTicket(tx: PrismaTx, ticketId: string) {
+    const ticket = await tx.repairTicket.findUnique({ where: { id: ticketId }, include: { parts: true } });
+    if (!ticket) throw new NotFoundException(`RepairTicket with id ${ticketId} not found`);
+    const t = this.ticketTotals(ticket.parts, ticket.laborCost ?? '0.00', ticket.discountAmount ?? '0.00');
+    return tx.repairTicket.update({ where: { id: ticketId }, data: t });
+  }
+
   async createTicket(dto: any) {
     const estimatedCost = this.normalizeAmount(dto.estimatedCost ?? '0.00');
     const depositAmount = this.normalizeAmount(dto.depositAmount ?? '0.00');
@@ -101,13 +142,121 @@ export class RepairService {
       if (depositDec.gt(0)) {
         await this.cashService.postCashMovement(tx, {
           type: 'IN',
-          category: 'SALE_PAYMENT',
+          category: 'REPAIR_PAYMENT',
           amount: depositAmount,
-          note: `Repair deposit ${ticketNumber}`,
+          note: `عربون صيانة: ${ticketNumber}`,
         });
       }
 
-      return tx.repairTicket.findUnique({ where: { id: ticket.id }, include: { contact: true } });
+      return tx.repairTicket.findUnique({ where: { id: ticket.id }, include: { contact: true, parts: true } });
+    });
+  }
+
+  private ensurePartsEditable(status: string) {
+    if (status === 'DELIVERED' || status === 'CANCELLED') {
+      throw new BadRequestException('لا يمكن تعديل قطع غيار تذكرة منتهية (تسليم/إلغاء)');
+    }
+  }
+
+  async addPart(ticketId: string, dto: { inventoryItemId: string; quantity: number; unitPrice?: string }) {
+    const qty = dto.quantity;
+    if (!Number.isInteger(qty) || qty < 1) throw new BadRequestException('quantity must be an integer >= 1');
+    return this.prisma.$transaction(async (tx: PrismaTx) => {
+      const ticket = await tx.repairTicket.findFirst({ where: { id: ticketId, isActive: true } });
+      if (!ticket) throw new NotFoundException(`RepairTicket with id ${ticketId} not found`);
+      this.ensurePartsEditable(ticket.status);
+
+      const item = await tx.item.findFirst({ where: { id: dto.inventoryItemId, isActive: true } });
+      if (!item) throw new NotFoundException('الصنف غير موجود أو موقوف');
+      const available = await this.computeStock(item.id, tx);
+      if (available < qty) {
+        throw new BadRequestException(`المخزون غير كافٍ لقطعة الغيار: ${item.name} (المتاح ${available})`);
+      }
+
+      let unitPrice = this.normalizeAmount(dto.unitPrice ?? item.sellingPrice ?? '0.00');
+      if (new Decimal(unitPrice).lt(0)) throw new BadRequestException('unitPrice must be >= 0');
+      const unitCostPrice = this.normalizeAmount(item.costPrice ?? '0.00');
+      const totalCost = this.to2dp(new Decimal(qty).mul(new Decimal(unitCostPrice)));
+      const totalPrice = this.to2dp(new Decimal(qty).mul(new Decimal(unitPrice)));
+
+      const movement = await tx.stockMovement.create({
+        data: {
+          itemId: item.id,
+          type: 'OUT',
+          quantity: qty,
+          note: `REPAIR_CONSUMPTION: استهلاك صيانة للتذكرة ${ticket.ticketNumber}`,
+          reference: ticket.ticketNumber,
+        },
+      });
+
+      await tx.repairPartItem.create({
+        data: {
+          ticketId: ticket.id,
+          inventoryItemId: item.id,
+          quantity: qty,
+          unitCostPrice,
+          unitPrice,
+          totalCost,
+          totalPrice,
+          stockMovementId: movement.id,
+        },
+      });
+
+      await this.recalcTicket(tx, ticket.id);
+      // First consumed part moves the ticket out of intake.
+      if (ticket.status === 'RECEIVED') {
+        await tx.repairTicket.update({ where: { id: ticket.id }, data: { status: 'DIAGNOSING' } });
+      }
+      return tx.repairTicket.findUnique({
+        where: { id: ticket.id },
+        include: { contact: true, parts: { include: { inventoryItem: { select: { id: true, name: true, sku: true } } } } },
+      });
+    });
+  }
+
+  async removePart(ticketId: string, partId: string) {
+    return this.prisma.$transaction(async (tx: PrismaTx) => {
+      const ticket = await tx.repairTicket.findFirst({ where: { id: ticketId, isActive: true } });
+      if (!ticket) throw new NotFoundException(`RepairTicket with id ${ticketId} not found`);
+      this.ensurePartsEditable(ticket.status);
+      const part = await tx.repairPartItem.findFirst({ where: { id: partId, ticketId: ticket.id } });
+      if (!part) throw new NotFoundException('بند القطعة غير موجود في هذه التذكرة');
+
+      await tx.stockMovement.create({
+        data: {
+          itemId: part.inventoryItemId,
+          type: 'IN',
+          quantity: part.quantity,
+          note: `REPAIR_RETURN: إلغاء استهلاك قطعة غيار للتذكرة ${ticket.ticketNumber}`,
+          reference: ticket.ticketNumber,
+        },
+      });
+      await tx.repairPartItem.delete({ where: { id: part.id } });
+      await this.recalcTicket(tx, ticket.id);
+      return tx.repairTicket.findUnique({
+        where: { id: ticket.id },
+        include: { contact: true, parts: { include: { inventoryItem: { select: { id: true, name: true, sku: true } } } } },
+      });
+    });
+  }
+
+  async updateFinancials(ticketId: string, dto: { laborCost?: string; discountAmount?: string }) {
+    return this.prisma.$transaction(async (tx: PrismaTx) => {
+      const ticket = await tx.repairTicket.findFirst({ where: { id: ticketId, isActive: true } });
+      if (!ticket) throw new NotFoundException(`RepairTicket with id ${ticketId} not found`);
+      this.ensurePartsEditable(ticket.status);
+      const data: any = {};
+      if (dto.laborCost !== undefined) data.laborCost = this.normalizeAmount(dto.laborCost);
+      if (dto.discountAmount !== undefined) data.discountAmount = this.normalizeAmount(dto.discountAmount);
+      // Validate through the totals calculator before persisting.
+      const parts = await tx.repairPartItem.findMany({ where: { ticketId: ticket.id } });
+      this.ticketTotals(parts, data.laborCost ?? ticket.laborCost ?? '0.00', data.discountAmount ?? ticket.discountAmount ?? '0.00');
+      await tx.repairTicket.update({ where: { id: ticket.id }, data });
+      await this.recalcTicket(tx, ticket.id);
+      return tx.repairTicket.findUnique({
+        where: { id: ticket.id },
+        include: { contact: true, parts: { include: { inventoryItem: { select: { id: true, name: true, sku: true } } } } },
+      });
     });
   }
 
@@ -131,19 +280,32 @@ export class RepairService {
       if (dto.notes !== undefined) updateData.notes = dto.notes;
 
       if (newStatus === 'DELIVERED') {
-        if (!dto.actualCost) {
-          throw new BadRequestException('actualCost required when delivering');
+        // Settlement base: computed ticket total (parts + labor − discount).
+        // Legacy tickets without parts/labor still require actualCost.
+        const parts = await tx.repairPartItem.findMany({ where: { ticketId: ticket.id } });
+        const computed = this.ticketTotals(parts, ticket.laborCost ?? '0.00', ticket.discountAmount ?? '0.00');
+        let settleTotal = new Decimal(computed.totalAmount);
+        if (settleTotal.eq(0)) {
+          if (!dto.actualCost) {
+            throw new BadRequestException('actualCost required when delivering');
+          }
+          const normalizedActual = this.normalizeAmount(dto.actualCost);
+          if (new Decimal(normalizedActual).lt(0)) {
+            throw new BadRequestException('actualCost must be >= 0');
+          }
+          settleTotal = new Decimal(normalizedActual);
         }
-        const normalizedActual = this.normalizeAmount(dto.actualCost);
-        if (new Decimal(normalizedActual).lt(0)) {
-          throw new BadRequestException('actualCost must be >= 0');
-        }
-        updateData.actualCost = normalizedActual;
+        const settleStr = this.to2dp(settleTotal);
+        updateData.actualCost = settleStr;
+        updateData.totalAmount = computed.totalAmount;
+        updateData.partsCost = computed.partsCost;
+        updateData.partsTotal = computed.partsTotal;
+        updateData.completedAt = new Date();
         updateData.deliveredAt = new Date();
 
         const depositDec = new Decimal(ticket.depositAmount ?? '0.00');
-        const actualDec = new Decimal(normalizedActual);
-        const remaining = actualDec.minus(depositDec);
+        const paidDec = new Decimal(ticket.paidAmount ?? '0.00');
+        const remaining = settleTotal.minus(depositDec).minus(paidDec);
         const remainingStr = this.to2dp(remaining.gt(0) ? remaining : new Decimal(0));
 
         const seqSetting = await tx.setting.findUnique({ where: { key: 'repair_sequence_next' } });
@@ -161,14 +323,30 @@ export class RepairService {
         if (remaining.gt(0)) {
           await this.cashService.postCashMovement(tx, {
             type: 'IN',
-            category: 'SALE_PAYMENT',
+            category: 'REPAIR_PAYMENT',
             amount: remainingStr,
-            note: `Repair delivery ${invoiceNumber}`,
+            note: `تحصيل تسليم صيانة ${invoiceNumber}`,
           });
+          updateData.paidAmount = this.to2dp(paidDec.plus(remaining));
         }
       }
 
       if (newStatus === 'CANCELLED') {
+        // Return every consumed part to stock before the deposit refund.
+        const parts = await tx.repairPartItem.findMany({ where: { ticketId: ticket.id } });
+        for (const part of parts) {
+          await tx.stockMovement.create({
+            data: {
+              itemId: part.inventoryItemId,
+              type: 'IN',
+              quantity: part.quantity,
+              note: `REPAIR_RETURN: إرجاع قطع التذكرة الملغاة ${ticket.ticketNumber}`,
+              reference: ticket.ticketNumber,
+            },
+          });
+          await tx.repairPartItem.delete({ where: { id: part.id } });
+        }
+        await this.recalcTicket(tx, ticket.id);
         const depositDec = new Decimal(ticket.depositAmount ?? '0.00');
         const depositPaid = ticket.depositPaid;
         if (depositDec.gt(0) && depositPaid) {
@@ -227,14 +405,25 @@ export class RepairService {
     });
   }
 
-  async findAll(filters?: { status?: string; contactId?: string; repairType?: string }) {
+  async findAll(filters?: { status?: string; contactId?: string; repairType?: string; search?: string }) {
     const where: any = { isActive: true };
     if (filters?.status) where.status = filters.status;
     if (filters?.contactId) where.contactId = filters.contactId;
     if (filters?.repairType) where.repairType = filters.repairType;
+    if (filters?.search?.trim()) {
+      const q = filters.search.trim();
+      where.OR = [
+        { ticketNumber: { contains: q } },
+        { deviceBrand: { contains: q } },
+        { deviceModel: { contains: q } },
+        { problemDescription: { contains: q } },
+        { contact: { name: { contains: q } } },
+        { contact: { phone: { contains: q } } },
+      ];
+    }
     return this.prisma.repairTicket.findMany({
       where,
-      include: { contact: true },
+      include: { contact: true, parts: { include: { inventoryItem: { select: { id: true, name: true, sku: true } } } } },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -242,10 +431,44 @@ export class RepairService {
   async findOne(id: string) {
     const ticket = await this.prisma.repairTicket.findUnique({
       where: { id },
-      include: { contact: true },
+      include: { contact: true, parts: { include: { inventoryItem: { select: { id: true, name: true, sku: true } } } } },
     });
     if (!ticket) throw new NotFoundException(`RepairTicket with id ${id} not found`);
     return ticket;
+  }
+
+  async getMetrics() {
+    const all = await this.prisma.repairTicket.findMany({ where: { isActive: true } });
+    const now = new Date();
+    const dayStart = this.getAlgeriaStartOfDay(now);
+    const dayEnd = this.getAlgeriaEndOfDay(now);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const isOpen = (s: string) => s !== 'DELIVERED' && s !== 'CANCELLED';
+    let active = 0;
+    let ready = 0;
+    let deliveredToday = 0;
+    let monthRevenue = new Decimal(0);
+    let monthPartsCost = new Decimal(0);
+    for (const t of all) {
+      if (isOpen(t.status)) active++;
+      if (t.status === 'READY') ready++;
+      if (t.status === 'DELIVERED' && t.deliveredAt && t.deliveredAt >= dayStart && t.deliveredAt <= dayEnd) deliveredToday++;
+      if (t.status === 'DELIVERED' && t.deliveredAt && t.deliveredAt >= monthStart) {
+        monthRevenue = monthRevenue.plus(new Decimal(t.actualCost ?? '0.00'));
+        monthPartsCost = monthPartsCost.plus(new Decimal(t.partsCost ?? '0.00'));
+      }
+    }
+    const consumed = await this.prisma.repairPartItem.aggregate({ _sum: { quantity: true } });
+    const consumedQty = consumed._sum.quantity ?? 0;
+    return {
+      active,
+      ready,
+      deliveredToday,
+      monthRevenue: this.to2dp(monthRevenue),
+      monthPartsCost: this.to2dp(monthPartsCost),
+      monthNetProfit: this.to2dp(monthRevenue.minus(monthPartsCost)),
+      consumedPartsQty: consumedQty,
+    };
   }
 
   async softDelete(id: string) {

@@ -76,6 +76,7 @@ model Item {
   transactionLines TransactionItem[]
   salesReturnItems SalesReturnItem[]
   stockCountItems  StockCountItem[]
+  repairPartItems  RepairPartItem[]
 }
 
 model StockMovement {
@@ -138,6 +139,7 @@ enum CashMovementCategory {
   ADJUSTMENT
   DEBT_SETTLEMENT
   SUPPLIER_PAYMENT
+  REPAIR_PAYMENT
   REFUND
 }
 
@@ -307,6 +309,13 @@ model RepairTicket {
   externalCost         String    @default("0.00")
   depositAmount        String    @default("0.00")
   depositPaid          Boolean   @default(false)
+  laborCost            String    @default("0.00")
+  partsCost            String    @default("0.00")
+  partsTotal           String    @default("0.00")
+  totalAmount          String    @default("0.00")
+  discountAmount       String    @default("0.00")
+  paidAmount           String    @default("0.00")
+  completedAt          DateTime?
   invoiceNumber        String?   @unique
   relatedTransactionId String?
   notes                String?
@@ -320,6 +329,25 @@ model RepairTicket {
   updatedAt            DateTime  @updatedAt
   contact              Contact   @relation(fields: [contactId], references: [id])
   debtLedgerEntries    CustomerDebtLedgerEntry[]
+  parts                RepairPartItem[]
+}
+
+model RepairPartItem {
+  id               String       @id @default(cuid())
+  ticketId         String
+  ticket           RepairTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  inventoryItemId  String
+  inventoryItem    Item         @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
+  quantity         Int
+  unitCostPrice    String       @default("0.00")
+  unitPrice        String       @default("0.00")
+  totalCost        String       @default("0.00")
+  totalPrice       String       @default("0.00")
+  stockMovementId  String?
+  createdAt        DateTime     @default(now())
+
+  @@index([ticketId])
+  @@index([inventoryItemId])
 }
 
 enum WalletType {

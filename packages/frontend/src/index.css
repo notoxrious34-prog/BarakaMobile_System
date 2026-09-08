@@ -82,6 +82,8 @@
   #barcode-label-sheet *,
   #expense-voucher-receipt,
   #expense-voucher-receipt *,
+  #repair-delivery-receipt,
+  #repair-delivery-receipt *,
   #thermal-receipt-root,
   #thermal-receipt-root *,
   #reports-print-area,
@@ -102,6 +104,7 @@
   #stock-count-report,
   #barcode-label-sheet,
   #expense-voucher-receipt,
+  #repair-delivery-receipt,
   #invoice-paper {
     position: fixed;
     top: 0;
