@@ -1,6 +1,12 @@
 import { PrismaClient } from '@prisma/client';
+import { scryptSync, randomBytes } from 'node:crypto';
 
 const prisma = new PrismaClient();
+
+function hashPin(pin: string): string {
+  const salt = randomBytes(16).toString('hex');
+  return `scrypt$${salt}$${scryptSync(pin, salt, 64).toString('hex')}`;
+}
 
 async function main() {
   // 8 default Settings (idempotent upsert)
@@ -90,11 +96,25 @@ async function main() {
   }
 
   console.log(`Seed completed: Settings 8, CashAccount 1, ExpenseCategory ${categories.length}, WalkIn 1`);
+  // Default Administrator (TB-120, idempotent; PIN 0000 — change on first login)
+  const existingAdmin = await (prisma as any).user.findUnique({ where: { username: 'admin' } });
+  if (!existingAdmin) {
+    await (prisma as any).user.create({
+      data: {
+        username: 'admin',
+        displayName: 'مدير النظام (Owner)',
+        pinHash: hashPin('0000'),
+        role: 'ADMIN',
+        avatarColor: '#0891b2',
+      },
+    });
+  }
   const counts = {
     settings: await prisma.setting.count(),
     cashAccount: await (prisma as any).cashAccount.count(),
     expenseCategory: await (prisma as any).expenseCategory.count(),
     walkIn: await prisma.contact.count({ where: { isWalkIn: true } }),
+    users: await (prisma as any).user.count(),
   };
   console.log(counts);
 }

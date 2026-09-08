@@ -37,7 +37,7 @@ export class ExpensesService {
     paymentSource?: ExpensePaymentSource;
     recipientName?: string;
     invoiceReference?: string;
-  }): Promise<any> {
+  }, operatorId?: string): Promise<any> {
     const normalizedAmount = this.normalizeAmount(dto.amount);
     if (new Decimal(normalizedAmount).lte(0)) {
       throw new BadRequestException('المبلغ يجب أن يكون أكبر من صفر');
@@ -69,6 +69,7 @@ export class ExpensesService {
           paymentSource: source,
           recipientName: recipient,
           invoiceReference: invoiceRef,
+          operatorId: operatorId ?? null,
           description: dto.description,
           ...(expenseDate ? { expenseDate } : {}),
         },
@@ -86,6 +87,7 @@ export class ExpensesService {
           amount: normalizedAmount,
           note: `مصروف نثريات: ${category.name} - ${dto.description ?? ''}`.trim(),
           relatedExpenseId: expense.id,
+          operatorId: operatorId ?? undefined,
         });
         await tx.expense.update({
           where: { id: expense.id },

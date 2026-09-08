@@ -10,6 +10,7 @@ import {
 } from '@/features/inventory/hooks/useInventory';
 import { ItemsTable } from '@/features/inventory/components/ItemsTable';
 import { BarcodePrintModal, type LabelQueueEntry } from '@/features/inventory/components/barcode/BarcodePrintModal';
+import { useCapability } from '@/features/auth/AuthContext';
 import { ItemFormModal } from '@/features/inventory/components/ItemFormModal';
 import { StockMovementModal } from '@/features/inventory/components/StockMovementModal';
 
@@ -41,6 +42,7 @@ export function InventoryPage() {
   const [stockFilter, setStockFilter] = useState<StockFilter>('ALL');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [labelQueue, setLabelQueue] = useState<LabelQueueEntry[] | null>(null);
+  const canViewCosts = useCapability('canViewCosts');
 
   const activeCount = items ? items.filter((i) => i.isActive).length : 0;
 
@@ -178,6 +180,7 @@ export function InventoryPage() {
           selectedIds={selectedIds}
           onToggleSelect={toggleSelect}
           onToggleSelectAll={toggleSelectAll}
+          hideCosts={!canViewCosts}
         />
       )}
 

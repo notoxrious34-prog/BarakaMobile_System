@@ -1,12 +1,21 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Headers } from '@nestjs/common';
 import { ExpensePaymentSource } from '@prisma/client';
 import { ExpensesService } from './expenses.service';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { CreateExpenseCategoryDto } from './dto/create-expense-category.dto';
+import { AuthService } from '../auth/auth.service';
+import { sessionTokenOf } from '../auth/session-header';
 
 @Controller('expenses')
 export class ExpensesController {
-  constructor(private readonly expensesService: ExpensesService) {}
+  constructor(
+    private readonly expensesService: ExpensesService,
+    private readonly authService: AuthService,
+  ) {}
+
+  private operatorId(headers: Record<string, string | string[] | undefined>) {
+    return this.authService.userForToken(sessionTokenOf(headers)).then((u) => u?.id);
+  }
 
   @Get()
   findAll(
@@ -26,8 +35,11 @@ export class ExpensesController {
   }
 
   @Post()
-  create(@Body() dto: CreateExpenseDto) {
-    return this.expensesService.createExpense(dto);
+  async create(
+    @Body() dto: CreateExpenseDto,
+    @Headers() headers: Record<string, string | string[] | undefined>,
+  ) {
+    return this.expensesService.createExpense(dto, await this.operatorId(headers));
   }
 
   @Get('metrics')
@@ -56,7 +68,8 @@ export class ExpensesController {
   }
 
   @Delete('categories/:id')
-  removeCat(@Param('id') id: string) {
+  async removeCat(@Headers() headers: Record<string, string | string[] | undefined>, @Param('id') id: string) {
+    await this.authService.requireAdmin(sessionTokenOf(headers));
     return this.expensesService.deleteCategory(id);
   }
 

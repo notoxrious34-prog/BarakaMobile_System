@@ -17,9 +17,10 @@ import { WalletsModule } from './wallets/wallets.module';
 import { BackupModule } from './system/backup/backup.module';
 import { CustomersModule } from './customers/customers.module';
 import { SalesReturnsModule } from './returns/sales-returns.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
-  imports: [PrismaModule, ContactsModule, AccountsModule, InventoryModule, ServicesModule, TransactionsModule, ReportsModule, SettingsModule, SearchModule, CashModule, ExpensesModule, RepairModule, WalletsModule, BackupModule, CustomersModule, SalesReturnsModule],
+  imports: [PrismaModule, ContactsModule, AccountsModule, InventoryModule, ServicesModule, TransactionsModule, ReportsModule, SettingsModule, SearchModule, CashModule, ExpensesModule, RepairModule, WalletsModule, BackupModule, CustomersModule, SalesReturnsModule, AuthModule],
   controllers: [AppController],
   providers: [AppService],
 })

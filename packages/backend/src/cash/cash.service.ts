@@ -37,6 +37,7 @@ export class CashService {
       note?: string;
       relatedTransactionId?: string;
       relatedExpenseId?: string;
+      operatorId?: string;
     },
   ): Promise<any> {
     const normalizedAmount = this.normalizeAmount(params.amount);
@@ -69,6 +70,7 @@ export class CashService {
         balanceBefore,
         balanceAfter,
         note: params.note,
+        operatorId: params.operatorId,
         relatedTransactionId: params.relatedTransactionId,
         relatedExpenseId: params.relatedExpenseId,
       },

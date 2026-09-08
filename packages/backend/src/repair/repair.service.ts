@@ -70,7 +70,7 @@ export class RepairService {
     return tx.repairTicket.update({ where: { id: ticketId }, data: t });
   }
 
-  async createTicket(dto: any) {
+  async createTicket(dto: any, operatorId?: string) {
     const estimatedCost = this.normalizeAmount(dto.estimatedCost ?? '0.00');
     const depositAmount = this.normalizeAmount(dto.depositAmount ?? '0.00');
     if (new Decimal(estimatedCost).lt(0)) {
@@ -132,6 +132,7 @@ export class RepairService {
           externalCost: '0.00',
           depositAmount,
           depositPaid: depositDec.gt(0),
+          operatorId: operatorId ?? null,
           notes: dto.notes ?? null,
           physicalCondition: dto.physicalCondition ?? null,
           hasPasscode: dto.hasPasscode ?? false,
@@ -145,6 +146,7 @@ export class RepairService {
           category: 'REPAIR_PAYMENT',
           amount: depositAmount,
           note: `عربون صيانة: ${ticketNumber}`,
+          operatorId: operatorId ?? undefined,
         });
       }
 
@@ -260,7 +262,7 @@ export class RepairService {
     });
   }
 
-  async updateStatus(id: string, dto: { status: string; actualCost?: string; notes?: string }) {
+  async updateStatus(id: string, dto: { status: string; actualCost?: string; notes?: string }, operatorId?: string) {
     return this.prisma.$transaction(async (tx: PrismaTx) => {
       const ticket = await tx.repairTicket.findFirst({ where: { id, isActive: true } });
       if (!ticket) throw new NotFoundException(`RepairTicket with id ${id} not found`);
@@ -277,6 +279,7 @@ export class RepairService {
       }
 
       let updateData: any = { status: newStatus };
+      if (operatorId) updateData.operatorId = operatorId;
       if (dto.notes !== undefined) updateData.notes = dto.notes;
 
       if (newStatus === 'DELIVERED') {
@@ -326,6 +329,7 @@ export class RepairService {
             category: 'REPAIR_PAYMENT',
             amount: remainingStr,
             note: `تحصيل تسليم صيانة ${invoiceNumber}`,
+            operatorId: operatorId ?? undefined,
           });
           updateData.paidAmount = this.to2dp(paidDec.plus(remaining));
         }

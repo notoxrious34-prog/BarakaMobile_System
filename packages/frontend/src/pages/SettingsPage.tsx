@@ -7,6 +7,7 @@ import { BrandMark } from '@/components/layout/BrandMark';
 import { useWalletsQuery } from '@/features/wallets/hooks/useWallets';
 import { WalletServicesPanel } from '@/features/wallets/components/WalletServicesPanel';
 import { api } from '@/lib/api';
+import { useCapability } from '@/features/auth/AuthContext';
 
 type FormState = {
   business_name: string;
@@ -369,6 +370,7 @@ function BackupRecoverySection() {
 export function SettingsPage() {
   const { data, isLoading, isError, refetch } = useSettings();
   const updateMutation = useUpdateSettings();
+  const canAccessBackups = useCapability('canAccessBackups');
 
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
   const [saved, setSaved] = useState<FormState>(DEFAULT_FORM);
@@ -725,7 +727,13 @@ export function SettingsPage() {
             </section>
 
             <WalletSettingsSection />
-            <BackupRecoverySection />
+            {canAccessBackups ? (
+              <BackupRecoverySection />
+            ) : (
+              <p className="rounded-xl border border-navy-border/30 bg-navy-900/40 px-3 py-2 text-xs text-slate-500">
+                النسخ الاحتياطي والاستعادة للمدراء فقط.
+              </p>
+            )}
           </div>
 
           {/* Preview column — sticky on desktop, stacked on mobile */}

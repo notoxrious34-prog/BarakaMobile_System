@@ -24,6 +24,8 @@ type Props = {
   selectedIds: string[];
   onToggleSelect: (id: string) => void;
   onToggleSelectAll: () => void;
+  /** CASHIER safeguard: mask wholesale purchase cost (backend sends 'MASKED'). */
+  hideCosts?: boolean;
 };
 
 function ItemRow({
@@ -34,6 +36,7 @@ function ItemRow({
   onPrintLabel,
   selected,
   onToggleSelect,
+  hideCosts,
 }: {
   item: Item;
   onEdit: (i: Item) => void;
@@ -42,6 +45,7 @@ function ItemRow({
   onPrintLabel: (i: Item) => void;
   selected: boolean;
   onToggleSelect: (id: string) => void;
+  hideCosts: boolean;
 }) {
   const { data: settingsData } = useInvoiceSettings();
   const currencySymbol = settingsData?.currency_symbol ?? 'د.ج';
@@ -67,7 +71,7 @@ function ItemRow({
         {item.sku ?? '—'}
       </td>
       <td className="px-3 py-2.5 font-mono font-bold text-white" dir="ltr">
-        {formatPrice(item.costPrice)} {currencySymbol}
+        {hideCosts || item.costPrice === 'MASKED' ? '•••' : <>{formatPrice(item.costPrice)} {currencySymbol}</>}
       </td>
       <td className="px-3 py-2.5 font-mono font-bold text-white" dir="ltr">
         {formatPrice(item.sellingPrice)} {currencySymbol}
@@ -132,7 +136,7 @@ function ItemRow({
   );
 }
 
-export function ItemsTable({ items, onEdit, onStock, onDeactivate, onPrintLabel, selectedIds, onToggleSelect, onToggleSelectAll }: Props) {
+export function ItemsTable({ items, onEdit, onStock, onDeactivate, onPrintLabel, selectedIds, onToggleSelect, onToggleSelectAll, hideCosts = false }: Props) {
   const allSelected = items.length > 0 && items.every((i) => selectedIds.includes(i.id));
   return (
     <div className="overflow-hidden rounded-2xl border border-navy-border/40 bg-navy-900/60 backdrop-blur-md">
@@ -151,7 +155,7 @@ export function ItemsTable({ items, onEdit, onStock, onDeactivate, onPrintLabel,
               </th>
               <th className="px-3 py-2.5 text-right font-semibold">الاسم</th>
               <th className="px-3 py-2.5 text-right font-semibold">SKU</th>
-              <th className="px-3 py-2.5 text-right font-semibold">سعر التكلفة</th>
+              <th className="px-3 py-2.5 text-right font-semibold">{hideCosts ? 'سعر التكلفة (مخفي)' : 'سعر التكلفة'}</th>
               <th className="px-3 py-2.5 text-right font-semibold">سعر البيع</th>
               <th className="px-3 py-2.5 text-right font-semibold">المخزون الحالي</th>
               <th className="px-3 py-2.5 text-right font-semibold">الحالة</th>
@@ -169,6 +173,7 @@ export function ItemsTable({ items, onEdit, onStock, onDeactivate, onPrintLabel,
                 onPrintLabel={onPrintLabel}
                 selected={selectedIds.includes(item.id)}
                 onToggleSelect={onToggleSelect}
+                hideCosts={hideCosts}
               />
             ))}
           </tbody>

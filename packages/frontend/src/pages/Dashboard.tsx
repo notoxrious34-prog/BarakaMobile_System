@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/feedback/Skeleton';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { arPlural } from '@/lib/arPlural';
+import { useCapability } from '@/features/auth/AuthContext';
 
 type CashBalance = { currentBalance: string };
 type RepairTicket = {
@@ -152,6 +153,7 @@ const TYPE_LEFT_BORDER: Record<string, string> = {
 export function Dashboard() {
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const canViewProfits = useCapability('canViewProfits');
   const summaryQ = useDashboard();
 
   const cashQ = useQuery<CashBalance>({
@@ -298,7 +300,7 @@ export function Dashboard() {
         />
         <KpiCard
           title="أرباح الصيانة"
-          value={formatMoney(repairProfit)}
+          value={canViewProfits ? formatMoney(repairProfit) : '•••'}
           sub="صافي ربح الإصلاحات"
           icon={Wrench}
           accent="amber"
@@ -313,7 +315,7 @@ export function Dashboard() {
         <Link to="/flexy" aria-label="فتح قمرة الفليكسي" className="rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50">
           <KpiCard
             title="أداء الفليكسي [F3]"
-            value={formatMoney(digitalProfit)}
+            value={canViewProfits ? formatMoney(digitalProfit) : '•••'}
             sub={`مبيعات ${formatMoney(digitalNominal)} — فتح القمرة ↗`}
             icon={Zap}
             accent="amber"

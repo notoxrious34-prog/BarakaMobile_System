@@ -233,6 +233,7 @@ model CashMovement {
   balanceBefore        String
   balanceAfter         String
   note                 String?
+  operatorId           String?
   relatedTransactionId String?
   relatedExpenseId     String?
   createdAt            DateTime             @default(now())
@@ -265,6 +266,7 @@ model Expense {
   recipientName    String?
   invoiceReference String?
   cashMovementId   String?
+  operatorId       String?
   description      String?
   expenseDate      DateTime             @default(now())
   createdAt        DateTime             @default(now())
@@ -309,6 +311,7 @@ model RepairTicket {
   externalCost         String    @default("0.00")
   depositAmount        String    @default("0.00")
   depositPaid          Boolean   @default(false)
+  operatorId           String?
   laborCost            String    @default("0.00")
   partsCost            String    @default("0.00")
   partsTotal           String    @default("0.00")
@@ -348,6 +351,28 @@ model RepairPartItem {
 
   @@index([ticketId])
   @@index([inventoryItemId])
+}
+
+enum UserRole {
+  ADMIN
+  CASHIER
+  TECHNICIAN
+}
+
+model User {
+  id           String    @id @default(cuid())
+  username     String    @unique
+  displayName  String
+  pinHash      String
+  role         UserRole  @default(CASHIER)
+  permissions  String?
+  isActive     Boolean   @default(true)
+  avatarColor  String?
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([isActive])
 }
 
 enum WalletType {

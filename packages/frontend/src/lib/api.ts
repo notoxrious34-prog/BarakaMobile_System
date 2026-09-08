@@ -21,10 +21,19 @@ async function request<T>(path: string, method: string, opts: RequestOptions = {
 
   const url = `${API_BASE_URL}${path}`;
 
+  // Offline-first operator session: attach opaque token when present.
+  let sessionToken: string | null = null;
+  try {
+    sessionToken = window.localStorage.getItem('bm_session_token');
+  } catch {
+    sessionToken = null;
+  }
+
   const init: RequestInit = {
     method,
     headers: {
       'Content-Type': 'application/json',
+      ...(sessionToken ? { 'x-session-token': sessionToken } : {}),
       ...(headers ?? {}),
     },
     ...rest,

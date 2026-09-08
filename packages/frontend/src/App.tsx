@@ -16,9 +16,12 @@ import { NotFound } from '@/pages/NotFound';
 import { CatalogPage } from '@/pages/admin/CatalogPage';
 import { StockCountPage } from '@/pages/StockCountPage';
 import { FinancePage } from '@/pages/admin/FinancePage';
+import { UsersPage } from '@/pages/admin/UsersPage';
+import { AuthGate } from '@/features/auth/UserWidget';
 
 export default function App() {
   return (
+    <AuthGate>
     <Routes>
       <Route element={<AppShell />}>
         {/* 4-Pillar primary routes */}
@@ -37,6 +40,7 @@ export default function App() {
           <Route path="transactions" element={<TransactionsPage />} />
           <Route path="reports" element={<ReportsPage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="users" element={<UsersPage />} />
         </Route>
 
         {/* Legacy redirects — backwards compatibility */}
@@ -52,5 +56,6 @@ export default function App() {
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
+    </AuthGate>
   );
 }

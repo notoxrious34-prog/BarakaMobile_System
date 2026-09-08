@@ -1,15 +1,27 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Headers } from '@nestjs/common';
 import { RepairService } from './repair.service';
 import { CreateRepairTicketDto } from './dto/create-repair-ticket.dto';
 import { UpdateRepairStatusDto } from './dto/update-repair-status.dto';
+import { AuthService } from '../auth/auth.service';
+import { sessionTokenOf } from '../auth/session-header';
 
 @Controller('repair')
 export class RepairController {
-  constructor(private readonly repairService: RepairService) {}
+  constructor(
+    private readonly repairService: RepairService,
+    private readonly authService: AuthService,
+  ) {}
+
+  private operatorId(headers: Record<string, string | string[] | undefined>) {
+    return this.authService.userForToken(sessionTokenOf(headers)).then((u) => u?.id);
+  }
 
   @Post()
-  create(@Body() dto: CreateRepairTicketDto) {
-    return this.repairService.createTicket(dto);
+  async create(
+    @Body() dto: CreateRepairTicketDto,
+    @Headers() headers: Record<string, string | string[] | undefined>,
+  ) {
+    return this.repairService.createTicket(dto, await this.operatorId(headers));
   }
 
   @Get()
@@ -33,8 +45,12 @@ export class RepairController {
   }
 
   @Patch(':id/status')
-  updateStatus(@Param('id') id: string, @Body() dto: UpdateRepairStatusDto) {
-    return this.repairService.updateStatus(id, dto);
+  async updateStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateRepairStatusDto,
+    @Headers() headers: Record<string, string | string[] | undefined>,
+  ) {
+    return this.repairService.updateStatus(id, dto, await this.operatorId(headers));
   }
 
   @Post(':id/external-cost')

@@ -19,6 +19,8 @@ export type NavItem = {
   label: string;
   icon: ComponentType<{ className?: string }>;
   shortcut?: string;
+  /** Shown only to ADMIN operators (Users, Backups). */
+  adminOnly?: boolean;
 };
 
 // 4-Pillar Primary Navigation (AD-57) + Flexy operations module (TB-108)
@@ -39,6 +41,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { to: '/admin/transactions', label: 'المعاملات', icon: Receipt },
   { to: '/admin/reports', label: 'التقارير', icon: BarChart3 },
   { to: '/admin/settings', label: 'الإعدادات', icon: Settings },
+  { to: '/admin/users', label: 'المستخدمون', icon: Users, adminOnly: true },
 ];
 
 // Finance sub-tabs
