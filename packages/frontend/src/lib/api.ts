@@ -94,6 +94,9 @@ export const api = {
   patch<T>(path: string, body?: unknown, opts?: RequestOptions): Promise<T> {
     return request<T>(path, 'PATCH', { ...opts, body });
   },
+  put<T>(path: string, body?: unknown, opts?: RequestOptions): Promise<T> {
+    return request<T>(path, 'PUT', { ...opts, body });
+  },
   delete<T>(path: string, opts?: RequestOptions): Promise<T> {
     return request<T>(path, 'DELETE', opts);
   },

@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { AppShell } from '@/components/layout/AppShell';
 import { Dashboard } from '@/pages/Dashboard';
 import { ContactsPage } from '@/pages/ContactsPage';
@@ -17,11 +17,30 @@ import { CatalogPage } from '@/pages/admin/CatalogPage';
 import { StockCountPage } from '@/pages/StockCountPage';
 import { FinancePage } from '@/pages/admin/FinancePage';
 import { UsersPage } from '@/pages/admin/UsersPage';
+import { SerialsPage } from '@/pages/SerialsPage';
 import { AuthGate } from '@/features/auth/UserWidget';
+import { ImeiLookupHost } from '@/features/serials/ImeiLookupHost';
+
+function SerialsRoute() {
+  const navigate = useNavigate();
+  return (
+    <SerialsPage
+      onRepairTicket={(p) => {
+        try {
+          window.sessionStorage.setItem('bm_repair_prefill', JSON.stringify(p));
+        } catch {
+          /* referral lost — repairs still opens */
+        }
+        navigate('/repairs');
+      }}
+    />
+  );
+}
 
 export default function App() {
   return (
     <AuthGate>
+    <ImeiLookupHost />
     <Routes>
       <Route element={<AppShell />}>
         {/* 4-Pillar primary routes */}
@@ -41,6 +60,7 @@ export default function App() {
           <Route path="reports" element={<ReportsPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="users" element={<UsersPage />} />
+          <Route path="serials" element={<SerialsRoute />} />
         </Route>
 
         {/* Legacy redirects — backwards compatibility */}

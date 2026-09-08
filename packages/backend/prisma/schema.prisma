@@ -77,6 +77,7 @@ model Item {
   salesReturnItems SalesReturnItem[]
   stockCountItems  StockCountItem[]
   repairPartItems  RepairPartItem[]
+  deviceSerials    DeviceSerial[]
 }
 
 model StockMovement {
@@ -373,6 +374,86 @@ model User {
   updatedAt    DateTime  @updatedAt
 
   @@index([isActive])
+}
+
+enum DeviceStatus {
+  IN_STOCK
+  SOLD
+  UNDER_REPAIR
+  WARRANTY_CLAIMED
+  RETURNED
+  DEFECTIVE
+}
+
+model DeviceSerial {
+  id                 String                @id @default(cuid())
+  imei1              String                @unique
+  imei2              String?
+  itemId             String
+  item               Item                  @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  status             DeviceStatus          @default(IN_STOCK)
+  supplierContactId  String?
+  purchaseInvoiceRef String?
+  purchaseCost       String?
+  saleInvoiceId      String?
+  saleDate           DateTime?
+  customerContactId  String?
+  customerName       String?
+  customerPhone      String?
+  warrantyMonths     Int                   @default(12)
+  warrantyExpiresAt  DateTime?
+  notes              String?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  events             DeviceLifecycleEvent[]
+  claims             WarrantyClaim[]
+
+  @@index([status])
+  @@index([itemId])
+}
+
+enum DeviceEventType {
+  PURCHASE_RECEIPT
+  SALE_DELIVERY
+  REPAIR_INTAKE
+  REPAIR_DELIVERY
+  WARRANTY_CLAIM
+  RETURN_RESTOCK
+  STATUS_CHANGE
+}
+
+model DeviceLifecycleEvent {
+  id             String           @id @default(cuid())
+  deviceSerialId String
+  device         DeviceSerial     @relation(fields: [deviceSerialId], references: [id], onDelete: Cascade)
+  eventType      DeviceEventType
+  referenceType  String?
+  referenceId    String?
+  description    String
+  operatorId     String?
+  createdAt      DateTime         @default(now())
+
+  @@index([deviceSerialId, createdAt])
+}
+
+model WarrantyClaim {
+  id                String        @id @default(cuid())
+  claimNumber       String        @unique
+  deviceSerialId    String
+  device            DeviceSerial  @relation(fields: [deviceSerialId], references: [id], onDelete: Cascade)
+  customerName      String
+  customerPhone     String
+  reportedIssue     String
+  technicianVerdict String?
+  actionTaken       String?
+  isResolved        Boolean       @default(false)
+  resolvedAt        DateTime?
+  operatorId        String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([deviceSerialId])
+  @@index([isResolved])
 }
 
 enum WalletType {

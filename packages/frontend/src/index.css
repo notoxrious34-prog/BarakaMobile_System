@@ -84,6 +84,8 @@
   #expense-voucher-receipt *,
   #repair-delivery-receipt,
   #repair-delivery-receipt *,
+  #imei-warranty-slip,
+  #imei-warranty-slip *,
   #thermal-receipt-root,
   #thermal-receipt-root *,
   #reports-print-area,
@@ -105,6 +107,7 @@
   #barcode-label-sheet,
   #expense-voucher-receipt,
   #repair-delivery-receipt,
+  #imei-warranty-slip,
   #invoice-paper {
     position: fixed;
     top: 0;

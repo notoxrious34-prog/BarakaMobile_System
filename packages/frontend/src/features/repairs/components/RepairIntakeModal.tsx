@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Decimal from 'decimal.js';
 import { User, UserSearch, X } from 'lucide-react';
 import {
@@ -18,6 +18,7 @@ import { to2dp } from '@/features/pos/hooks/usePosTicket';
 type Props = {
   onCreated: (id: string) => void;
   onClose: () => void;
+  initial?: { contactId?: string; brand?: string; model?: string; imei?: string };
 };
 
 function validMoney(raw: string): string | null {
@@ -36,17 +37,17 @@ function validMoney(raw: string): string | null {
  * TB-072 fast device intake — walk-in or registered customer, Decimal money,
  * IMEI folded into notes (schema has no IMEI column — AD-58).
  */
-export function RepairIntakeModal({ onCreated, onClose }: Props) {
+export function RepairIntakeModal({ onCreated, onClose, initial }: Props) {
   const contactsQ = useContactsQuery();
   const createMut = useCreateRepairMutation();
 
-  const [useWalkin, setUseWalkin] = useState(true);
+  const [useWalkin, setUseWalkin] = useState(!initial?.contactId);
   const [contact, setContact] = useState<Contact | null>(null);
   const [search, setSearch] = useState('');
   const [deviceType, setDeviceType] = useState('PHONE');
-  const [brand, setBrand] = useState('');
-  const [model, setModel] = useState('');
-  const [imei, setImei] = useState('');
+  const [brand, setBrand] = useState(initial?.brand ?? '');
+  const [model, setModel] = useState(initial?.model ?? '');
+  const [imei, setImei] = useState(initial?.imei ?? '');
   const [problem, setProblem] = useState('');
   const [conditions, setConditions] = useState<string[]>([]);
   const [accessories, setAccessories] = useState<string[]>([]);
@@ -60,6 +61,15 @@ export function RepairIntakeModal({ onCreated, onClose }: Props) {
     () => (contactsQ.data ?? []).find((c) => c.name === WALKIN_NAME) ?? null,
     [contactsQ.data],
   );
+
+  // IMEI-desk referral: preselect the registered customer once loaded.
+  useEffect(() => {
+    if (initial?.contactId && !contact) {
+      const found = (contactsQ.data ?? []).find((c) => c.id === initial.contactId);
+      if (found) setContact(found);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contactsQ.data, initial?.contactId]);
 
   const activeContact: Contact | null = useWalkin ? walkinContact : contact;
   const accountsQ = useAccountsByContactQuery(

@@ -7,6 +7,7 @@ import {
   Users,
   Package,
   ClipboardList,
+  Smartphone,
   Zap,
   Wallet,
   CreditCard,
@@ -40,6 +41,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { to: '/admin/finance', label: 'المالية', icon: Wallet },
   { to: '/admin/transactions', label: 'المعاملات', icon: Receipt },
   { to: '/admin/reports', label: 'التقارير', icon: BarChart3 },
+  { to: '/admin/serials', label: 'الأجهزة والـ IMEI', icon: Smartphone },
   { to: '/admin/settings', label: 'الإعدادات', icon: Settings },
   { to: '/admin/users', label: 'المستخدمون', icon: Users, adminOnly: true },
 ];

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { PackageSearch, Plus } from 'lucide-react';
 import { BrandMark } from '@/components/layout/BrandMark';
 import {
@@ -40,6 +40,22 @@ export function RepairsPage() {
   const [deviceFilter, setDeviceFilter] = useState('');
   const [search, setSearch] = useState('');
   const [showIntake, setShowIntake] = useState(false);
+  const [intakeInitial, setIntakeInitial] = useState<{ contactId?: string; brand?: string; model?: string; imei?: string } | undefined>(undefined);
+
+  // IMEI-desk referral: open intake prefilled once after navigation.
+  useEffect(() => {
+    try {
+      const raw = window.sessionStorage.getItem('bm_repair_prefill');
+      if (raw) {
+        window.sessionStorage.removeItem('bm_repair_prefill');
+        const parsed = JSON.parse(raw) as { contactId?: string; brand?: string; model?: string; imei?: string };
+        setIntakeInitial(parsed);
+        setShowIntake(true);
+      }
+    } catch {
+      /* no referral */
+    }
+  }, []);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [view, setView] = useState<'table' | 'kanban'>('kanban');
 
@@ -306,11 +322,13 @@ export function RepairsPage() {
 
       {showIntake && (
         <RepairIntakeModal
+          initial={intakeInitial}
           onCreated={(id) => {
             setShowIntake(false);
+            setIntakeInitial(undefined);
             setSelectedId(id);
           }}
-          onClose={() => setShowIntake(false)}
+          onClose={() => { setShowIntake(false); setIntakeInitial(undefined); }}
         />
       )}
       {selectedId && (
