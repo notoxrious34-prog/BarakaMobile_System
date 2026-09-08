@@ -15,7 +15,8 @@ export const CASH_CATEGORY_MAP: Record<string, string> = {
   WITHDRAWAL: 'سحب مالك',
   REPAIR_PAYMENT: 'دفعات صيانة',
   DEBT_COLLECTION: 'تحصيل ديون',
-  DEBT_SETTLEMENT: 'سداد موردين',
+  DEBT_SETTLEMENT: 'تحصيل ديون زبائن',
+  SUPPLIER_PAYMENT: 'تسديد مورد',
   // Backend CashMovementCategory enum (ground truth, Prisma):
   SALE_PAYMENT: 'تحصيل مبيعات',
   PURCHASE_PAYMENT: 'سداد مشتريات',

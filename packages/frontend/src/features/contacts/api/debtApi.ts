@@ -24,3 +24,27 @@ export async function fetchDebtLedger(contactId: string): Promise<DebtLedgerResp
 export async function postDebtSettlement(contactId: string, payload: { amount: string; notes?: string }): Promise<any> {
   return api.post<any>(`/customers/${contactId}/debt-settlement`, payload);
 }
+
+export type SupplierPayable = { contactId: string; balance: string; accountId: string | null };
+export type SupplierLedgerEntry = {
+  id: string;
+  contactId: string;
+  type: string;
+  amount: string;
+  balanceBefore: string;
+  balanceAfter: string;
+  relatedTransactionId: string | null;
+  notes: string | null;
+  createdAt: string;
+};
+export type SupplierLedgerResponse = { contactId: string; currentBalance: string; entries: SupplierLedgerEntry[] };
+
+export async function fetchPayable(contactId: string): Promise<SupplierPayable> {
+  return api.get<SupplierPayable>(`/customers/${contactId}/payable`);
+}
+export async function fetchSupplierLedger(contactId: string): Promise<SupplierLedgerResponse> {
+  return api.get<SupplierLedgerResponse>(`/customers/${contactId}/supplier-ledger`);
+}
+export async function postSupplierSettlement(contactId: string, payload: { amount: string; notes?: string }): Promise<any> {
+  return api.post<any>(`/customers/${contactId}/supplier-settlement`, payload);
+}

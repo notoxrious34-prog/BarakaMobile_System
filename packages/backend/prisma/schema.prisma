@@ -35,6 +35,7 @@ model Contact {
   repairs     RepairTicket[]
   wallets     DigitalWallet[]
   debtLedger  CustomerDebtLedgerEntry[]
+  supplierDebtLedger SupplierDebtLedgerEntry[]
   salesReturns SalesReturn[]
 }
 
@@ -135,6 +136,7 @@ enum CashMovementCategory {
   OWNER_DEPOSIT
   ADJUSTMENT
   DEBT_SETTLEMENT
+  SUPPLIER_PAYMENT
   REFUND
 }
 
@@ -160,6 +162,7 @@ model Transaction {
   walletPurchases WalletLedgerEntry[] @relation("WalletPurchase")
   walletSales     WalletLedgerEntry[] @relation("WalletSale")
   debtLedgerEntries CustomerDebtLedgerEntry[]
+  supplierDebtEntries SupplierDebtLedgerEntry[]
   salesReturns    SalesReturn[]
 }
 
@@ -403,6 +406,32 @@ model CustomerDebtLedgerEntry {
   @@index([customerId])
   @@index([relatedTransactionId])
   @@index([relatedRepairTicketId])
+}
+
+enum SupplierDebtEntryType {
+  CREDIT_PURCHASE
+  PAYMENT
+  DEBT_ADJUSTMENT_ADD
+  DEBT_ADJUSTMENT_SUB
+  PURCHASE_RETURN_DEBT
+}
+
+model SupplierDebtLedgerEntry {
+  id                   String                @id @default(cuid())
+  contactId            String
+  type                 SupplierDebtEntryType
+  amount               String
+  balanceBefore        String
+  balanceAfter         String
+  relatedTransactionId String?
+  notes                String?
+  createdById          String?
+  createdAt            DateTime              @default(now())
+  contact              Contact               @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  relatedTransaction   Transaction?          @relation(fields: [relatedTransactionId], references: [id], onDelete: SetNull)
+
+  @@index([contactId])
+  @@index([relatedTransactionId])
 }
 
 enum ReturnCondition {

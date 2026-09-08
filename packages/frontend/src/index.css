@@ -74,6 +74,8 @@
   #repair-slip *,
   #contact-statement,
   #contact-statement *,
+  #supplier-debt-receipt,
+  #supplier-debt-receipt *,
   #thermal-receipt-root,
   #thermal-receipt-root *,
   #reports-print-area,
@@ -90,6 +92,7 @@
   #thermal-receipt-root,
   #reports-print-area,
   #flexy-receipt,
+  #supplier-debt-receipt,
   #invoice-paper {
     position: fixed;
     top: 0;

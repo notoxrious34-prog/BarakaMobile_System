@@ -279,6 +279,29 @@ export class TransactionsService {
         data: { currentBalance: currentBalStrForPaid },
       });
 
+      // Supplier ledger: if PURCHASE leaves an unpaid remainder, record
+      // SupplierDebtLedgerEntry CREDIT_PURCHASE against the supplier contact.
+      if (dto.type === TransactionType.PURCHASE) {
+        const debtRemainder = new Decimal(normalizedAmount).minus(new Decimal(normalizedPaidNow));
+        if (debtRemainder.gt(0)) {
+          const supplierContactId = account.contactId;
+          const debtBefore = currentBalanceStr;
+          const debtAfter = currentBalStrForPaid;
+          await (tx as any).supplierDebtLedgerEntry.create({
+            data: {
+              contactId: supplierContactId,
+              type: 'CREDIT_PURCHASE',
+              amount: debtRemainder.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2),
+              balanceBefore: debtBefore,
+              balanceAfter: debtAfter,
+              relatedTransactionId: transaction.id,
+              notes: dto.note ?? null,
+              createdById: (dto as any).createdById ?? null,
+            },
+          });
+        }
+      }
+
       // Credit ledger: if split-payment with creditAmount, record CustomerDebtLedgerEntry CREDIT_SALE
       if (creditDec.gt(0)) {
         if (dto.type !== TransactionType.SALE) {

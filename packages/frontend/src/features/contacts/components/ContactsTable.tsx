@@ -10,6 +10,7 @@ type Props = {
   onDeactivate: (id: string) => void;
   onQuickPay: (contact: Contact) => void;
   onSettleDebt: (contact: Contact) => void;
+  onSettleSupplier: (contact: Contact) => void;
   onViewStatement: (accountId: string, contactName: string, role: string) => void;
 };
 
@@ -18,7 +19,7 @@ type Props = {
  * per account. Single-account rows show one "كشف الحساب" button; BOTH
  * rows show separate customer/supplier statement buttons.
  */
-export function ContactsTable({ contacts, onEdit, onDeactivate, onQuickPay, onSettleDebt, onViewStatement }: Props) {
+export function ContactsTable({ contacts, onEdit, onDeactivate, onQuickPay, onSettleDebt, onSettleSupplier, onViewStatement }: Props) {
   return (
     <div className="overflow-hidden rounded-2xl border border-navy-border/40 bg-navy-900/60">
       <div className="scrollbar-premium overflow-x-auto">
@@ -125,6 +126,18 @@ export function ContactsTable({ contacts, onEdit, onDeactivate, onQuickPay, onSe
                           <span className="text-xs">{s.label}</span>
                         </button>
                       ))}
+                      {supplierAcc && !isZeroBalance(supplierAcc.currentBalance) && (
+                        <button
+                          type="button"
+                          onClick={() => onSettleSupplier(c)}
+                          aria-label={`تسديد المورد ${c.name}`}
+                          title="تسديد المورد"
+                          className="inline-flex items-center gap-1 rounded-lg border border-amber-500/30 bg-amber-500/15 px-2 py-1 text-xs font-bold text-amber-300 hover:bg-amber-500/25"
+                        >
+                          <Banknote className="h-3.5 w-3.5" aria-hidden="true" />
+                          <span className="text-xs">تسديد المورد</span>
+                        </button>
+                      )}
                       {customerAcc && !isZeroBalance(customerAcc.currentBalance) && (
                         <button
                           type="button"
