@@ -50,10 +50,21 @@ export class TransactionsService {
   async createTransaction(dto: CreateTransactionDto) {
     const normalizedAmount = this.normalizeAmount(dto.amount);
     const normalizedPaidNow = this.normalizeAmount(dto.amountPaidNow ?? '0.00');
+    const normalizedCreditAmount = this.normalizeAmount((dto as any).creditAmount ?? '0.00');
     const amountDec = new Decimal(normalizedAmount);
     const paidDec = new Decimal(normalizedPaidNow);
+    const creditDec = new Decimal(normalizedCreditAmount);
     if (paidDec.lt(0) || paidDec.gt(amountDec)) {
       throw new BadRequestException('المبلغ المدفوع الآن لا يمكن أن يتجاوز المبلغ الإجمالي');
+    }
+    if (creditDec.lt(0) || creditDec.gt(amountDec)) {
+      throw new BadRequestException('المبلغ الآجل لا يمكن أن يتجاوز المبلغ الإجمالي');
+    }
+    if (creditDec.gt(0) && paidDec.plus(creditDec).gt(amountDec)) {
+      throw new BadRequestException('المدفوع + الآجل لا يمكن أن يتجاوز الإجمالي');
+    }
+    if (creditDec.gt(0) && !(dto as any).customerId) {
+      throw new BadRequestException('creditAmount requires customerId (Contact id)');
     }
 
     if (dto.type !== TransactionType.SALE && dto.type !== TransactionType.PURCHASE) {
@@ -267,6 +278,45 @@ export class TransactionsService {
         where: { id: account.id },
         data: { currentBalance: currentBalStrForPaid },
       });
+
+      // Credit ledger: if split-payment with creditAmount, record CustomerDebtLedgerEntry CREDIT_SALE
+      if (creditDec.gt(0)) {
+        if (dto.type !== TransactionType.SALE) {
+          throw new BadRequestException('creditAmount only allowed for SALE');
+        }
+        const customerContactId = (dto as any).customerId as string;
+        const contact = await (tx as any).contact.findUnique({ where: { id: customerContactId } });
+        if (!contact) throw new NotFoundException(`Contact with id ${customerContactId} not found`);
+        // Validate creditLimit (0 = unlimited)
+        const limitStr: string = contact.creditLimit ?? '0.00';
+        let limitDec: Decimal;
+        try {
+          limitDec = new Decimal(limitStr);
+        } catch {
+          limitDec = new Decimal(0);
+        }
+        if (limitDec.gt(0)) {
+          const finalDebtDec = new Decimal(currentBalStrForPaid);
+          if (finalDebtDec.gt(limitDec)) {
+            throw new BadRequestException(`تجاوز سقف الائتمان (${limitDec.toFixed(2)} د.ج)`);
+          }
+        }
+        // For debt ledger, balanceBefore is the account balance before this sale, balanceAfter is final debt
+        const debtBalanceBefore = currentBalanceStr;
+        const debtBalanceAfter = currentBalStrForPaid;
+        await (tx as any).customerDebtLedgerEntry.create({
+          data: {
+            customerId: customerContactId,
+            type: 'CREDIT_SALE',
+            amount: normalizedCreditAmount,
+            balanceBefore: debtBalanceBefore,
+            balanceAfter: debtBalanceAfter,
+            relatedTransactionId: transaction.id,
+            notes: dto.note ?? null,
+            createdById: (dto as any).createdById ?? null,
+          },
+        });
+      }
 
       for (const line of itemLinesData) {
         await (tx as any).transactionItem.create({

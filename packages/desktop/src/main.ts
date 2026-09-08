@@ -265,6 +265,25 @@ app.whenReady().then(async () => {
         return { success: false, error: err instanceof Error ? err.message : String(err) };
       }
     });
+    ipcMain.handle('pick-backup-file', async () => {
+      if (!mainWindow) return { canceled: true, filePath: null as string | null };
+      const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+        title: 'اختر ملف النسخ الاحتياطي (.akb)',
+        filters: [{ name: 'BarakaMobile Backup', extensions: ['akb'] }],
+        properties: ['openFile'],
+      });
+      return { canceled, filePath: canceled ? null : filePaths[0] ?? null };
+    });
+    ipcMain.handle('save-backup-file', async (_event, suggestedName?: string) => {
+      if (!mainWindow) return { canceled: true, filePath: null as string | null };
+      const defaultName = suggestedName && suggestedName.trim() ? suggestedName.trim() : `BarakaMobile-${new Date().toISOString().slice(0, 10)}.akb`;
+      const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+        title: 'حفظ النسخة الاحتياطية',
+        defaultPath: defaultName,
+        filters: [{ name: 'BarakaMobile Backup', extensions: ['akb'] }],
+      });
+      return { canceled, filePath: canceled ? null : filePath ?? null };
+    });
 
     if (app.isPackaged) {
       await spawnBackend();

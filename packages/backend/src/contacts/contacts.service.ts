@@ -16,6 +16,7 @@ export class ContactsService {
 
   async create(dto: CreateContactDto) {
     return this.prisma.$transaction(async (tx) => {
+      const creditLimit = this.normalizeAmount((dto as any).creditLimit);
       const contact = await tx.contact.create({
         data: {
           name: dto.name,
@@ -23,6 +24,7 @@ export class ContactsService {
           address: dto.address,
           role: dto.role,
           notes: dto.notes,
+          creditLimit,
         },
       });
 
@@ -87,6 +89,7 @@ export class ContactsService {
     if (dto.phone !== undefined) data.phone = dto.phone;
     if (dto.address !== undefined) data.address = dto.address;
     if (dto.notes !== undefined) data.notes = dto.notes;
+    if ((dto as any).creditLimit !== undefined) data.creditLimit = this.normalizeAmount((dto as any).creditLimit);
 
     return this.prisma.contact.update({
       where: { id },

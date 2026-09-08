@@ -35,7 +35,7 @@ type Props = {
   ticket: PosTicket;
   walkinAccountId: string | null;
   /** Resolves to the invoice number on success, null on failure */
-  onCheckout: (accountId: string) => Promise<{ invoiceNumber?: string } | null>;
+  onCheckout: (payload: { accountId: string; creditAmount?: string; customerId?: string }) => Promise<{ invoiceNumber?: string } | null>;
   isSubmitting: boolean;
   apiError: string | null;
   lastSale: LastSale | null;
@@ -233,7 +233,7 @@ export function TicketPanel({
   }
 
   const checkoutDisabled =
-    !ticket.canCheckout || !activeAccountId || isSubmitting;
+    !ticket.canCheckout || !activeAccountId || isSubmitting || (ticket.creditEnabled && (useWalkin || !selectedContact));
   const up = isNonNegChange(ticket.changeDue);
   // Magnitude for the "remaining on customer" case — string op on a 2dp string
   const absChange =
@@ -296,7 +296,11 @@ export function TicketPanel({
         useWalkin || !selectedContact ? 'عميل نقدي (افتراضي)' : selectedContact.name,
       customerPhone: !useWalkin && selectedContact ? (selectedContact.phone ?? null) : null,
     };
-    const res = await onCheckout(activeAccountId);
+    const res = await onCheckout({
+      accountId: activeAccountId,
+      creditAmount: ticket.creditEnabled ? ticket.effectiveCredit : undefined,
+      customerId: ticket.creditEnabled && selectedContact ? selectedContact.id : undefined,
+    });
     if (res) {
       playCheckoutSuccess();
       setReceipt({ ...snapshot, invoiceNumber: res.invoiceNumber });
@@ -619,6 +623,43 @@ export function TicketPanel({
               >
                 {up ? ticket.changeDue : absChange} د.ج
               </span>
+            </div>
+          )}
+        </div>
+
+        {/* Split / credit toggle — real-time received + credit = total */}
+        <div className={`rounded-xl border p-2 ${ticket.creditEnabled ? 'border-amber-500/30 bg-amber-500/[0.06]' : 'border-navy-border/30 bg-navy-950/40'}`}>
+          <label className="flex cursor-pointer items-center justify-between gap-2">
+            <span className="flex items-center gap-1.5 text-xs font-bold text-slate-300">
+              <input
+                type="checkbox"
+                checked={ticket.creditEnabled}
+                onChange={(e) => ticket.setCreditEnabled(e.target.checked)}
+                disabled={useWalkin}
+                className="h-3.5 w-3.5 rounded border-navy-border bg-navy-950 text-amber-500 focus:ring-amber-500/30"
+              />
+              بيع آجل / تقسيط
+            </span>
+            <span className="text-[11px] text-slate-500">{useWalkin ? 'يتطلب عميل مسجل' : 'مفعل للعميل المختار'}</span>
+          </label>
+          {ticket.creditEnabled && (
+            <div className="mt-2 space-y-1.5">
+              <input
+                type="text"
+                inputMode="decimal"
+                value={ticket.creditAmount}
+                onChange={(e) => ticket.setCreditAmount(e.target.value)}
+                placeholder="المبلغ الآجل (د.ج)"
+                aria-label="المبلغ الآجل"
+                dir="ltr"
+                className="h-8 w-full rounded-xl border border-navy-border/40 bg-navy-950/60 px-2 font-mono text-xs text-slate-100 placeholder:font-sans placeholder:text-[11px] placeholder:text-slate-600 outline-none focus:border-amber-500/50"
+              />
+              <p className={`text-[11px] ${ticket.splitValid ? 'text-slate-400' : 'text-rose-400'}`} dir="ltr">
+                <span className="font-mono font-bold">{ticket.splitTotal} / {ticket.grandTotal} د.ج</span>
+                <span className="ms-1 font-sans text-[11px]">{ticket.splitValid ? ' — المدفوع + الآجل ≤ الإجمالي' : ' — يتجاوز الإجمالي'}</span>
+              </p>
+              {!ticket.creditValid && <p className="text-[11px] text-rose-400">صيغة المبلغ الآجل غير صحيحة</p>}
+              {useWalkin && <p className="text-[11px] text-amber-400">اختر عميلًا مسجلًا لإتمام البيع الآجل</p>}
             </div>
           )}
         </div>

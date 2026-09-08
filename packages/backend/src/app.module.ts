@@ -14,9 +14,12 @@ import { CashModule } from './cash/cash.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { RepairModule } from './repair/repair.module';
 import { WalletsModule } from './wallets/wallets.module';
+import { BackupModule } from './system/backup/backup.module';
+import { CustomersModule } from './customers/customers.module';
+import { SalesReturnsModule } from './returns/sales-returns.module';
 
 @Module({
-  imports: [PrismaModule, ContactsModule, AccountsModule, InventoryModule, ServicesModule, TransactionsModule, ReportsModule, SettingsModule, SearchModule, CashModule, ExpensesModule, RepairModule, WalletsModule],
+  imports: [PrismaModule, ContactsModule, AccountsModule, InventoryModule, ServicesModule, TransactionsModule, ReportsModule, SettingsModule, SearchModule, CashModule, ExpensesModule, RepairModule, WalletsModule, BackupModule, CustomersModule, SalesReturnsModule],
   controllers: [AppController],
   providers: [AppService],
 })

@@ -58,7 +58,7 @@ export function PosPage() {
     ticket.canCheckout && walkin.accountId !== null && !createMut.isPending;
 
   const handleCheckout = useCallback(
-    async (accountId: string): Promise<{ invoiceNumber?: string } | null> => {
+    async (payload: { accountId: string; creditAmount?: string; customerId?: string }): Promise<{ invoiceNumber?: string } | null> => {
       setApiError(null);
       if (ticket.lines.length === 0 || !ticket.canCheckout) return null;
       // Split cart: real catalog lines ride as itemLines (stock decrements);
@@ -79,9 +79,11 @@ export function PosPage() {
       }
       try {
         const res = await createMut.mutateAsync({
-          accountId,
+          accountId: payload.accountId,
           amount: ticket.grandTotal,
           amountPaidNow: ticket.paidNow,
+          creditAmount: payload.creditAmount,
+          customerId: payload.customerId,
           note: noteParts.length > 0 ? noteParts.join(' | ') : undefined,
           itemLines: realLines.map((l) => ({
             itemId: l.itemId,
@@ -186,7 +188,7 @@ export function PosPage() {
         e.preventDefault();
         if (lastSale || !canSubmitRef.current) return;
         const accountId = walkin.accountId;
-        if (accountId) void checkoutRef.current(accountId);
+        if (accountId) void checkoutRef.current({ accountId });
       } else if (e.key === 'F6') {
         e.preventDefault();
         parkRef.current();
@@ -322,7 +324,7 @@ export function PosPage() {
             <TicketPanel
               ticket={ticket}
               walkinAccountId={walkin.accountId}
-              onCheckout={(accountId) => handleCheckout(accountId)}
+              onCheckout={(payload) => handleCheckout(payload)}
               isSubmitting={createMut.isPending}
               apiError={apiError}
               lastSale={lastSale}

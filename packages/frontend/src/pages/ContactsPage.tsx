@@ -14,6 +14,7 @@ import { ContactsTable } from '@/features/contacts/components/ContactsTable';
 import { ContactFormModal } from '@/features/contacts/components/ContactFormModal';
 import { PaymentForm } from '@/features/transactions/components/PaymentForm';
 import { ContactLedgerModal } from '@/features/reports/components/ContactLedgerModal';
+import { CustomerDebtSettlementModal } from '@/features/contacts/components/CustomerDebtSettlementModal';
 import { getQuickPayPreset } from '@/features/contacts/utils/getQuickPayPreset';
 import {
   isPositiveBalance,
@@ -47,6 +48,7 @@ export function ContactsPage() {
   const [filter, setFilter] = useState<DebtFilter>('ALL');
   const [search, setSearch] = useState('');
   const [ledger, setLedger] = useState<{ accountId: string; contactName: string; role: string } | null>(null);
+  const [debtSettle, setDebtSettle] = useState<{ id: string; name: string; balance: string } | null>(null);
 
   const metrics = useMemo(() => {
     const list = contacts ?? [];
@@ -255,6 +257,11 @@ export function ContactsPage() {
             onEdit={openEdit}
             onDeactivate={handleDeactivate}
             onQuickPay={handleQuickPay}
+            onSettleDebt={(c) => {
+              const acc = c.accounts.find((a) => a.role === 'CUSTOMER');
+              if (!acc) return;
+              setDebtSettle({ id: c.id, name: c.name, balance: acc.currentBalance });
+            }}
             onViewStatement={(accountId, contactName, role) =>
               setLedger({ accountId, contactName, role })
             }
@@ -277,6 +284,16 @@ export function ContactsPage() {
         contactName={ledger?.contactName ?? null}
         role={ledger?.role ?? null}
       />
+      {debtSettle && (
+        <CustomerDebtSettlementModal
+          open={!!debtSettle}
+          onClose={() => setDebtSettle(null)}
+          contactId={debtSettle.id}
+          contactName={debtSettle.name}
+          currentDebt={debtSettle.balance}
+          onSettled={() => qc.invalidateQueries({ queryKey: ['contacts'] })}
+        />
+      )}
     </div>
   );
 }

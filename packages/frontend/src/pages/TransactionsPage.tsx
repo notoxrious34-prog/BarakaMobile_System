@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Search, ArrowLeftRight, Zap } from 'lucide-react';
+import { Plus, Search, ArrowLeftRight, Zap, RotateCcw } from 'lucide-react';
 import { BrandMark } from '@/components/layout/BrandMark';
 import { WalletTopupModal } from '@/features/wallets/components/WalletTopupModal';
 import { useTransactionsQuery } from '@/features/transactions/hooks/useTransactions';
@@ -10,6 +10,7 @@ import { ThermalReceipt } from '@/features/transactions/components/ThermalReceip
 import { PurchaseForm } from '@/features/transactions/components/PurchaseForm';
 import { PaymentForm } from '@/features/transactions/components/PaymentForm';
 import { OffsetForm } from '@/features/transactions/components/OffsetForm';
+import { SalesReturnModal } from '@/features/returns/components/SalesReturnModal';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import {
@@ -36,6 +37,7 @@ export function TransactionsPage() {
   const [topupOpen, setTopupOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [offsetOpen, setOffsetOpen] = useState(false);
+  const [returnOpen, setReturnOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [printA4Id, setPrintA4Id] = useState<string | null>(null);
   const [printThermalId, setPrintThermalId] = useState<string | null>(null);
@@ -155,6 +157,14 @@ export function TransactionsPage() {
             <ArrowLeftRight className="h-4 w-4" aria-hidden="true" />
             مقاصة حسابات
           </button>
+          <button
+            type="button"
+            onClick={() => setReturnOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-navy-800 px-4 py-2 text-xs font-extrabold text-amber-300 ring-1 ring-amber-500/30 hover:bg-navy-700"
+          >
+            <RotateCcw className="h-4 w-4" aria-hidden="true" />
+            إرجاع بيع
+          </button>
         </div>
       </div>
 
@@ -267,6 +277,7 @@ export function TransactionsPage() {
       <WalletTopupModal open={topupOpen} onClose={() => setTopupOpen(false)} />
       <PaymentForm open={paymentOpen} onClose={() => setPaymentOpen(false)} />
       <OffsetForm open={offsetOpen} onClose={() => setOffsetOpen(false)} />
+      <SalesReturnModal open={returnOpen} onClose={() => setReturnOpen(false)} />
       <InvoiceDocument transactionId={printA4Id} onClose={() => setPrintA4Id(null)} />
       <ThermalReceipt transactionId={printThermalId} onClose={() => setPrintThermalId(null)} />
     </div>

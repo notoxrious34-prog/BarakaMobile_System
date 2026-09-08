@@ -42,6 +42,8 @@ export function usePosTicket() {
   const [discountType, setDiscountType] = useState<DiscountType>('FIXED');
   const [discountValue, setDiscountValue] = useState('');
   const [received, setReceived] = useState('');
+  const [creditEnabled, setCreditEnabled] = useState(false);
+  const [creditAmount, setCreditAmount] = useState('');
 
   function addItem(item: Item, qty = 1): AddResult {
     const stock = typeof item.currentStock === 'number' ? item.currentStock : 999999;
@@ -119,6 +121,8 @@ export function usePosTicket() {
     setLines([]);
     setDiscountValue('');
     setReceived('');
+    setCreditEnabled(false);
+    setCreditAmount('');
   }
 
   /** Restore a parked ticket snapshot (lines + discount + received) */
@@ -127,6 +131,8 @@ export function usePosTicket() {
     discountType: DiscountType;
     discountValue: string;
     received: string;
+    creditEnabled?: boolean;
+    creditAmount?: string;
   }): void {
     setLines(
       s.lines.map((l) => ({
@@ -139,6 +145,8 @@ export function usePosTicket() {
     setDiscountType(s.discountType);
     setDiscountValue(s.discountValue);
     setReceived(s.received);
+    setCreditEnabled(s.creditEnabled ?? false);
+    setCreditAmount(s.creditAmount ?? '');
   }
 
   /**
@@ -236,6 +244,13 @@ export function usePosTicket() {
     return DECIMAL_RE.test(v);
   }, [received]);
 
+  const creditValid: boolean = useMemo(() => {
+    if (!creditEnabled) return true;
+    const v = creditAmount.trim();
+    if (v === '') return true;
+    return DECIMAL_RE.test(v);
+  }, [creditEnabled, creditAmount]);
+
   /** Signed change due (received − total); null while received is empty/invalid */
   const changeDue: string | null = useMemo(() => {
     const v = received.trim();
@@ -246,6 +261,24 @@ export function usePosTicket() {
       return null;
     }
   }, [received, receivedValid, grandTotal]);
+
+  /** Real-time split check: received + credit === total (when credit enabled) */
+  const splitTotal: string = useMemo(() => {
+    try {
+      const r = received.trim() === '' ? new Decimal(0) : new Decimal(received.trim());
+      const c = !creditEnabled || creditAmount.trim() === '' ? new Decimal(0) : new Decimal(creditAmount.trim());
+      return D2(r.plus(c));
+    } catch { return '0.00'; }
+  }, [received, creditEnabled, creditAmount]);
+
+  const splitValid: boolean = useMemo(() => {
+    if (!creditEnabled) return true;
+    try {
+      const total = new Decimal(grandTotal);
+      const sum = new Decimal(splitTotal);
+      return sum.lte(total);
+    } catch { return false; }
+  }, [creditEnabled, splitTotal, grandTotal]);
 
   /**
    * Backend caps amountPaidNow at amount — clamp here so payload never 400s.
@@ -263,13 +296,20 @@ export function usePosTicket() {
     }
   }, [received, receivedValid, grandTotal]);
 
+  const effectiveCredit: string | undefined = useMemo(() => {
+    if (!creditEnabled) return undefined;
+    const v = creditAmount.trim();
+    if (v === '' || !creditValid) return undefined;
+    try { return D2(new Decimal(v)); } catch { return undefined; }
+  }, [creditEnabled, creditAmount, creditValid]);
+
   const itemsCount: number = useMemo(
     () => lines.reduce((n, l) => n + l.quantity, 0),
     [lines],
   );
 
   const canCheckout: boolean =
-    lines.length > 0 && discountInputValid && receivedValid;
+    lines.length > 0 && discountInputValid && receivedValid && creditValid && splitValid;
 
   return {
     lines,
@@ -287,6 +327,14 @@ export function usePosTicket() {
     paidNow,
     itemsCount,
     canCheckout,
+    creditEnabled,
+    setCreditEnabled,
+    creditAmount,
+    setCreditAmount,
+    creditValid,
+    splitTotal,
+    splitValid,
+    effectiveCredit,
     addItem,
     addCustomItem,
     setDiscount,

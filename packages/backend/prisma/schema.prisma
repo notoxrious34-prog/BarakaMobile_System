@@ -19,20 +19,23 @@ enum AccountRole {
 }
 
 model Contact {
-  id        String         @id @default(cuid())
-  name      String
-  phone     String?
-  address   String?
-  role      ContactRole
-  notes     String?
-  isActive  Boolean        @default(true)
-  isWalkIn  Boolean        @default(false)
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
-  accounts  Account[]
-  services  Service[]
-  repairs   RepairTicket[]
-  wallets   DigitalWallet[]
+  id          String                    @id @default(cuid())
+  name        String
+  phone       String?
+  address     String?
+  role        ContactRole
+  notes       String?
+  creditLimit String                    @default("0.00")
+  isActive    Boolean                   @default(true)
+  isWalkIn    Boolean                   @default(false)
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+  accounts    Account[]
+  services    Service[]
+  repairs     RepairTicket[]
+  wallets     DigitalWallet[]
+  debtLedger  CustomerDebtLedgerEntry[]
+  salesReturns SalesReturn[]
 }
 
 model Account {
@@ -70,6 +73,7 @@ model Item {
   updatedAt        DateTime          @updatedAt
   movements        StockMovement[]
   transactionLines TransactionItem[]
+  salesReturnItems SalesReturnItem[]
 }
 
 model StockMovement {
@@ -130,6 +134,8 @@ enum CashMovementCategory {
   OWNER_DRAW
   OWNER_DEPOSIT
   ADJUSTMENT
+  DEBT_SETTLEMENT
+  REFUND
 }
 
 model Transaction {
@@ -142,6 +148,7 @@ model Transaction {
   reference      String?
   reversalOf     String?
   invoiceNumber  String?              @unique
+  returnStatus   String               @default("NONE")
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
   account        Account              @relation(fields: [accountId], references: [id])
@@ -152,6 +159,8 @@ model Transaction {
   serviceLines   TransactionService[]
   walletPurchases WalletLedgerEntry[] @relation("WalletPurchase")
   walletSales     WalletLedgerEntry[] @relation("WalletSale")
+  debtLedgerEntries CustomerDebtLedgerEntry[]
+  salesReturns    SalesReturn[]
 }
 
 model LedgerEntry {
@@ -183,6 +192,7 @@ model TransactionItem {
   transaction   Transaction @relation(fields: [transactionId], references: [id])
   item          Item        @relation(fields: [itemId], references: [id])
   walletService WalletService? @relation(fields: [walletServiceId], references: [id], onDelete: SetNull)
+  salesReturnItems SalesReturnItem[]
 }
 
 model TransactionService {
@@ -292,6 +302,7 @@ model RepairTicket {
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
   contact              Contact   @relation(fields: [contactId], references: [id])
+  debtLedgerEntries    CustomerDebtLedgerEntry[]
 }
 
 enum WalletType {
@@ -363,3 +374,85 @@ model WalletLedgerEntry {
   beneficiaryPhone  String?
   walletService     WalletService?  @relation(fields: [walletServiceId], references: [id], onDelete: SetNull)
 }
+
+enum CustomerDebtEntryType {
+  CREDIT_SALE
+  CREDIT_REPAIR
+  PAYMENT
+  DEBT_ADJUSTMENT_ADD
+  DEBT_ADJUSTMENT_SUB
+  RETURN_CREDIT
+}
+
+model CustomerDebtLedgerEntry {
+  id                      String                  @id @default(cuid())
+  customerId              String
+  type                    CustomerDebtEntryType
+  amount                  String
+  balanceBefore           String
+  balanceAfter            String
+  relatedTransactionId    String?
+  relatedRepairTicketId   String?
+  notes                   String?
+  createdById             String?
+  createdAt               DateTime                @default(now())
+  customer                Contact                 @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  relatedTransaction      Transaction?            @relation(fields: [relatedTransactionId], references: [id], onDelete: SetNull)
+  relatedRepairTicket     RepairTicket?           @relation(fields: [relatedRepairTicketId], references: [id], onDelete: SetNull)
+
+  @@index([customerId])
+  @@index([relatedTransactionId])
+  @@index([relatedRepairTicketId])
+}
+
+enum ReturnCondition {
+  RESTOCKED_INVENTORY
+  DEFECTIVE_QUARANTINE
+}
+
+enum RefundMethod {
+  CASH
+  CUSTOMER_CREDIT_REDUCTION
+  STORE_CREDIT
+}
+
+model SalesReturn {
+  id                   String            @id @default(cuid())
+  returnNumber         String            @unique
+  originalTransactionId String
+  customerId           String?
+  refundAmount         String
+  refundMethod         RefundMethod
+  reason               String
+  createdById          String?
+  shiftId              String?
+  createdAt            DateTime          @default(now())
+  originalTransaction  Transaction       @relation(fields: [originalTransactionId], references: [id], onDelete: Restrict)
+  customer             Contact?          @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items                SalesReturnItem[]
+
+  @@index([originalTransactionId])
+  @@index([customerId])
+  @@index([createdAt])
+}
+
+model SalesReturnItem {
+  id                String          @id @default(cuid())
+  salesReturnId     String
+  transactionItemId String
+  inventoryItemId   String
+  quantity          String
+  unitPrice         String
+  refundSubtotal    String
+  condition         ReturnCondition
+  serialNumber      String?
+  createdAt         DateTime        @default(now())
+  salesReturn       SalesReturn     @relation(fields: [salesReturnId], references: [id], onDelete: Cascade)
+  transactionItem   TransactionItem @relation(fields: [transactionItemId], references: [id], onDelete: Restrict)
+  inventoryItem     Item            @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
+
+  @@index([salesReturnId])
+  @@index([transactionItemId])
+  @@index([inventoryItemId])
+}
+

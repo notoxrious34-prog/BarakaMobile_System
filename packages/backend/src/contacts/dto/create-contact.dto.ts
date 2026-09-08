@@ -32,4 +32,9 @@ export class CreateContactDto {
   @IsString()
   @Matches(/^\d+(\.\d{1,2})?$/)
   openingBalanceCustomer?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d+(\.\d{1,2})?$/)
+  creditLimit?: string;
 }

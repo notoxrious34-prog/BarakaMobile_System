@@ -46,6 +46,19 @@ export class CreateTransactionDto {
 
   @IsString()
   @IsOptional()
+  @Matches(/^\d+(\.\d{1,2})?$/)
+  creditAmount?: string;
+
+  @IsString()
+  @IsOptional()
+  customerId?: string;
+
+  @IsString()
+  @IsOptional()
+  createdById?: string;
+
+  @IsString()
+  @IsOptional()
   note?: string;
 
   @IsString()
