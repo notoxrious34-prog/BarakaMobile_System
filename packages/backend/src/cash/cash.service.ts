@@ -38,7 +38,7 @@ export class CashService {
       relatedTransactionId?: string;
       relatedExpenseId?: string;
     },
-  ): Promise<void> {
+  ): Promise<any> {
     const normalizedAmount = this.normalizeAmount(params.amount);
     const amountDec = new Decimal(normalizedAmount);
     if (amountDec.lte(0)) {
@@ -60,7 +60,7 @@ export class CashService {
     }
     const balanceBefore = this.to2dp(beforeDec);
     const balanceAfter = this.to2dp(afterDec);
-    await tx.cashMovement.create({
+    const movement = await tx.cashMovement.create({
       data: {
         cashAccountId: cashAccount.id,
         type: params.type,
@@ -77,6 +77,7 @@ export class CashService {
       where: { id: cashAccount.id },
       data: { currentBalance: balanceAfter },
     });
+    return movement;
   }
 
   async getCurrentBalance(): Promise<{ currentBalance: string }> {

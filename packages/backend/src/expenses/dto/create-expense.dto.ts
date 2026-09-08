@@ -1,4 +1,5 @@
-import { IsString, IsNotEmpty, Matches, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, Matches, IsOptional, IsEnum, MaxLength } from 'class-validator';
+import { ExpensePaymentSource } from '@prisma/client';
 
 export class CreateExpenseDto {
   @IsString()
@@ -17,4 +18,18 @@ export class CreateExpenseDto {
   @IsString()
   @IsOptional()
   expenseDate?: string;
+
+  @IsEnum(ExpensePaymentSource)
+  @IsOptional()
+  paymentSource?: ExpensePaymentSource;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(120)
+  recipientName?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(80)
+  invoiceReference?: string;
 }

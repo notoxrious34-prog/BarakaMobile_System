@@ -28,12 +28,23 @@ async function main() {
     await (prisma as any).cashAccount.create({ data: { currentBalance: '0.00' } });
   }
 
-  // Default ExpenseCategories (4)
-  const categories = ['كهرباء وماء', 'إيجار', 'صيانة', 'أخرى'];
+  // Default ExpenseCategories (8 system categories, TB-118)
+  const categories = [
+    'إيجار المحل',
+    'كهرباء، ماء وإنترنت',
+    'صيانة وتجهيزات المحل',
+    'أدوات ومواد نظافة ومستهلكات',
+    'وجبات وضيافة',
+    'نقل وشحن ومواصلات',
+    'سلفيات ورواتب الموظفين',
+    'نثريات ومصروفات عامة',
+  ];
   for (const name of categories) {
     const existing = await (prisma as any).expenseCategory.findFirst({ where: { name } });
     if (!existing) {
-      await (prisma as any).expenseCategory.create({ data: { name } });
+      await (prisma as any).expenseCategory.create({ data: { name, isSystem: true } });
+    } else if (!existing.isSystem) {
+      await (prisma as any).expenseCategory.update({ where: { id: existing.id }, data: { isSystem: true } });
     }
   }
 
@@ -78,7 +89,7 @@ async function main() {
     }
   }
 
-  console.log('Seed completed: Settings 8, CashAccount 1, ExpenseCategory 4, WalkIn 1');
+  console.log(`Seed completed: Settings 8, CashAccount 1, ExpenseCategory ${categories.length}, WalkIn 1`);
   const counts = {
     settings: await prisma.setting.count(),
     cashAccount: await (prisma as any).cashAccount.count(),

@@ -24,6 +24,8 @@ export type ExpenseQueryParams = {
   startDate?: string;
   endDate?: string;
   categoryId?: string;
+  paymentSource?: string;
+  search?: string;
 };
 
 function toQuery(params: Record<string, string | undefined>): string {
@@ -63,7 +65,7 @@ export async function fetchExpenseCategories(): Promise<ExpenseCategory[]> {
 
 export async function fetchExpenses(params?: ExpenseQueryParams): Promise<ExpenseItem[]> {
   return api.get<ExpenseItem[]>(
-    `/expenses${toQuery({ startDate: params?.startDate, endDate: params?.endDate, categoryId: params?.categoryId })}`,
+    `/expenses${toQuery({ startDate: params?.startDate, endDate: params?.endDate, categoryId: params?.categoryId, paymentSource: params?.paymentSource, search: params?.search })}`,
   );
 }
 
@@ -82,13 +84,31 @@ export async function postExpense(data: {
   expenseDate?: string;
   date?: string;
   description?: string;
-}): Promise<unknown> {
-  return api.post<unknown>('/expenses', {
+  paymentSource?: 'REGISTER_CASH' | 'SAFE_VAULT' | 'EXTERNAL_ACCOUNT';
+  recipientName?: string;
+  invoiceReference?: string;
+}): Promise<ExpenseItem> {
+  return api.post<ExpenseItem>('/expenses', {
     categoryId: data.categoryId,
     amount: data.amount,
     expenseDate: data.expenseDate ?? data.date,
     description: data.description,
+    paymentSource: data.paymentSource,
+    recipientName: data.recipientName,
+    invoiceReference: data.invoiceReference,
   });
+}
+
+export async function fetchExpenseMetrics(): Promise<{ today: string; month: string; topCategory: { id: string; name: string; total: string } | null }> {
+  return api.get<{ today: string; month: string; topCategory: { id: string; name: string; total: string } | null }>('/expenses/metrics');
+}
+
+export async function patchExpenseCategory(id: string, data: { name?: string; description?: string; isActive?: boolean }): Promise<ExpenseCategory> {
+  return api.patch<ExpenseCategory>(`/expenses/categories/${id}`, data);
+}
+
+export async function deleteExpenseCategory(id: string): Promise<void> {
+  return api.delete<void>(`/expenses/categories/${id}`);
 }
 
 export async function postExpenseCategory(data: { name: string }): Promise<ExpenseCategory> {

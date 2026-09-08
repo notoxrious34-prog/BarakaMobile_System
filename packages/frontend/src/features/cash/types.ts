@@ -37,18 +37,34 @@ export type DailyClosingResponse = {
 export type ExpenseCategory = {
   id: string;
   name: string;
+  description?: string | null;
+  isSystem?: boolean;
+  isActive?: boolean;
 };
+
+export type ExpensePaymentSource = 'REGISTER_CASH' | 'SAFE_VAULT' | 'EXTERNAL_ACCOUNT';
 
 export type ExpenseItem = {
   id: string;
+  expenseNumber?: string | null;
   categoryId: string;
   category?: { id: string; name: string };
   amount: string;
+  paymentSource?: ExpensePaymentSource;
+  recipientName?: string | null;
+  invoiceReference?: string | null;
+  cashMovementId?: string | null;
   date: string;
   /** Backend field name (Prisma `expense.expenseDate`) — preferred when present. */
   expenseDate?: string;
   description: string | null;
   createdAt: string;
+};
+
+export type ExpenseMetrics = {
+  today: string;
+  month: string;
+  topCategory: { id: string; name: string; total: string } | null;
 };
 
 export type ExpenseBreakdownItem = {

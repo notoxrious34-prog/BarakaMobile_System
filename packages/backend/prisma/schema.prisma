@@ -238,23 +238,36 @@ model CashMovement {
 }
 
 model ExpenseCategory {
-  id        String    @id @default(cuid())
-  name      String    @unique
-  isActive  Boolean   @default(true)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  expenses  Expense[]
+  id          String    @id @default(cuid())
+  name        String    @unique
+  description String?
+  isSystem    Boolean   @default(false)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  expenses    Expense[]
+}
+
+enum ExpensePaymentSource {
+  REGISTER_CASH
+  SAFE_VAULT
+  EXTERNAL_ACCOUNT
 }
 
 model Expense {
-  id          String          @id @default(cuid())
-  categoryId  String
-  amount      String
-  description String?
-  expenseDate DateTime        @default(now())
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  category    ExpenseCategory @relation(fields: [categoryId], references: [id])
+  id               String               @id @default(cuid())
+  expenseNumber    String?              @unique
+  categoryId       String
+  amount           String
+  paymentSource    ExpensePaymentSource @default(REGISTER_CASH)
+  recipientName    String?
+  invoiceReference String?
+  cashMovementId   String?
+  description      String?
+  expenseDate      DateTime             @default(now())
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  category         ExpenseCategory      @relation(fields: [categoryId], references: [id])
 }
 
 enum DeviceType {

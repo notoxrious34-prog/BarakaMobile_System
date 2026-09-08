@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Prisma } from '@prisma/client';
+import { Prisma, ExpensePaymentSource } from '@prisma/client';
 import Decimal from 'decimal.js';
 import { CashService } from '../cash/cash.service';
 
@@ -29,10 +29,22 @@ export class ExpensesService {
     return new Date(s.getTime() + 24 * 60 * 60 * 1000 - 1);
   }
 
-  async createExpense(dto: { categoryId: string; amount: string; description?: string; expenseDate?: string }): Promise<any> {
+  async createExpense(dto: {
+    categoryId: string;
+    amount: string;
+    description?: string;
+    expenseDate?: string;
+    paymentSource?: ExpensePaymentSource;
+    recipientName?: string;
+    invoiceReference?: string;
+  }): Promise<any> {
     const normalizedAmount = this.normalizeAmount(dto.amount);
     if (new Decimal(normalizedAmount).lte(0)) {
       throw new BadRequestException('المبلغ يجب أن يكون أكبر من صفر');
+    }
+    const source: ExpensePaymentSource = dto.paymentSource ?? ExpensePaymentSource.REGISTER_CASH;
+    if (!Object.values(ExpensePaymentSource).includes(source)) {
+      throw new BadRequestException('مصدر الدفع غير صالح');
     }
     return this.prisma.$transaction(async (tx: PrismaTx) => {
       const category = await tx.expenseCategory.findFirst({
@@ -46,28 +58,77 @@ export class ExpensesService {
         const d = new Date(dto.expenseDate);
         if (!Number.isNaN(d.getTime())) expenseDate = d;
       }
+      const expenseNumber = await this.nextExpenseNumber(tx, expenseDate ?? new Date());
+      const recipient = dto.recipientName?.trim() || undefined;
+      const invoiceRef = dto.invoiceReference?.trim() || undefined;
       const expense = await tx.expense.create({
         data: {
+          expenseNumber,
           categoryId: dto.categoryId,
           amount: normalizedAmount,
+          paymentSource: source,
+          recipientName: recipient,
+          invoiceReference: invoiceRef,
           description: dto.description,
           ...(expenseDate ? { expenseDate } : {}),
         },
       });
-      await this.cashService.postCashMovement(tx, {
-        type: 'OUT',
-        category: 'EXPENSE',
-        amount: normalizedAmount,
-        note: dto.description,
-        relatedExpenseId: expense.id,
-      });
-      return expense;
+      if (source === ExpensePaymentSource.REGISTER_CASH) {
+        // Pre-check drawer with the exact Arabic message before posting.
+        const cashAccount = await tx.cashAccount.findFirst({});
+        const available = new Decimal(cashAccount?.currentBalance ?? '0.00');
+        if (available.lt(new Decimal(normalizedAmount))) {
+          throw new BadRequestException('رصيد الصندوق الحالي غير كافٍ لتسجيل هذا المصروف');
+        }
+        const movement = await this.cashService.postCashMovement(tx, {
+          type: 'OUT',
+          category: 'EXPENSE',
+          amount: normalizedAmount,
+          note: `مصروف نثريات: ${category.name} - ${dto.description ?? ''}`.trim(),
+          relatedExpenseId: expense.id,
+        });
+        await tx.expense.update({
+          where: { id: expense.id },
+          data: { cashMovementId: movement.id },
+        });
+        return tx.expense.findUnique({ where: { id: expense.id }, include: { category: true } });
+      }
+      return tx.expense.findUnique({ where: { id: expense.id }, include: { category: true } });
     });
   }
 
-  async findAllExpenses(filters?: { startDate?: string; endDate?: string; categoryId?: string }): Promise<any[]> {
+  private async nextExpenseNumber(tx: PrismaTx, ref: Date): Promise<string> {
+    const year = ref.getFullYear();
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const count = await tx.expense.count({
+        where: { expenseDate: { gte: new Date(year, 0, 1), lt: new Date(year + 1, 0, 1) } },
+      });
+      const candidate = `EXP-${year}-${String(count + 1 + attempt).padStart(5, '0')}`;
+      const existing = await tx.expense.findUnique({ where: { expenseNumber: candidate } });
+      if (!existing) return candidate;
+    }
+    throw new BadRequestException('تعذر توليد رقم سند فريد');
+  }
+
+  async findAllExpenses(filters?: {
+    startDate?: string;
+    endDate?: string;
+    categoryId?: string;
+    paymentSource?: ExpensePaymentSource;
+    search?: string;
+  }): Promise<any[]> {
     const where: any = {};
     if (filters?.categoryId) where.categoryId = filters.categoryId;
+    if (filters?.paymentSource) where.paymentSource = filters.paymentSource;
+    if (filters?.search?.trim()) {
+      const q = filters.search.trim();
+      where.OR = [
+        { expenseNumber: { contains: q } },
+        { recipientName: { contains: q } },
+        { description: { contains: q } },
+        { invoiceReference: { contains: q } },
+      ];
+    }
     if (filters?.startDate || filters?.endDate) {
       where.expenseDate = {};
       if (filters.startDate) {
@@ -80,6 +141,41 @@ export class ExpensesService {
       }
     }
     return this.prisma.expense.findMany({ where, include: { category: true }, orderBy: { expenseDate: 'desc' } });
+  }
+
+  async getExpenseById(id: string): Promise<any> {
+    const expense = await this.prisma.expense.findUnique({ where: { id }, include: { category: true } });
+    if (!expense) throw new NotFoundException('سند المصروف غير موجود');
+    return expense;
+  }
+
+  async getExpenseMetrics(): Promise<{ today: string; month: string; topCategory: { id: string; name: string; total: string } | null }> {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const sum = (rows: { amount: string }[]): Decimal => {
+      let acc = new Decimal(0);
+      for (const r of rows) acc = acc.plus(new Decimal(r.amount));
+      return acc;
+    };
+    const todayRows = await this.prisma.expense.findMany({
+      where: { expenseDate: { gte: this.getAlgeriaStartOfDay(now), lte: this.getAlgeriaEndOfDay(now) } },
+      select: { amount: true },
+    });
+    const monthRows = await this.prisma.expense.findMany({
+      where: { expenseDate: { gte: startOfMonth } },
+      select: { amount: true, categoryId: true, category: { select: { name: true } } },
+    });
+    const perCat = new Map<string, { name: string; total: Decimal }>();
+    for (const r of monthRows as { amount: string; categoryId: string; category: { name: string } | null }[]) {
+      const prev = perCat.get(r.categoryId);
+      if (prev) prev.total = prev.total.plus(new Decimal(r.amount));
+      else perCat.set(r.categoryId, { name: r.category?.name ?? '—', total: new Decimal(r.amount) });
+    }
+    let top: { id: string; name: string; total: string } | null = null;
+    for (const [id, v] of perCat.entries()) {
+      if (!top || v.total.gt(new Decimal(top.total))) top = { id, name: v.name, total: this.to2dp(v.total) };
+    }
+    return { today: this.to2dp(sum(todayRows)), month: this.to2dp(sum(monthRows)), topCategory: top };
   }
 
   async getExpenseBreakdown(startDate?: string, endDate?: string): Promise<{ categoryId: string; categoryName: string; totalAmount: string; percentage: string }[]> {
@@ -120,10 +216,28 @@ export class ExpensesService {
     return this.prisma.expenseCategory.findMany({ where: { isActive: true }, orderBy: { name: 'asc' } });
   }
 
-  async deactivateCategory(id: string): Promise<any> {
+  async updateCategory(id: string, dto: { name?: string; description?: string; isActive?: boolean }): Promise<any> {
     const cat = await this.prisma.expenseCategory.findUnique({ where: { id } });
     if (!cat) throw new NotFoundException('الفئة غير موجودة');
-    if (!cat.isActive) return cat;
-    return this.prisma.expenseCategory.update({ where: { id }, data: { isActive: false } });
+    const data: any = {};
+    if (dto.name !== undefined) {
+      const trimmed = dto.name.trim();
+      if (trimmed.length < 2) throw new BadRequestException('الاسم قصير جداً');
+      const clash = await this.prisma.expenseCategory.findFirst({ where: { name: trimmed, id: { not: id } } });
+      if (clash) throw new ConflictException('فئة بهذا الاسم موجودة مسبقاً');
+      data.name = trimmed;
+    }
+    if (dto.description !== undefined) data.description = dto.description?.trim() || null;
+    if (dto.isActive !== undefined) data.isActive = dto.isActive;
+    return this.prisma.expenseCategory.update({ where: { id }, data });
+  }
+
+  async deleteCategory(id: string): Promise<void> {
+    const cat = await this.prisma.expenseCategory.findUnique({ where: { id } });
+    if (!cat) throw new NotFoundException('الفئة غير موجودة');
+    if (cat.isSystem) throw new BadRequestException('فئات النظام محمية ولا يمكن حذفها');
+    const linked = await this.prisma.expense.count({ where: { categoryId: id } });
+    if (linked > 0) throw new ConflictException('لا يمكن حذف فئة مرتبطة بسندات مصروفات');
+    await this.prisma.expenseCategory.delete({ where: { id } });
   }
 }

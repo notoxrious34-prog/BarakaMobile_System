@@ -80,6 +80,8 @@
   #supplier-debt-receipt *,
   #barcode-label-sheet,
   #barcode-label-sheet *,
+  #expense-voucher-receipt,
+  #expense-voucher-receipt *,
   #thermal-receipt-root,
   #thermal-receipt-root *,
   #reports-print-area,
@@ -99,6 +101,7 @@
   #supplier-debt-receipt,
   #stock-count-report,
   #barcode-label-sheet,
+  #expense-voucher-receipt,
   #invoice-paper {
     position: fixed;
     top: 0;
