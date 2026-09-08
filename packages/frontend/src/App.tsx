@@ -14,6 +14,7 @@ import { ReportsPage } from '@/pages/ReportsPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { NotFound } from '@/pages/NotFound';
 import { CatalogPage } from '@/pages/admin/CatalogPage';
+import { StockCountPage } from '@/pages/StockCountPage';
 import { FinancePage } from '@/pages/admin/FinancePage';
 
 export default function App() {
@@ -31,6 +32,7 @@ export default function App() {
           <Route index element={<Navigate to="contacts" replace />} />
           <Route path="contacts" element={<ContactsPage />} />
           <Route path="catalog" element={<CatalogPage />} />
+          <Route path="stock-count" element={<StockCountPage />} />
           <Route path="finance" element={<FinancePage />} />
           <Route path="transactions" element={<TransactionsPage />} />
           <Route path="reports" element={<ReportsPage />} />

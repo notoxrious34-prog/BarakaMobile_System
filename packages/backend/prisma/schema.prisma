@@ -75,6 +75,7 @@ model Item {
   movements        StockMovement[]
   transactionLines TransactionItem[]
   salesReturnItems SalesReturnItem[]
+  stockCountItems  StockCountItem[]
 }
 
 model StockMovement {
@@ -483,5 +484,58 @@ model SalesReturnItem {
   @@index([salesReturnId])
   @@index([transactionItemId])
   @@index([inventoryItemId])
+}
+
+enum StockCountStatus {
+  DRAFT
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum StockCountScope {
+  FULL_STORE
+  CATEGORY
+}
+
+model StockCountSession {
+  id                     String           @id @default(cuid())
+  sessionNumber          String           @unique
+  name                   String
+  status                 StockCountStatus @default(IN_PROGRESS)
+  scope                  StockCountScope  @default(FULL_STORE)
+  categoryId             String?
+  notes                  String?
+  startedAt              DateTime         @default(now())
+  completedAt            DateTime?
+  totalItemsExpected     Int              @default(0)
+  totalItemsCounted      Int              @default(0)
+  totalDiscrepancyQty    Int              @default(0)
+  totalFinancialVariance String           @default("0.00")
+  items                  StockCountItem[]
+  createdById            String?
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+
+  @@index([status, createdAt])
+}
+
+model StockCountItem {
+  id                 String           @id @default(cuid())
+  sessionId          String
+  session            StockCountSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  inventoryItemId    String
+  inventoryItem      Item             @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
+  expectedQuantity   Int
+  countedQuantity    Int              @default(0)
+  differenceQuantity Int
+  unitCost           String           @default("0.00")
+  varianceValue      String           @default("0.00")
+  notes              String?
+  reconciled         Boolean          @default(false)
+  updatedAt          DateTime         @updatedAt
+
+  @@unique([sessionId, inventoryItemId])
+  @@index([sessionId])
 }
 
