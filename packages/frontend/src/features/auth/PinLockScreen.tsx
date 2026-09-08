@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Delete, Lock } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Delete, Lock, ShieldCheck } from 'lucide-react';
 import { api, ApiError } from '@/lib/api';
 import { useAuth, type Role } from './AuthContext';
 
@@ -26,6 +26,7 @@ function initials(name: string): string {
 
 export function PinLockScreen() {
   const { loginWithPin } = useAuth();
+  const qc = useQueryClient();
   const [selected, setSelected] = useState<Operator | null>(null);
   const [pin, setPin] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +38,20 @@ export function PinLockScreen() {
     queryFn: () => api.get<Operator[]>('/auth/operators'),
     staleTime: 30000,
     retry: 1,
+  });
+
+  const bootstrapMut = useMutation({
+    mutationFn: () => api.post<{ success: boolean; message: string }>('/auth/bootstrap-admin', {}),
+    onSuccess: () => {
+      setError(null);
+      void qc.invalidateQueries({ queryKey: ['auth', 'operators'] }).then(() => {
+        // Auto-select the freshly provisioned admin so 0000 works immediately.
+        const ops = qc.getQueryData<Operator[]>(['auth', 'operators']) ?? [];
+        const admin = ops.find((o) => o.username === 'admin') ?? ops[0];
+        if (admin) setSelected(admin);
+      });
+    },
+    onError: (e: unknown) => setError(e instanceof ApiError ? e.message : 'تعذرت التهيئة'),
   });
 
   useEffect(() => {
@@ -106,9 +121,23 @@ export function PinLockScreen() {
         {operatorsQ.isLoading ? (
           <p className="text-xs text-slate-500">جاري تحميل المشغّلين…</p>
         ) : operatorsQ.isError || (operatorsQ.data ?? []).length === 0 ? (
-          <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
-            لا يوجد مشغّلون — تأكد من تشغيل الخادم وتطبيق التهيئة (seed) التي تنشئ حساب المدير.
-          </p>
+          <div className="space-y-2 rounded-2xl border border-amber-500/30 bg-amber-500/[0.07] p-4">
+            <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/15 text-amber-300">
+              <ShieldCheck className="h-5 w-5" aria-hidden="true" />
+            </div>
+            <h3 className="text-sm font-extrabold text-slate-100">تهيئة النظام لأول مرة</h3>
+            <p className="text-xs leading-5 text-slate-400">
+              لم يتم العثور على مشغلين في قاعدة البيانات. انقر أدناه لإنشاء حساب المدير الافتراضي.
+            </p>
+            <button
+              type="button"
+              disabled={bootstrapMut.isPending}
+              onClick={() => bootstrapMut.mutate()}
+              className="w-full rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-extrabold text-navy-950 hover:bg-amber-500 disabled:opacity-40"
+            >
+              {bootstrapMut.isPending ? 'جاري التهيئة…' : 'تهيئة حساب المدير الافتراضي (PIN: 0000)'}
+            </button>
+          </div>
         ) : (
           <div className="flex flex-wrap justify-center gap-2">
             {(operatorsQ.data ?? []).map((op) => (

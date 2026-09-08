@@ -138,12 +138,51 @@ export class AuthService {
 
   /** Public lock-screen directory: identities only, never secrets. */
   async operatorDirectory(): Promise<{ id: string; username: string; displayName: string; role: UserRole; avatarColor: string | null }[]> {
-    const users = await this.prisma.user.findMany({
+    let users = await this.prisma.user.findMany({
       where: { isActive: true },
       orderBy: { createdAt: 'asc' },
       select: { id: true, username: true, displayName: true, role: true, avatarColor: true },
     });
+    if (users.length === 0) {
+      // Self-healing: legacy DBs / seed-less environments deadlock the PIN screen.
+      await this.ensureDefaultAdminExists();
+      users = await this.prisma.user.findMany({
+        where: { isActive: true },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true, username: true, displayName: true, role: true, avatarColor: true },
+      });
+    }
     return users;
+  }
+
+  /**
+   * Self-healing bootstrap: provisions the default admin when no users exist.
+   * Idempotent — safe to call on every boot and every empty directory read.
+   */
+  async ensureDefaultAdminExists() {
+    const count = await this.prisma.user.count();
+    if (count > 0) {
+      return this.prisma.user.findFirst({ orderBy: { createdAt: 'asc' } });
+    }
+    const admin = await this.prisma.user.create({
+      data: {
+        username: 'admin',
+        displayName: 'مدير النظام (Owner)',
+        pinHash: hashPin('0000'),
+        role: 'ADMIN',
+        avatarColor: '#0284c7',
+      },
+    });
+    console.log('[Auth] Auto-bootstrapped default admin account (PIN: 0000).');
+    return admin;
+  }
+
+  /** Public fallback: explicit bootstrap when the directory is empty. */
+  async bootstrapAdmin(): Promise<{ success: boolean; message: string }> {
+    const count = await this.prisma.user.count();
+    if (count > 0) throw new BadRequestException('حسابات المستخدمين مهيأة مسبقاً');
+    await this.ensureDefaultAdminExists();
+    return { success: true, message: 'تم تهيئة حساب المدير بنجاح' };
   }
 
   async createUser(dto: { username: string; displayName: string; pin: string; role?: UserRole; avatarColor?: string }): Promise<SanitizedUser> {

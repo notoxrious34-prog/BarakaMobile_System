@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
+import { AuthService } from './auth/auth.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -35,6 +36,12 @@ async function bootstrap() {
 
   const port = process.env.PORT ?? 3001;
   await app.listen(port);
+  // Self-healing: legacy/seed-less databases boot with zero operators otherwise.
+  try {
+    await app.get(AuthService).ensureDefaultAdminExists();
+  } catch (e) {
+    console.error('[Auth] Admin auto-bootstrap failed:', e instanceof Error ? e.message : e);
+  }
   console.log(`BarakaMobile API listening on http://localhost:${port}/api`);
 }
 

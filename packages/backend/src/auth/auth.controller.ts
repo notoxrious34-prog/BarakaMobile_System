@@ -39,6 +39,11 @@ export class AuthController {
   async operators() {
     return this.auth.operatorDirectory();
   }
+
+  @Post('auth/bootstrap-admin')
+  async bootstrapAdmin() {
+    return this.auth.bootstrapAdmin();
+  }
 }
 
 @Controller('users')
