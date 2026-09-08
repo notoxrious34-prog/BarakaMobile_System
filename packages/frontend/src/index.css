@@ -78,6 +78,8 @@
   #stock-count-report *,
   #supplier-debt-receipt,
   #supplier-debt-receipt *,
+  #barcode-label-sheet,
+  #barcode-label-sheet *,
   #thermal-receipt-root,
   #thermal-receipt-root *,
   #reports-print-area,
@@ -96,6 +98,7 @@
   #flexy-receipt,
   #supplier-debt-receipt,
   #stock-count-report,
+  #barcode-label-sheet,
   #invoice-paper {
     position: fixed;
     top: 0;
@@ -121,5 +124,26 @@
   /* TB-101: keep report stat blocks together on the printed sheet */
   #reports-print-area .avoid-break {
     break-inside: avoid;
+  }
+  /* TB-116: continuous thermal label roll — one label per page, sharp monochrome */
+  body.printing-barcode #barcode-label-sheet {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+  body.printing-barcode .barcode-label-item {
+    page-break-after: always;
+    break-after: page;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    overflow: hidden;
+    box-sizing: border-box;
+    background: #fff;
+    filter: grayscale(100%) contrast(200%);
   }
 }

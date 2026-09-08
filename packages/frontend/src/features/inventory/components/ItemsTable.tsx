@@ -1,4 +1,4 @@
-import { Pencil, Trash2, ArrowUpDown } from 'lucide-react';
+import { Pencil, Trash2, ArrowUpDown, ScanBarcode } from 'lucide-react';
 import Decimal from 'decimal.js';
 import type { Item } from '../hooks/useInventory';
 import { useInvoiceSettings } from '@/features/settings/hooks/useInvoiceSettings';
@@ -20,6 +20,10 @@ type Props = {
   onEdit: (item: Item) => void;
   onStock: (item: Item) => void;
   onDeactivate: (id: string) => void;
+  onPrintLabel: (item: Item) => void;
+  selectedIds: string[];
+  onToggleSelect: (id: string) => void;
+  onToggleSelectAll: () => void;
 };
 
 function ItemRow({
@@ -27,11 +31,17 @@ function ItemRow({
   onEdit,
   onStock,
   onDeactivate,
+  onPrintLabel,
+  selected,
+  onToggleSelect,
 }: {
   item: Item;
   onEdit: (i: Item) => void;
   onStock: (i: Item) => void;
   onDeactivate: (id: string) => void;
+  onPrintLabel: (i: Item) => void;
+  selected: boolean;
+  onToggleSelect: (id: string) => void;
 }) {
   const { data: settingsData } = useInvoiceSettings();
   const currencySymbol = settingsData?.currency_symbol ?? 'د.ج';
@@ -43,6 +53,15 @@ function ItemRow({
     <tr
       className={`border-t border-navy-border/30 ${isInactive ? 'opacity-50' : 'hover:bg-navy-800/40'}`}
     >
+      <td className="px-3 py-2.5">
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={() => onToggleSelect(item.id)}
+          aria-label={`تحديد ${item.name}`}
+          className="h-4 w-4 rounded accent-cyan-500"
+        />
+      </td>
       <td className="px-3 py-2.5 font-medium text-slate-100">{item.name}</td>
       <td className="px-3 py-2.5 font-mono text-slate-300" dir="ltr">
         {item.sku ?? '—'}
@@ -87,6 +106,15 @@ function ItemRow({
           >
             <ArrowUpDown className="h-4 w-4" aria-hidden="true" />
           </button>
+          <button
+            type="button"
+            onClick={() => onPrintLabel(item)}
+            aria-label={`طباعة ملصق ${item.name}`}
+            title="طباعة ملصق"
+            className="rounded-md p-2 text-violet-400 hover:bg-violet-500/10 hover:text-violet-300"
+          >
+            <ScanBarcode className="h-4 w-4" aria-hidden="true" />
+          </button>
           {item.isActive && (
             <button
               type="button"
@@ -104,13 +132,23 @@ function ItemRow({
   );
 }
 
-export function ItemsTable({ items, onEdit, onStock, onDeactivate }: Props) {
+export function ItemsTable({ items, onEdit, onStock, onDeactivate, onPrintLabel, selectedIds, onToggleSelect, onToggleSelectAll }: Props) {
+  const allSelected = items.length > 0 && items.every((i) => selectedIds.includes(i.id));
   return (
     <div className="overflow-hidden rounded-2xl border border-navy-border/40 bg-navy-900/60 backdrop-blur-md">
       <div className="overflow-x-auto scrollbar-premium">
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-navy-border/40 text-slate-400">
+              <th className="px-3 py-2.5 text-right font-semibold">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={onToggleSelectAll}
+                  aria-label="تحديد الكل"
+                  className="h-4 w-4 rounded accent-cyan-500"
+                />
+              </th>
               <th className="px-3 py-2.5 text-right font-semibold">الاسم</th>
               <th className="px-3 py-2.5 text-right font-semibold">SKU</th>
               <th className="px-3 py-2.5 text-right font-semibold">سعر التكلفة</th>
@@ -128,6 +166,9 @@ export function ItemsTable({ items, onEdit, onStock, onDeactivate }: Props) {
                 onEdit={onEdit}
                 onStock={onStock}
                 onDeactivate={onDeactivate}
+                onPrintLabel={onPrintLabel}
+                selected={selectedIds.includes(item.id)}
+                onToggleSelect={onToggleSelect}
               />
             ))}
           </tbody>

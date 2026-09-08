@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, ScanBarcode } from 'lucide-react';
 import { Loading } from '@/components/feedback/Loading';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { EmptyState } from '@/components/feedback/EmptyState';
@@ -9,6 +9,7 @@ import {
   type Item,
 } from '@/features/inventory/hooks/useInventory';
 import { ItemsTable } from '@/features/inventory/components/ItemsTable';
+import { BarcodePrintModal, type LabelQueueEntry } from '@/features/inventory/components/barcode/BarcodePrintModal';
 import { ItemFormModal } from '@/features/inventory/components/ItemFormModal';
 import { StockMovementModal } from '@/features/inventory/components/StockMovementModal';
 
@@ -38,6 +39,8 @@ export function InventoryPage() {
   const [movementItem, setMovementItem] = useState<Item | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [stockFilter, setStockFilter] = useState<StockFilter>('ALL');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [labelQueue, setLabelQueue] = useState<LabelQueueEntry[] | null>(null);
 
   const activeCount = items ? items.filter((i) => i.isActive).length : 0;
 
@@ -58,6 +61,21 @@ export function InventoryPage() {
 
   const hasItems = items !== undefined && items.length > 0;
   const hasFilteredResults = filteredItems.length > 0;
+
+  const toggleSelect = (id: string) =>
+    setSelectedIds((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+  const toggleSelectAll = () =>
+    setSelectedIds((s) => {
+      const visible = filteredItems.map((i) => i.id);
+      const allVisible = visible.length > 0 && visible.every((id) => s.includes(id));
+      return allVisible ? s.filter((id) => !visible.includes(id)) : [...new Set([...s, ...visible])];
+    });
+  const selectedItems = useMemo(
+    () => (items ?? []).filter((i) => selectedIds.includes(i.id)),
+    [items, selectedIds],
+  );
+  const openBatchLabels = () =>
+    setLabelQueue(selectedItems.map((item) => ({ item, quantity: 1 })));
 
   function openCreate() {
     setEditingItem(null);
@@ -156,7 +174,29 @@ export function InventoryPage() {
           onEdit={openEdit}
           onStock={openStock}
           onDeactivate={handleDeactivate}
+          onPrintLabel={(item) => setLabelQueue([{ item, quantity: 1 }])}
+          selectedIds={selectedIds}
+          onToggleSelect={toggleSelect}
+          onToggleSelectAll={toggleSelectAll}
         />
+      )}
+
+      {selectedItems.length > 0 && (
+        <div className="sticky bottom-4 z-30 mx-auto flex w-fit items-center gap-3 rounded-2xl border border-cyan-500/30 bg-navy-900/95 px-4 py-2.5 shadow-2xl shadow-cyan-500/10 backdrop-blur-md">
+          <span className="text-xs font-bold text-slate-200">{selectedItems.length} مادة محددة</span>
+          <button
+            type="button"
+            onClick={openBatchLabels}
+            className="inline-flex items-center gap-1 rounded-xl bg-cyan-600 px-4 py-1.5 text-xs font-extrabold text-white hover:bg-cyan-500"
+          >
+            <ScanBarcode className="h-4 w-4" /> طباعة باركود
+          </button>
+          <button type="button" onClick={() => setSelectedIds([])} className="text-xs text-slate-400 hover:text-slate-200">مسح التحديد</button>
+        </div>
+      )}
+
+      {labelQueue && (
+        <BarcodePrintModal open={!!labelQueue} onClose={() => setLabelQueue(null)} initialQueue={labelQueue} />
       )}
 
       <ItemFormModal open={formOpen} onClose={closeForm} item={editingItem} />
