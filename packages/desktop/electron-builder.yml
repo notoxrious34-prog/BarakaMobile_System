@@ -26,6 +26,10 @@ extraResources:
     to: backend/prisma/dev.db
   - from: ../../packages/backend/prisma/schema.prisma
     to: backend/prisma/schema.prisma
+  - from: ../../packages/backend/prisma/migrations
+    to: backend/prisma/migrations
+    filter:
+      - "**/*"
   - from: "__NODE_EXE_PATH__"
     to: node/node.exe
 asar: true

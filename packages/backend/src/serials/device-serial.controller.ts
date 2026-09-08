@@ -25,6 +25,12 @@ export class DeviceSerialController {
     return this.serials.metrics();
   }
 
+  @Get('availability')
+  availability(@Query('itemIds') itemIds?: string) {
+    const ids = (itemIds ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+    return this.serials.availability(ids);
+  }
+
   @Get('warranty-claims')
   claims(@Query('activeOnly') activeOnly?: string) {
     return this.serials.listClaims(activeOnly === 'true' || activeOnly === '1');

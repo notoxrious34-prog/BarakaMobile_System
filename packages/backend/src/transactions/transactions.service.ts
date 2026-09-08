@@ -97,6 +97,7 @@ export class TransactionsService {
         unitPrice: string;
         unitCost: string;
         totalPrice: string;
+        serialIds: string[];
       }> = [];
       if (dto.itemLines && dto.itemLines.length > 0) {
         for (const line of dto.itemLines) {
@@ -105,6 +106,10 @@ export class TransactionsService {
           });
           if (!item) {
             throw new BadRequestException(`Item with id ${line.itemId} not found or inactive`);
+          }
+          const serialIds = line.serialIds ?? [];
+          if (serialIds.length > 0 && serialIds.length !== line.quantity) {
+            throw new BadRequestException('عدد التسلسليات يجب أن يساوي كمية البند (تسلسلي واحد لكل وحدة)');
           }
           const unitPrice = this.normalizeAmount(line.unitPrice);
           const totalPrice = new Decimal(unitPrice)
@@ -127,6 +132,7 @@ export class TransactionsService {
             unitPrice,
             unitCost: item.costPrice,
             totalPrice,
+            serialIds,
           });
         }
       }
@@ -374,6 +380,48 @@ export class TransactionsService {
             },
           });
         }
+
+        // Serialized units: atomically bind each IMEI to this sale invoice.
+        if (dto.type === TransactionType.SALE && line.serialIds.length > 0) {
+          const customerContactId = (dto as any).customerId ?? null;
+          const accountContact = account.contact ?? null;
+          for (const serialId of line.serialIds) {
+            const serial = await (tx as any).deviceSerial.findUnique({ where: { id: serialId } });
+            if (!serial || serial.itemId !== line.itemId) {
+              throw new BadRequestException('التسلسلي غير موجود أو لا يطابق الصنف');
+            }
+            if (serial.status !== 'IN_STOCK') {
+              throw new BadRequestException(`Serial [${serial.imei1}] is already sold or unavailable`);
+            }
+            const saleDate = new Date();
+            const months = serial.warrantyMonths ?? 12;
+            const expires = new Date(saleDate);
+            expires.setMonth(expires.getMonth() + months);
+            await (tx as any).deviceSerial.update({
+              where: { id: serial.id },
+              data: {
+                status: 'SOLD',
+                saleInvoiceId: computedInvoiceNumber,
+                customerContactId,
+                customerName: accountContact?.name ?? undefined,
+                customerPhone: (accountContact as any)?.phone ?? undefined,
+                saleDate,
+                warrantyMonths: months,
+                warrantyExpiresAt: expires,
+              },
+            });
+            await (tx as any).deviceLifecycleEvent.create({
+              data: {
+                deviceSerialId: serial.id,
+                eventType: 'SALE_DELIVERY',
+                referenceType: 'SALE_INVOICE',
+                referenceId: computedInvoiceNumber,
+                description: `Sold via Sale Invoice #${computedInvoiceNumber}`,
+                operatorId: (dto as any).createdById ?? null,
+              },
+            });
+          }
+        }
       }
 
       for (const line of serviceLinesData) {
@@ -396,7 +444,15 @@ export class TransactionsService {
           account: true,
         },
       });
-      return result;
+      // Attach sold serials for the receipt/warranty print path.
+      let soldSerials: any[] = [];
+      if (dto.type === TransactionType.SALE && computedInvoiceNumber) {
+        soldSerials = await (tx as any).deviceSerial.findMany({
+          where: { saleInvoiceId: computedInvoiceNumber },
+          select: { id: true, imei1: true, imei2: true, itemId: true, warrantyMonths: true, warrantyExpiresAt: true },
+        });
+      }
+      return { ...result, soldSerials };
     });
   }
 

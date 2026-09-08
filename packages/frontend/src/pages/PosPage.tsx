@@ -58,7 +58,10 @@ export function PosPage() {
     ticket.canCheckout && walkin.accountId !== null && !createMut.isPending;
 
   const handleCheckout = useCallback(
-    async (payload: { accountId: string; creditAmount?: string; customerId?: string }): Promise<{ invoiceNumber?: string } | null> => {
+    async (payload: { accountId: string; creditAmount?: string; customerId?: string }): Promise<{
+      invoiceNumber?: string;
+      soldSerials?: { id: string; imei1: string; imei2: string | null; itemId: string; warrantyMonths: number; warrantyExpiresAt: string | null }[];
+    } | null> => {
       setApiError(null);
       if (ticket.lines.length === 0 || !ticket.canCheckout) return null;
       // Split cart: real catalog lines ride as itemLines (stock decrements);
@@ -89,17 +92,21 @@ export function PosPage() {
             itemId: l.itemId,
             quantity: l.quantity,
             unitPrice: to2dp(l.unitPrice),
+            ...(l.serialIds.length > 0 ? { serialIds: l.serialIds } : {}),
           })),
         });
         const invoiceNumber = (res as unknown as { invoiceNumber?: string })
           .invoiceNumber;
+        const soldSerials = (res as unknown as {
+          soldSerials?: { id: string; imei1: string; imei2: string | null; itemId: string; warrantyMonths: number; warrantyExpiresAt: string | null }[];
+        }).soldSerials;
         setLastSale({
           invoiceNumber,
           total: ticket.grandTotal,
           change: ticket.changeDue ?? '0.00',
         });
         ticket.clear();
-        return { invoiceNumber };
+        return { invoiceNumber, soldSerials };
       } catch (err) {
         setApiError(
           err instanceof ApiError
@@ -313,6 +320,11 @@ export function PosPage() {
               isLoading={itemsQ.isLoading}
               onAdd={(item, qty) => {
                 const res = ticket.addItem(item, qty);
+                setLastSale(null);
+                return res;
+              }}
+              onAddSerial={(item, serial) => {
+                const res = ticket.addSerialItem(item, serial);
                 setLastSale(null);
                 return res;
               }}

@@ -272,6 +272,24 @@ export class DeviceSerialService {
     return { items, total };
   }
 
+  async availability(itemIds: string[]): Promise<Record<string, { count: number; serials: { id: string; imei1: string }[] }>> {
+    const ids = [...new Set((itemIds ?? []).filter(Boolean))].slice(0, 100);
+    if (ids.length === 0) return {};
+    const rows = await this.prisma.deviceSerial.findMany({
+      where: { itemId: { in: ids }, status: 'IN_STOCK' },
+      select: { id: true, imei1: true, itemId: true },
+      orderBy: { createdAt: 'asc' },
+      take: 500,
+    });
+    const out: Record<string, { count: number; serials: { id: string; imei1: string }[] }> = {};
+    for (const id of ids) out[id] = { count: 0, serials: [] };
+    for (const r of rows) {
+      out[r.itemId]!.count++;
+      if (out[r.itemId]!.serials.length < 50) out[r.itemId]!.serials.push({ id: r.id, imei1: r.imei1 });
+    }
+    return out;
+  }
+
   async metrics() {
     const [inStock, underRepair, activeClaims, sold] = await Promise.all([
       this.prisma.deviceSerial.count({ where: { status: 'IN_STOCK' } }),

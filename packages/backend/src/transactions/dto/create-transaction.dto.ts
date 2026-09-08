@@ -14,6 +14,11 @@ export class ItemLineDto {
   @IsString()
   @Matches(/^\d+(\.\d{1,2})?$/)
   unitPrice!: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  serialIds?: string[];
 }
 
 export class ServiceLineDto {

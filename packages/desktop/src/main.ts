@@ -73,6 +73,10 @@ function spawnBackend(): Promise<void> {
       PORT: '3001',
       DATABASE_URL: databaseUrl,
       ...(prismaEnginePath ? { PRISMA_QUERY_ENGINE_LIBRARY: prismaEnginePath } : {}),
+      // Hotfix: offline migration repair needs the bundled migration SQL files.
+      ...(app.isPackaged
+        ? { PRISMA_MIGRATIONS_DIR: path.join(process.resourcesPath, 'backend', 'prisma', 'migrations') }
+        : {}),
     };
     let logPath: string | null = null;
     let stdioOption: any = app.isPackaged ? 'ignore' : 'inherit';

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import Decimal from 'decimal.js';
+import { useQuery } from '@tanstack/react-query';
 import {
   Minus,
   Plus,
@@ -22,6 +23,8 @@ import { useAccountsByContactQuery } from '@/features/transactions/hooks/useTran
 import { to2dp, type PosTicket } from '../hooks/usePosTicket';
 import type { ParkedCustomer } from '../hooks/useParkedTickets';
 import { PosReceiptModal, type ReceiptData } from './PosReceiptModal';
+import { SerialPickerModal } from './SerialPickerModal';
+import { fetchAvailability } from '@/features/serials/serialsApi';
 import { CustomItemModal } from './CustomItemModal';
 import { playCheckoutSuccess } from '../utils/posAudio';
 
@@ -34,8 +37,11 @@ export type LastSale = {
 type Props = {
   ticket: PosTicket;
   walkinAccountId: string | null;
-  /** Resolves to the invoice number on success, null on failure */
-  onCheckout: (payload: { accountId: string; creditAmount?: string; customerId?: string }) => Promise<{ invoiceNumber?: string } | null>;
+  /** Resolves to the invoice number (+ sold serials) on success, null on failure */
+  onCheckout: (payload: { accountId: string; creditAmount?: string; customerId?: string }) => Promise<{
+    invoiceNumber?: string;
+    soldSerials?: { id: string; imei1: string; imei2: string | null; itemId: string; warrantyMonths: number; warrantyExpiresAt: string | null }[];
+  } | null>;
   isSubmitting: boolean;
   apiError: string | null;
   lastSale: LastSale | null;
@@ -81,6 +87,7 @@ export function TicketPanel({
   const [quickError, setQuickError] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
   const [receiptOpen, setReceiptOpen] = useState(false);
+  const [serialPicker, setSerialPicker] = useState<{ itemId: string; name: string; lineKey: string } | null>(null);
   const [discountOpen, setDiscountOpen] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
   const [customDiscountValue, setCustomDiscountValue] = useState('');
@@ -89,6 +96,48 @@ export function TicketPanel({
 
   const contactsQ = useContactsQuery();
   const createContactMut = useCreateContactMutation();
+
+  // IMEI availability for cart items (single batched query).
+  const cartItemIds = useMemo(
+    () => ticket.lines.filter((l) => !l.isCustom).map((l) => l.itemId),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [JSON.stringify(ticket.lines.map((l) => l.itemId))],
+  );
+  const availabilityQ = useQuery({
+    queryKey: ['serials', 'availability', cartItemIds.join(',')],
+    queryFn: () => fetchAvailability(cartItemIds),
+    enabled: cartItemIds.length > 0,
+    staleTime: 15000,
+  });
+  const availability = availabilityQ.data ?? {};
+
+  /** Lines violating the serial rule (mismatch or fully-tracked sold loose). */
+  const serialGaps = useMemo(() => {
+    const gaps: { lineKey: string; reason: 'MISMATCH' | 'UNBOUND' }[] = [];
+    for (const l of ticket.lines) {
+      if (l.isCustom) continue;
+      const avail = availability[l.itemId]?.count ?? 0;
+      const bound = l.serialIds.length;
+      if (bound > 0 && bound !== l.quantity) gaps.push({ lineKey: l.lineKey, reason: 'MISMATCH' });
+      else if (bound === 0 && avail > 0 && avail >= l.quantity) gaps.push({ lineKey: l.lineKey, reason: 'UNBOUND' });
+    }
+    return gaps;
+  }, [ticket.lines, availability]);
+
+  const boundSerialIds = useMemo(() => ticket.lines.flatMap((l) => l.serialIds), [ticket.lines]);
+
+  function bindSerial(lineKey: string, serial: { id: string; imei1: string }): void {
+    const line = ticket.lines.find((l) => l.lineKey === lineKey);
+    if (!line || line.isCustom) return;
+    const res = ticket.addSerialItem(
+      { id: line.itemId, name: line.name, sku: line.sku, sellingPrice: line.unitPrice } as never,
+      serial,
+    );
+    if (res === 'blocked') return;
+    // Split one unit off the loose line.
+    if (line.quantity <= 1) ticket.removeLine(lineKey);
+    else ticket.setQuantity(lineKey, String(line.quantity - 1));
+  }
   const accountsQ = useAccountsByContactQuery(
     !useWalkin && selectedContact ? selectedContact.id : '',
   );
@@ -233,7 +282,7 @@ export function TicketPanel({
   }
 
   const checkoutDisabled =
-    !ticket.canCheckout || !activeAccountId || isSubmitting || (ticket.creditEnabled && (useWalkin || !selectedContact));
+    !ticket.canCheckout || !activeAccountId || isSubmitting || (ticket.creditEnabled && (useWalkin || !selectedContact)) || serialGaps.length > 0;
   const up = isNonNegChange(ticket.changeDue);
   // Magnitude for the "remaining on customer" case — string op on a 2dp string
   const absChange =
@@ -281,6 +330,7 @@ export function TicketPanel({
         quantity: l.quantity,
         unitPrice: l.unitPrice,
         lineTotal: ticket.lineTotals[i] ?? '0.00',
+        serials: l.serialImeis.map((imei, k) => ({ imei1: imei, id: l.serialIds[k] ?? '' })),
       })),
       subtotal: ticket.subtotal,
       discountAmount: ticket.discountAmount,
@@ -299,11 +349,33 @@ export function TicketPanel({
     const res = await onCheckout({
       accountId: activeAccountId,
       creditAmount: ticket.creditEnabled ? ticket.effectiveCredit : undefined,
-      customerId: ticket.creditEnabled && selectedContact ? selectedContact.id : undefined,
+      customerId: !useWalkin && selectedContact ? selectedContact.id : undefined,
     });
     if (res) {
       playCheckoutSuccess();
-      setReceipt({ ...snapshot, invoiceNumber: res.invoiceNumber });
+      // Enrich bound rows with authoritative warranty data from the sale response.
+      const soldById = new Map((res.soldSerials ?? []).map((s) => [s.id, s]));
+      const enriched: ReceiptData = {
+        ...snapshot,
+        invoiceNumber: res.invoiceNumber,
+        lines: snapshot.lines.map((ln, i) => {
+          const tl = ticket.lines[i];
+          if (!tl || tl.serialIds.length === 0) return ln;
+          return {
+            ...ln,
+            serials: tl.serialIds.map((sid, k) => {
+              const s = soldById.get(sid);
+              return {
+                id: sid,
+                imei1: tl.serialImeis[k] ?? '',
+                warrantyMonths: s?.warrantyMonths ?? 12,
+                warrantyExpiresAt: s?.warrantyExpiresAt ?? null,
+              };
+            }),
+          };
+        }),
+      };
+      setReceipt(enriched);
       setReceiptOpen(true);
     }
   }
@@ -384,7 +456,7 @@ export function TicketPanel({
         ) : (
           ticket.lines.map((l, i) => (
             <div
-              key={l.itemId}
+              key={l.lineKey}
               className="rounded-xl border border-navy-border/30 bg-navy-950/60 p-2.5"
             >
               <div className="flex items-start justify-between gap-2">
@@ -395,21 +467,47 @@ export function TicketPanel({
                       مخصص
                     </span>
                   )}
+                  {l.serialIds.length > 0 && (
+                    <span className="shrink-0 rounded-full border border-violet-500/40 bg-violet-500/10 px-1.5 py-px font-mono text-[10px] font-bold text-violet-300" dir="ltr">
+                      IMEI {l.serialImeis[0] ?? '✓'}
+                    </span>
+                  )}
                 </p>
                 <button
                   type="button"
-                  onClick={() => ticket.removeLine(l.itemId)}
+                  onClick={() => ticket.removeLine(l.lineKey)}
                   aria-label={`حذف ${l.name}`}
                   className="rounded-md p-1 text-slate-500 hover:bg-rose-500/10 hover:text-rose-400"
                 >
                   <X className="h-3.5 w-3.5" aria-hidden="true" />
                 </button>
               </div>
+              {serialGaps.some((g) => g.lineKey === l.lineKey) && (
+                <button
+                  type="button"
+                  onClick={() => setSerialPicker({ itemId: l.itemId, name: l.name, lineKey: l.lineKey })}
+                  className="mt-1.5 flex w-full items-center justify-center gap-1 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[11px] font-bold text-amber-300 hover:bg-amber-500/20"
+                >
+                  مطلوب تحديد الرقم التسلسلي / IMEI — [اختيار الـ IMEI]
+                </button>
+              )}
+              {!l.isCustom && l.serialIds.length === 0 && (availability[l.itemId]?.count ?? 0) > 0 && !serialGaps.some((g) => g.lineKey === l.lineKey) && (
+                <button
+                  type="button"
+                  onClick={() => setSerialPicker({ itemId: l.itemId, name: l.name, lineKey: l.lineKey })}
+                  className="mt-1.5 flex w-full items-center justify-center gap-1 rounded-lg border border-navy-border/40 px-2 py-1 text-[11px] text-slate-400 hover:border-violet-500/40 hover:text-violet-300"
+                >
+                  ربط IMEI (متاح {(availability[l.itemId]?.count ?? 0)}) — اختياري
+                </button>
+              )}
               <div className="mt-1.5 flex items-center justify-between gap-2">
+                {l.serialIds.length > 0 ? (
+                  <span dir="ltr" className="font-mono text-sm font-bold text-violet-300">×1 IMEI-bound</span>
+                ) : (
                 <div className="flex items-center gap-1" dir="ltr">
                   <button
                     type="button"
-                    onClick={() => ticket.increment(l.itemId)}
+                    onClick={() => ticket.increment(l.lineKey)}
                     aria-label="زيادة الكمية"
                     className="rounded-md border border-navy-border/40 p-1 text-slate-300 hover:bg-white/[0.06] hover:text-white"
                   >
@@ -419,19 +517,20 @@ export function TicketPanel({
                     type="text"
                     inputMode="numeric"
                     value={String(l.quantity)}
-                    onChange={(e) => ticket.setQuantity(l.itemId, e.target.value)}
+                    onChange={(e) => ticket.setQuantity(l.lineKey, e.target.value)}
                     aria-label={`كمية ${l.name}`}
                     className="w-11 rounded-md border border-navy-border/40 bg-navy-900 px-1 py-1 text-center font-mono text-sm text-slate-100 outline-none focus:border-cyan-500/50"
                   />
                   <button
                     type="button"
-                    onClick={() => ticket.decrement(l.itemId)}
+                    onClick={() => ticket.decrement(l.lineKey)}
                     aria-label="إنقاص الكمية"
                     className="rounded-md border border-navy-border/40 p-1 text-slate-300 hover:bg-white/[0.06] hover:text-white"
                   >
                     <Minus className="h-3.5 w-3.5" aria-hidden="true" />
                   </button>
                 </div>
+                )}
                 <div className="text-left">
                   <span dir="ltr" className="font-mono text-sm font-bold text-slate-100">
                     {ticket.lineTotals[i] ?? '0.00'}
@@ -741,6 +840,16 @@ export function TicketPanel({
             setReceiptOpen(false);
             onNewSale();
           }}
+        />
+      )}
+
+      {serialPicker && (
+        <SerialPickerModal
+          itemId={serialPicker.itemId}
+          itemName={serialPicker.name}
+          excludeIds={boundSerialIds}
+          onBind={(s) => bindSerial(serialPicker.lineKey, s)}
+          onClose={() => setSerialPicker(null)}
         />
       )}
 

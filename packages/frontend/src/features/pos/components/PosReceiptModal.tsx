@@ -1,8 +1,16 @@
 import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
-import { Printer, X } from 'lucide-react';
+import { Printer, ShieldCheck, X } from 'lucide-react';
 import { BrandMark } from '@/components/layout/BrandMark';
 import { useInvoiceSettings } from '@/features/settings/hooks/useInvoiceSettings';
+import { BarcodeSvg } from '@/features/inventory/components/barcode/BarcodeSvg';
+
+export type ReceiptSerial = {
+  id: string;
+  imei1: string;
+  warrantyMonths?: number;
+  warrantyExpiresAt?: string | null;
+};
 
 export type ReceiptLine = {
   name: string;
@@ -10,6 +18,7 @@ export type ReceiptLine = {
   quantity: number;
   unitPrice: string;
   lineTotal: string;
+  serials?: ReceiptSerial[];
 };
 
 export type ReceiptData = {
@@ -66,7 +75,11 @@ export function PosReceiptModal({ data, onClose, onNewSale }: Props) {
   const [mode, setMode] = useState<Mode>('thermal');
   const [thermalWidth, setThermalWidth] = useState<'80' | '58'>('80');
   const [qrDataUrl, setQrDataUrl] = useState('');
+  const [warrantyOpen, setWarrantyOpen] = useState(false);
   const { data: settings } = useInvoiceSettings();
+  const soldSerials = data.lines.flatMap((l) =>
+    (l.serials ?? []).map((s) => ({ ...s, itemName: l.name })),
+  );
 
   const businessName = settings?.business_name ?? 'بركة موبايل';
   const businessPhone = settings?.business_phone ?? '';
@@ -89,6 +102,9 @@ export function PosReceiptModal({ data, onClose, onNewSale }: Props) {
       if (e.key === 'Escape') {
         e.preventDefault();
         onNewSale();
+      } else if (e.key === 'F8' && soldSerials.length > 0) {
+        e.preventDefault();
+        setWarrantyOpen(true);
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
         e.preventDefault();
         window.print();
@@ -99,7 +115,7 @@ export function PosReceiptModal({ data, onClose, onNewSale }: Props) {
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onNewSale]);
+  }, [onNewSale, soldSerials.length]);
 
   const invoiceLabel = data.invoiceNumber ?? '—';
 
@@ -207,6 +223,12 @@ export function PosReceiptModal({ data, onClose, onNewSale }: Props) {
                       <span dir="ltr" className="block font-mono text-[10px] text-black/60">
                         {l.unitPrice}
                       </span>
+                      {(l.serials ?? []).map((s) => (
+                        <span key={s.id} dir="ltr" className="block font-mono text-[10px] font-bold text-black">
+                          IMEI: {s.imei1} | الضمان: {s.warrantyMonths ?? 12} شهر
+                          {s.warrantyExpiresAt && ` (ينتهي: ${s.warrantyExpiresAt.slice(0, 10)})`}
+                        </span>
+                      ))}
                     </td>
                     <td dir="ltr" className="text-center">{l.quantity}</td>
                     <td dir="ltr" className="text-left font-bold">{l.lineTotal}</td>
@@ -324,7 +346,14 @@ export function PosReceiptModal({ data, onClose, onNewSale }: Props) {
                   {data.lines.map((l, i) => (
                     <tr key={i} className="border-b border-zinc-100">
                       <td className="px-3 py-2 text-zinc-600">{i + 1}</td>
-                      <td className="px-3 py-2 font-medium">{l.name}</td>
+                      <td className="px-3 py-2 font-medium">
+                        {l.name}
+                        {(l.serials ?? []).map((s) => (
+                          <span key={s.id} dir="ltr" className="block font-mono text-[11px] text-zinc-600">
+                            IMEI: {s.imei1} — ضمان {s.warrantyMonths ?? 12} شهر
+                          </span>
+                        ))}
+                      </td>
                       <td className="px-3 py-2 font-mono text-xs text-zinc-600" dir="ltr">{l.sku ?? '—'}</td>
                       <td className="px-3 py-2" dir="ltr">{l.quantity}</td>
                       <td className="px-3 py-2" dir="ltr">{l.unitPrice} د.ج</td>
@@ -391,6 +420,18 @@ export function PosReceiptModal({ data, onClose, onNewSale }: Props) {
             طباعة
             <kbd dir="ltr" className="rounded bg-navy-950/20 px-1.5 py-0.5 font-mono text-[10px]">Enter</kbd>
           </button>
+          {soldSerials.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setWarrantyOpen(true)}
+              title="طباعة شهادة الضمان"
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-violet-500/40 bg-violet-500/10 px-4 py-2.5 text-sm font-bold text-violet-300 hover:bg-violet-500/20"
+            >
+              <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+              شهادة الضمان
+              <kbd dir="ltr" className="rounded bg-navy-950/20 px-1.5 py-0.5 font-mono text-[10px]">F8</kbd>
+            </button>
+          )}
           <button
             type="button"
             onClick={onClose}
@@ -408,6 +449,84 @@ export function PosReceiptModal({ data, onClose, onNewSale }: Props) {
           </button>
         </div>
       </div>
+
+      {warrantyOpen && soldSerials.length > 0 && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-navy-950/85 p-4 backdrop-blur-sm print:bg-white print:p-0"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setWarrantyOpen(false);
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="شهادات الضمان"
+        >
+          <div className="flex max-h-full flex-col items-center gap-3 overflow-y-auto">
+            <div className="flex gap-2 print:hidden">
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-extrabold text-white hover:bg-violet-500"
+              >
+                <Printer className="h-4 w-4" aria-hidden="true" />
+                طباعة شهادات الضمان ({soldSerials.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setWarrantyOpen(false)}
+                className="rounded-xl border border-navy-border/40 px-4 py-2.5 text-sm text-slate-300"
+              >
+                إغلاق
+              </button>
+            </div>
+            <div id="warranty-certificate-receipt" dir="rtl" className="w-[80mm] bg-white px-3 py-4 font-mono text-[12px] leading-relaxed text-black">
+              {soldSerials.map((s) => (
+                <div key={s.id} className="warranty-cert-page mb-4 border-b-2 border-dashed border-black/60 pb-4 last:mb-0 last:border-0 last:pb-0">
+                  <div className="flex flex-col items-center text-center">
+                    <BrandMark className="h-10 w-10" />
+                    <p className="mt-1 font-sans text-sm font-extrabold">شهادة ضمان الجهاز</p>
+                    <p className="font-sans text-[10px]">{businessName}{businessPhone ? ` — ${businessPhone}` : ''}</p>
+                  </div>
+                  <hr className="my-2 border-dashed border-black/40" />
+                  <div className="flex items-center justify-between font-sans text-[11px]">
+                    <span>الفاتورة</span>
+                    <span dir="ltr" className="font-mono font-bold">{invoiceLabel}</span>
+                  </div>
+                  <div className="flex items-center justify-between font-sans text-[11px]">
+                    <span>الزبون</span>
+                    <span className="font-bold">{data.customerLabel}</span>
+                  </div>
+                  {data.customerPhone && (
+                    <div className="flex items-center justify-between font-sans text-[11px]">
+                      <span>الهاتف</span>
+                      <span dir="ltr" className="font-mono">{data.customerPhone}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between font-sans text-[11px]">
+                    <span>الصنف</span>
+                    <span className="font-bold">{s.itemName}</span>
+                  </div>
+                  <div className="mt-1 flex flex-col items-center gap-1">
+                    <BarcodeSvg value={s.imei1} height={40} moduleWidth={1} />
+                  </div>
+                  <div className="flex items-center justify-between font-sans text-[11px]">
+                    <span>الضمان</span>
+                    <span className="font-bold">{s.warrantyMonths ?? 12} شهر</span>
+                  </div>
+                  <div className="flex items-center justify-between font-sans text-[11px]">
+                    <span>ينتهي</span>
+                    <span>{s.warrantyExpiresAt ? s.warrantyExpiresAt.slice(0, 10) : '—'}</span>
+                  </div>
+                  <p className="mt-1 text-center font-sans text-[10px]">الضمان لا يشمل: أضرار السوائل، كسر الشاشة، الفك خارج الورشة.</p>
+                  <div className="mt-2 flex items-center justify-between font-sans text-[10px]">
+                    <span>توقيع الزبون: ـــــــــ</span>
+                    <span>توقيع المحل: ـــــــــ</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

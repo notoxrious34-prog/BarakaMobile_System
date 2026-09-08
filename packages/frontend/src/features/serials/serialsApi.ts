@@ -125,3 +125,12 @@ export async function listClaims(activeOnly = false): Promise<WarrantyClaim[]> {
 export async function fetchSerialsMetrics(): Promise<SerialsMetrics> {
   return api.get<SerialsMetrics>('/serials/metrics');
 }
+
+export type AvailabilityMap = Record<string, { count: number; serials: { id: string; imei1: string }[] }>;
+
+export async function fetchAvailability(itemIds: string[]): Promise<AvailabilityMap> {
+  if (itemIds.length === 0) return {};
+  const p = new URLSearchParams();
+  p.set('itemIds', [...new Set(itemIds)].slice(0, 100).join(','));
+  return api.get<AvailabilityMap>(`/serials/availability?${p.toString()}`);
+}

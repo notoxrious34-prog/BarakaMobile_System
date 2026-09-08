@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, Headers } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, Headers, InternalServerErrorException, HttpException } from '@nestjs/common';
 import { AuthService, capabilitiesFor } from './auth.service';
 import { UserRole } from '@prisma/client';
 
@@ -8,17 +8,33 @@ function tokenOf(headers: Record<string, string | string[] | undefined>): string
   return raw;
 }
 
+/** Re-throw unexpected failures with the exact DB cause (never a bare 500). */
+function unmask(action: string, e: unknown): never {
+  if (e instanceof HttpException) throw e;
+  const err = e as { message?: string; code?: string };
+  console.error(`CRITICAL AUTH ERROR [${action}]:`, e);
+  throw new InternalServerErrorException({
+    error: `${action} Failed`,
+    message: err?.message || 'Unknown database error',
+    code: err?.code,
+  });
+}
+
 @Controller()
 export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Post('auth/pin-login')
   async pinLogin(@Body() dto: { pin?: string; username?: string }) {
-    const pin = (dto.pin ?? '').trim();
-    const result = dto.username?.trim()
-      ? await this.auth.loginByCredentials(dto.username, pin)
-      : await this.auth.loginByPin(pin);
-    return { ...result, capabilities: capabilitiesFor(result.user) };
+    try {
+      const pin = (dto.pin ?? '').trim();
+      const result = dto.username?.trim()
+        ? await this.auth.loginByCredentials(dto.username, pin)
+        : await this.auth.loginByPin(pin);
+      return { ...result, capabilities: capabilitiesFor(result.user) };
+    } catch (e) {
+      unmask('PIN Login', e);
+    }
   }
 
   @Post('auth/logout')
@@ -37,12 +53,20 @@ export class AuthController {
 
   @Get('auth/operators')
   async operators() {
-    return this.auth.operatorDirectory();
+    try {
+      return await this.auth.operatorDirectory();
+    } catch (e) {
+      unmask('Operators Directory', e);
+    }
   }
 
   @Post('auth/bootstrap-admin')
   async bootstrapAdmin() {
-    return this.auth.bootstrapAdmin();
+    try {
+      return await this.auth.bootstrapAdmin();
+    } catch (e) {
+      unmask('Bootstrap', e);
+    }
   }
 }
 

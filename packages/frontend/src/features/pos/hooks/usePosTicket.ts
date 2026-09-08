@@ -4,6 +4,8 @@ import type { Item } from '@/features/inventory/hooks/useInventory';
 
 export type TicketLine = {
   itemId: string;
+  /** Stable row identity: itemId for plain lines, `${itemId}~${serialId}` for IMEI-bound. */
+  lineKey: string;
   name: string;
   sku: string | null;
   /** Unit price as Decimal 2dp string */
@@ -12,6 +14,10 @@ export type TicketLine = {
   maxStock: number;
   /** Ad-hoc service/uncataloged line — never sent as backend itemLines */
   isCustom: boolean;
+  /** Bound device serials (IMEI-tracked units). Length must equal quantity at checkout. */
+  serialIds: string[];
+  /** Human-readable IMEIs parallel to serialIds (display only). */
+  serialImeis: string[];
 };
 
 export type DiscountType = 'FIXED' | 'PERCENT';
@@ -49,18 +55,21 @@ export function usePosTicket() {
     const stock = typeof item.currentStock === 'number' ? item.currentStock : 999999;
     if (stock <= 0) return 'blocked';
     const want = Number.isInteger(qty) && qty > 0 ? qty : 1;
-    const existing = lines.find((l) => l.itemId === item.id);
+    const existing = lines.find((l) => l.itemId === item.id && l.serialIds.length === 0);
     if (!existing) {
       setLines((prev) => [
         ...prev,
         {
           itemId: item.id,
+          lineKey: item.id,
           name: item.name,
           sku: item.sku ?? null,
           unitPrice: to2dp(item.sellingPrice ?? '0'),
           quantity: Math.min(want, stock),
           maxStock: stock,
           isCustom: false,
+          serialIds: [],
+          serialImeis: [],
         },
       ]);
       return 'added';
@@ -81,6 +90,35 @@ export function usePosTicket() {
     return 'incremented';
   }
 
+  /**
+   * IMEI-bound unit: one quantity-1 row pre-linked to an IN_STOCK serial.
+   * Duplicate scans of the same serial are rejected as 'blocked'.
+   */
+  function addSerialItem(item: Item, serial: { id: string; imei1: string }): AddResult {
+    const lineKey = `${item.id}~${serial.id}`;
+    if (lines.some((l) => l.lineKey === lineKey)) return 'blocked';
+    setLines((prev) => [
+      ...prev,
+      {
+        itemId: item.id,
+        lineKey,
+        name: item.name,
+        sku: item.sku ?? null,
+        unitPrice: to2dp(item.sellingPrice ?? '0'),
+        quantity: 1,
+        maxStock: 1,
+        isCustom: false,
+        serialIds: [serial.id],
+        serialImeis: [serial.imei1],
+      },
+    ]);
+    return 'added';
+  }
+
+  function unbindSerial(lineKey: string): void {
+    setLines((prev) => prev.filter((l) => l.lineKey !== lineKey));
+  }
+
   function setQuantity(itemId: string, raw: string): void {
     const t = raw.trim();
     if (!/^\d+$/.test(t)) return;
@@ -88,7 +126,7 @@ export function usePosTicket() {
     if (!Number.isSafeInteger(q) || q < 1) return;
     setLines((prev) =>
       prev.map((l) =>
-        l.itemId === itemId ? { ...l, quantity: Math.min(q, l.maxStock) } : l,
+        l.lineKey === itemId && l.serialIds.length === 0 ? { ...l, quantity: Math.min(q, l.maxStock) } : l,
       ),
     );
   }
@@ -96,7 +134,7 @@ export function usePosTicket() {
   function increment(itemId: string): void {
     setLines((prev) =>
       prev.map((l) =>
-        l.itemId === itemId
+        l.lineKey === itemId && l.serialIds.length === 0
           ? { ...l, quantity: Math.min(l.quantity + 1, l.maxStock) }
           : l,
       ),
@@ -106,7 +144,7 @@ export function usePosTicket() {
   function decrement(itemId: string): void {
     setLines((prev) =>
       prev.map((l) =>
-        l.itemId === itemId
+        l.lineKey === itemId && l.serialIds.length === 0
           ? { ...l, quantity: Math.max(l.quantity - 1, 1) }
           : l,
       ),
@@ -114,7 +152,7 @@ export function usePosTicket() {
   }
 
   function removeLine(itemId: string): void {
-    setLines((prev) => prev.filter((l) => l.itemId !== itemId));
+    setLines((prev) => prev.filter((l) => l.lineKey !== itemId));
   }
 
   function clear(): void {
@@ -139,6 +177,9 @@ export function usePosTicket() {
         ...l,
         // Pre-isCustom snapshots: normalize missing flag.
         isCustom: l.isCustom === true,
+        lineKey: l.lineKey ?? l.itemId,
+        serialIds: l.serialIds ?? [],
+        serialImeis: l.serialImeis ?? [],
         maxStock: typeof l.maxStock === 'number' ? l.maxStock : 999999,
       })),
     );
@@ -155,16 +196,20 @@ export function usePosTicket() {
    */
   function addCustomItem(name: string, unitPrice2dp: string, qty: number): void {
     const q = Number.isInteger(qty) && qty > 0 ? qty : 1;
+    const id = `custom-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
     setLines((prev) => [
       ...prev,
       {
-        itemId: `custom-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+        itemId: id,
+        lineKey: id,
         name,
         sku: null,
         unitPrice: unitPrice2dp,
         quantity: q,
         maxStock: 999999,
         isCustom: true,
+        serialIds: [],
+        serialImeis: [],
       },
     ]);
   }
@@ -336,6 +381,8 @@ export function usePosTicket() {
     splitValid,
     effectiveCredit,
     addItem,
+    addSerialItem,
+    unbindSerial,
     addCustomItem,
     setDiscount,
     clearDiscount,

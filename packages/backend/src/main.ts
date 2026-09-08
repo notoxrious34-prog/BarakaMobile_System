@@ -2,6 +2,8 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { AuthService } from './auth/auth.service';
+import { PrismaService } from './prisma/prisma.service';
+import { repairPendingMigrations, resolveMigrationsDir } from './prisma/migration-repair';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -36,6 +38,19 @@ async function bootstrap() {
 
   const port = process.env.PORT ?? 3001;
   await app.listen(port);
+  // Hotfix: heal behind-schema production databases BEFORE auth bootstrap.
+  // Legacy userData DBs never received `migrate deploy` for newer migrations
+  // (e.g. Migration 20 `User`) — without this, bootstrap 500s on missing tables.
+  try {
+    const prisma = app.get(PrismaService);
+    const repair = await repairPendingMigrations(prisma, resolveMigrationsDir());
+    if (repair.skipped) console.log(`[SchemaRepair] skipped: ${repair.skipped}`);
+    if (repair.applied.length > 0) {
+      console.log(`[SchemaRepair] healed ${repair.applied.length} migration(s): ${repair.applied.join(', ')}`);
+    }
+  } catch (e) {
+    console.error('[SchemaRepair] FAILED:', e instanceof Error ? e.message : e);
+  }
   // Self-healing: legacy/seed-less databases boot with zero operators otherwise.
   try {
     await app.get(AuthService).ensureDefaultAdminExists();

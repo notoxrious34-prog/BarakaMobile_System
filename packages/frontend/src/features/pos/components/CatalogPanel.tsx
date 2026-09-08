@@ -3,11 +3,14 @@ import { PackageSearch, ScanBarcode, X } from 'lucide-react';
 import type { Item } from '@/features/inventory/hooks/useInventory';
 import { to2dp, type AddResult } from '../hooks/usePosTicket';
 import { playScanError, playScanSuccess } from '../utils/posAudio';
+import { lookupImei } from '@/features/serials/serialsApi';
+import { ApiError } from '@/lib/api';
 
 type Props = {
   items: Item[] | undefined;
   isLoading: boolean;
   onAdd: (item: Item, qty?: number) => AddResult | void;
+  onAddSerial?: (item: Item, serial: { id: string; imei1: string }) => AddResult | void;
   /** Structural ref type — accepts useRef<HTMLInputElement>(null) under React 18 types */
   searchRef: { current: HTMLInputElement | null };
 };
@@ -21,11 +24,13 @@ const MULT_RE = /^(\d+)\s*[xX*]\s*(.+)$/;
  * Category pills are intentionally deferred: Item has no category field and
  * the backend is frozen (AD-58) — pills arrive in Phase 2 with the migration.
  */
-export function CatalogPanel({ items, isLoading, onAdd, searchRef }: Props) {
+export function CatalogPanel({ items, isLoading, onAdd, onAddSerial, searchRef }: Props) {
   const [query, setQuery] = useState('');
   const [flashId, setFlashId] = useState<string | null>(null);
   const [focused, setFocused] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
+  const [scanNotice, setScanNotice] = useState<string | null>(null);
+  const noticeTimer = useRef<number | null>(null);
   const errorTimer = useRef<number | null>(null);
 
   const activeItems = useMemo(
@@ -58,6 +63,12 @@ export function CatalogPanel({ items, isLoading, onAdd, searchRef }: Props) {
     errorTimer.current = window.setTimeout(() => setScanError(null), 2500);
   }
 
+  function showScanNotice(msg: string): void {
+    setScanNotice(msg);
+    if (noticeTimer.current !== null) window.clearTimeout(noticeTimer.current);
+    noticeTimer.current = window.setTimeout(() => setScanNotice(null), 2500);
+  }
+
   function addScanned(item: Item, qty: number): void {
     const stock = typeof item.currentStock === 'number' ? item.currentStock : 999999;
     if (stock <= 0 || stock < qty) {
@@ -82,6 +93,39 @@ export function CatalogPanel({ items, isLoading, onAdd, searchRef }: Props) {
     searchRef.current?.focus();
   }
 
+  /** IMEI direct scan: resolve serial → parent item → serial-bound cart row. */
+  async function addScannedImei(code: string): Promise<boolean> {
+    if (!onAddSerial) return false;
+    if (!/^[A-Za-z0-9]{14,17}$/.test(code.replace(/[\s-]+/g, ''))) return false;
+    try {
+      const r = await lookupImei(code);
+      if (r.device.status !== 'IN_STOCK') {
+        showScanError('الجهاز مباع مسبقاً أو غير متاح');
+        return true;
+      }
+      const item = (items ?? []).find((it) => it.id === r.device.itemId && it.isActive);
+      if (!item) {
+        showScanError('صنف الجهاز غير موجود في الكتالوج');
+        return true;
+      }
+      const res = onAddSerial(item, { id: r.device.id, imei1: r.device.imei1 });
+      if (res === 'blocked') {
+        showScanError('هذا التسلسلي مضاف مسبقاً في التذكرة');
+        return true;
+      }
+      playScanSuccess();
+      flash(item.id);
+      showScanNotice(`جهاز متتبع بالـ IMEI: ${r.device.imei1}`);
+      setQuery('');
+      searchRef.current?.focus();
+      return true;
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 404) return false;
+      showScanError(e instanceof Error ? e.message : 'تعذر الاستعلام عن التسلسلي');
+      return true;
+    }
+  }
+
   function handleSubmit(): void {
     const raw = query.trim();
     if (raw === '') return;
@@ -103,6 +147,31 @@ export function CatalogPanel({ items, isLoading, onAdd, searchRef }: Props) {
     );
     if (exactSku) {
       addScanned(exactSku, qty);
+      return;
+    }
+    // IMEI direct path (async) — falls through to name matching when unknown.
+    if (qty === 1 && onAddSerial) {
+      void addScannedImei(code).then((handled) => {
+        if (handled) return;
+        const exactName = activeItems.find(
+          (it) => (it.name ?? '').toLowerCase() === lowered,
+        );
+        if (exactName) {
+          addScanned(exactName, qty);
+          return;
+        }
+        const q = lowered;
+        const visible = activeItems.filter(
+          (it) =>
+            (it.name ?? '').toLowerCase().includes(q) ||
+            (it.sku ?? '').toLowerCase().includes(q),
+        );
+        if (visible.length === 1) {
+          addScanned(visible[0], qty);
+          return;
+        }
+        showScanError('الباركود غير مسجل');
+      });
       return;
     }
     const exactName = activeItems.find(
@@ -204,6 +273,11 @@ export function CatalogPanel({ items, isLoading, onAdd, searchRef }: Props) {
         {scanError && (
           <p className="mt-1 text-[11px] font-bold text-rose-400" role="alert">
             {scanError}
+          </p>
+        )}
+        {scanNotice && (
+          <p className="mt-1 text-[11px] font-bold text-emerald-400" role="status">
+            {scanNotice}
           </p>
         )}
       </div>
