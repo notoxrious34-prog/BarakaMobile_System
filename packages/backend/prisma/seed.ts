@@ -9,7 +9,7 @@ function hashPin(pin: string): string {
 }
 
 async function main() {
-  // 8 default Settings (idempotent upsert)
+  // 17 default Settings (idempotent upsert)
   const settings: Array<{ key: string; value: string }> = [
     { key: 'business_name', value: 'BarakaMobile' },
     { key: 'business_phone', value: '+213 000 000 000' },
@@ -19,6 +19,14 @@ async function main() {
     { key: 'invoice_footer_note', value: 'شكرا لتعاملكم معنا' },
     { key: 'invoice_sequence_next', value: '1' },
     { key: 'repair_sequence_next', value: '1' },
+    // Backup engine defaults (TB-128, idempotent upsert)
+    { key: 'BACKUP_AUTO_ENABLED', value: 'true' },
+    { key: 'BACKUP_INTERVAL_HOURS', value: '24' },
+    { key: 'BACKUP_DESTINATION_DIR', value: '' },
+    { key: 'BACKUP_RETENTION_COUNT', value: '7' },
+    { key: 'BACKUP_LAST_AT', value: '' },
+    { key: 'BACKUP_LAST_STATUS', value: '' },
+    { key: 'BACKUP_LAST_ERROR', value: '' },
     // Watchdog thresholds (TB-126, day-counts, plain integers)
     { key: 'REPAIR_DELAY_GRACE_DAYS', value: '5' },
     { key: 'WARRANTY_EXPIRY_ALERT_DAYS', value: '15' },
@@ -98,7 +106,7 @@ async function main() {
     }
   }
 
-  console.log(`Seed completed: Settings 10, CashAccount 1, ExpenseCategory ${categories.length}, WalkIn 1`);
+  console.log(`Seed completed: Settings 17, CashAccount 1, ExpenseCategory ${categories.length}, WalkIn 1`);
   // Default SLA fault type (TB-126, idempotent)
   await (prisma as any).repairFaultTypeSLA.upsert({
     where: { faultTypeName: 'عام / General' },
