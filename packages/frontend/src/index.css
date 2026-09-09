@@ -35,6 +35,7 @@
   .animate-fade-in-up {
     animation: fadeInUp 0.45s ease-out both;
   }
+  /* TB-130: global ultra-thin luxury scrollbars (dark) */
   .scrollbar-premium {
     scrollbar-width: thin;
     scrollbar-color: rgba(30, 58, 95, 0.55) transparent;
@@ -52,6 +53,34 @@
   .scrollbar-premium::-webkit-scrollbar-thumb:hover {
     background: rgba(30, 58, 95, 0.85);
   }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* TB-130: application-wide ultra-thin dark scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+}
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+  transition: background-color 0.2s ease-in-out;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.28);
 }
 
 /* TB-068: isolate the POS print surface (dual-mode receipt + Z slip) for window.print() */
