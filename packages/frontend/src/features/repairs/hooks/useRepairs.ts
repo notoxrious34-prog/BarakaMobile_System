@@ -67,6 +67,8 @@ export type CreateRepairTicketDto = {
   problemDescription: string;
   repairType?: string;
   technicianName?: string;
+  repairFaultTypeId?: string;
+  estimatedCompletionDate?: string;
   estimatedCost?: string;
   depositAmount?: string;
   notes?: string;

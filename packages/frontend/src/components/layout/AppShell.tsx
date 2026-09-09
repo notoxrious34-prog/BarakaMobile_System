@@ -6,6 +6,7 @@ import Decimal from 'decimal.js';
 import { Sidebar } from './Sidebar';
 import { BrandMark } from './BrandMark';
 import { AdminSubNav } from './AdminSubNav';
+import { NotificationBell } from './NotificationBell';
 import { UserWidget } from '@/features/auth/UserWidget';
 import { GlobalSearch } from '../search/GlobalSearch';
 import { CommandPalette } from '../CommandPalette';
@@ -164,6 +165,7 @@ export function AppShell() {
 
           {/* Live indicators + CTA */}
           <div className="flex items-center gap-3 shrink-0">
+            <NotificationBell />
             <UserWidget />
             {/* Cash Balance pill — emerald navy */}
             <div
@@ -224,6 +226,7 @@ export function AppShell() {
             <span className="text-sm font-semibold text-slate-100">BarakaMobile</span>
           </div>
           <div className="flex items-center gap-2">
+            <NotificationBell />
             <UserWidget />
             <span
               className="inline-flex items-center rounded-full border border-emerald-400/25 bg-emerald-950/55 px-2 py-1 text-xs font-mono text-emerald-400"

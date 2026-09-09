@@ -18,6 +18,7 @@ import { StockCountPage } from '@/pages/StockCountPage';
 import { FinancePage } from '@/pages/admin/FinancePage';
 import { UsersPage } from '@/pages/admin/UsersPage';
 import { SerialsPage } from '@/pages/SerialsPage';
+import { AlertsPage } from '@/pages/AlertsPage';
 import { AuthGate } from '@/features/auth/UserWidget';
 import { ImeiLookupHost } from '@/features/serials/ImeiLookupHost';
 
@@ -48,6 +49,8 @@ export default function App() {
         <Route path="pos" element={<PosPage />} />
         <Route path="repairs" element={<RepairsPage />} />
         <Route path="flexy" element={<FlexyCockpitPage />} />
+        <Route path="alerts" element={<AlertsPage />} />
+        <Route path="watchdog" element={<Navigate to="/alerts" replace />} />
 
         {/* Admin pillar */}
         <Route path="admin">

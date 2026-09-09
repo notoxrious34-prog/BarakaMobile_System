@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { useDashboard } from '@/features/reports/hooks/useDashboard';
 import { useSalesTrend } from '@/features/reports/hooks/useSalesTrend';
 import { SalesTrendWidget } from '@/components/dashboard/SalesTrendWidget';
+import { WatchdogWidget } from '@/components/dashboard/WatchdogWidget';
 import { FlexyExpressWidget } from '@/features/dashboard/components/FlexyExpressWidget';
 import { Skeleton } from '@/components/feedback/Skeleton';
 import { ErrorState } from '@/components/feedback/ErrorState';
@@ -407,6 +408,11 @@ export function Dashboard() {
           </div>
         );
       })()}
+
+      {/* Watchdog SLA counters (TB-127) — between Smart Alerts and Sales Trend */}
+      <div className={`${ENTRANCE}`} style={{ animationDelay: '95ms' }}>
+        <WatchdogWidget />
+      </div>
 
       {/* Sales Trend (7-day) — TB-064: between Smart Alerts and Pipeline */}
       <div className={`${ENTRANCE}`} style={{ animationDelay: '100ms' }}>

@@ -7,6 +7,7 @@ import {
 } from '@/features/contacts/hooks/useContacts';
 import { useAccountsByContactQuery } from '@/features/transactions/hooks/useTransactions';
 import { useCreateRepairMutation } from '../hooks/useRepairs';
+import { useRepairFaultTypes } from '@/features/watchdog/hooks/useWatchdog';
 import { WALKIN_NAME } from '@/features/pos/hooks/useWalkinAccount';
 import {
   ACCESSORY_PRESETS,
@@ -55,7 +56,21 @@ export function RepairIntakeModal({ onCreated, onClose, initial }: Props) {
   const [repairType, setRepairType] = useState('INTERNAL');
   const [estimated, setEstimated] = useState('');
   const [deposit, setDeposit] = useState('');
+  const [faultTypeId, setFaultTypeId] = useState('');
+  const [dueDate, setDueDate] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const faultTypesQ = useRepairFaultTypes();
+
+  // SLA auto-estimate: selecting a fault type pre-fills the due date
+  // (creation + defaultDays); technician may override manually before submit.
+  function onFaultTypeChange(id: string): void {
+    setFaultTypeId(id);
+    if (!id) return;
+    const ft = (faultTypesQ.data ?? []).find((f) => f.id === id);
+    if (!ft) return;
+    const d = new Date(Date.now() + ft.defaultDays * 86_400_000);
+    setDueDate(d.toISOString().slice(0, 10));
+  }
 
   const walkinContact = useMemo(
     () => (contactsQ.data ?? []).find((c) => c.name === WALKIN_NAME) ?? null,
@@ -138,6 +153,8 @@ export function RepairIntakeModal({ onCreated, onClose, initial }: Props) {
         problemDescription: problem.trim(),
         repairType,
         technicianName: technician.trim() || undefined,
+        repairFaultTypeId: faultTypeId || undefined,
+        estimatedCompletionDate: dueDate ? new Date(`${dueDate}T00:00:00`).toISOString() : undefined,
         estimatedCost: to2dp(est),
         depositAmount: to2dp(dep),
         notes: noteParts.length > 0 ? noteParts.join(' | ') : undefined,
@@ -296,6 +313,32 @@ export function RepairIntakeModal({ onCreated, onClose, initial }: Props) {
             <input type="text" value={model} onChange={(e) => setModel(e.target.value)} placeholder="الموديل *" aria-label="الموديل" className={inputCls} />
             <input type="text" value={imei} onChange={(e) => setImei(e.target.value)} placeholder="IMEI / Serial (اختياري)" aria-label="الرقم التسلسلي" className={`${inputCls} font-mono`} dir="ltr" />
             <input type="text" value={technician} onChange={(e) => setTechnician(e.target.value)} placeholder="الفني (اختياري)" aria-label="الفني" className={inputCls} />
+          </div>
+
+          {/* SLA: fault type + estimated delivery (TB-127) */}
+          <div className="grid grid-cols-2 gap-2">
+            <select
+              value={faultTypeId}
+              onChange={(e) => onFaultTypeChange(e.target.value)}
+              aria-label="نوع العطل"
+              className="rounded-xl border border-navy-border/40 bg-navy-950/60 px-2 py-2 text-sm text-slate-100 outline-none focus:border-cyan-500/50"
+            >
+              <option value="">نوع العطل (اختياري)</option>
+              {(faultTypesQ.data ?? []).map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.faultTypeName} — {f.defaultDays} أيام
+                </option>
+              ))}
+            </select>
+            <input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              placeholder="تاريخ التسليم المتوقع"
+              aria-label="تاريخ التسليم المتوقع"
+              className={`${inputCls} font-mono`}
+              dir="ltr"
+            />
           </div>
           <textarea
             value={problem}
