@@ -334,6 +334,21 @@ model RepairTicket {
   contact              Contact   @relation(fields: [contactId], references: [id])
   debtLedgerEntries    CustomerDebtLedgerEntry[]
   parts                RepairPartItem[]
+  repairFaultTypeId    String?
+  repairFaultType      RepairFaultTypeSLA? @relation(fields: [repairFaultTypeId], references: [id])
+  estimatedCompletionDate DateTime?
+}
+
+model RepairFaultTypeSLA {
+  id            String         @id @default(cuid())
+  faultTypeName String         @unique
+  defaultDays   Int
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  repairTickets RepairTicket[]
+
+  @@map("repair_fault_type_sla")
 }
 
 model RepairPartItem {

@@ -19,9 +19,10 @@ import { CustomersModule } from './customers/customers.module';
 import { SalesReturnsModule } from './returns/sales-returns.module';
 import { AuthModule } from './auth/auth.module';
 import { SerialsModule } from './serials/serials.module';
+import { WatchdogModule } from './watchdog/watchdog.module';
 
 @Module({
-  imports: [PrismaModule, ContactsModule, AccountsModule, InventoryModule, ServicesModule, TransactionsModule, ReportsModule, SettingsModule, SearchModule, CashModule, ExpensesModule, RepairModule, WalletsModule, BackupModule, CustomersModule, SalesReturnsModule, AuthModule, SerialsModule],
+  imports: [PrismaModule, ContactsModule, AccountsModule, InventoryModule, ServicesModule, TransactionsModule, ReportsModule, SettingsModule, SearchModule, CashModule, ExpensesModule, RepairModule, WalletsModule, BackupModule, CustomersModule, SalesReturnsModule, AuthModule, SerialsModule, WatchdogModule],
   controllers: [AppController],
   providers: [AppService],
 })

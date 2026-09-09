@@ -19,6 +19,9 @@ async function main() {
     { key: 'invoice_footer_note', value: 'شكرا لتعاملكم معنا' },
     { key: 'invoice_sequence_next', value: '1' },
     { key: 'repair_sequence_next', value: '1' },
+    // Watchdog thresholds (TB-126, day-counts, plain integers)
+    { key: 'REPAIR_DELAY_GRACE_DAYS', value: '5' },
+    { key: 'WARRANTY_EXPIRY_ALERT_DAYS', value: '15' },
   ];
   for (const s of settings) {
     await prisma.setting.upsert({
@@ -95,7 +98,13 @@ async function main() {
     }
   }
 
-  console.log(`Seed completed: Settings 8, CashAccount 1, ExpenseCategory ${categories.length}, WalkIn 1`);
+  console.log(`Seed completed: Settings 10, CashAccount 1, ExpenseCategory ${categories.length}, WalkIn 1`);
+  // Default SLA fault type (TB-126, idempotent)
+  await (prisma as any).repairFaultTypeSLA.upsert({
+    where: { faultTypeName: 'عام / General' },
+    update: {},
+    create: { faultTypeName: 'عام / General', defaultDays: 3, isActive: true },
+  });
   // Default Administrator (TB-120, idempotent; PIN 0000 — change on first login)
   const existingAdmin = await (prisma as any).user.findUnique({ where: { username: 'admin' } });
   if (!existingAdmin) {
@@ -115,6 +124,7 @@ async function main() {
     expenseCategory: await (prisma as any).expenseCategory.count(),
     walkIn: await prisma.contact.count({ where: { isWalkIn: true } }),
     users: await (prisma as any).user.count(),
+    faultTypes: await (prisma as any).repairFaultTypeSLA.count(),
   };
   console.log(counts);
 }

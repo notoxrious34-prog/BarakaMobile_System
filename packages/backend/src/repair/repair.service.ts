@@ -116,6 +116,24 @@ export class RepairService {
         create: { key: 'repair_sequence_next', value: String(seq + 1) },
       });
 
+      // SLA auto-computation (TB-126): fault type default days from creation moment,
+      // unless the technician explicitly sets an estimated date.
+      let repairFaultTypeId: string | null = null;
+      let estimatedCompletionDate: Date | null = null;
+      if (dto.repairFaultTypeId) {
+        const faultType = await tx.repairFaultTypeSLA.findUnique({ where: { id: dto.repairFaultTypeId } });
+        if (!faultType || !faultType.isActive) {
+          throw new BadRequestException('نوع العطل غير موجود أو موقوف');
+        }
+        repairFaultTypeId = faultType.id;
+        estimatedCompletionDate = new Date(Date.now() + faultType.defaultDays * 86_400_000);
+      }
+      if (dto.estimatedCompletionDate) {
+        const explicit = new Date(dto.estimatedCompletionDate);
+        if (Number.isNaN(explicit.getTime())) throw new BadRequestException('estimatedCompletionDate must be a valid ISO date');
+        estimatedCompletionDate = explicit;
+      }
+
       const ticket = await tx.repairTicket.create({
         data: {
           ticketNumber,
@@ -125,6 +143,8 @@ export class RepairService {
           deviceModel: dto.deviceModel,
           problemDescription: dto.problemDescription,
           status: 'RECEIVED',
+          repairFaultTypeId,
+          estimatedCompletionDate,
           repairType,
           technicianName: dto.technicianName,
           estimatedCost,
@@ -259,6 +279,52 @@ export class RepairService {
         where: { id: ticket.id },
         include: { contact: true, parts: { include: { inventoryItem: { select: { id: true, name: true, sku: true } } } } },
       });
+    });
+  }
+
+  /** Active SLA fault types for the ticket creation dropdown (soft-delete respected). */
+  async listFaultTypes() {
+    return (this.prisma as any).repairFaultTypeSLA.findMany({
+      where: { isActive: true },
+      select: { id: true, faultTypeName: true, defaultDays: true },
+      orderBy: { faultTypeName: 'asc' },
+    });
+  }
+
+  /**
+   * Technician SLA override (TB-126): rebind fault type and/or set an explicit
+   * estimated date. Terminal tickets are immutable. No audit log exists in the
+   * repair domain (verified Part 1) — plain update.
+   */
+  async updateSla(ticketId: string, dto: { repairFaultTypeId?: string | null; estimatedCompletionDate?: string | null }) {
+    const ticket = await (this.prisma as any).repairTicket.findFirst({ where: { id: ticketId, isActive: true } });
+    if (!ticket) throw new NotFoundException(`RepairTicket with id ${ticketId} not found`);
+    if (ticket.status === 'DELIVERED' || ticket.status === 'CANCELLED') {
+      throw new BadRequestException('Cannot change SLA of terminal ticket');
+    }
+    const data: any = {};
+    if (dto.repairFaultTypeId !== undefined) {
+      if (dto.repairFaultTypeId === null) {
+        data.repairFaultTypeId = null;
+      } else {
+        const faultType = await (this.prisma as any).repairFaultTypeSLA.findUnique({ where: { id: dto.repairFaultTypeId } });
+        if (!faultType || !faultType.isActive) throw new BadRequestException('نوع العطل غير موجود أو موقوف');
+        data.repairFaultTypeId = faultType.id;
+      }
+    }
+    if (dto.estimatedCompletionDate !== undefined) {
+      if (dto.estimatedCompletionDate === null) {
+        data.estimatedCompletionDate = null;
+      } else {
+        const explicit = new Date(dto.estimatedCompletionDate);
+        if (Number.isNaN(explicit.getTime())) throw new BadRequestException('estimatedCompletionDate must be a valid ISO date');
+        data.estimatedCompletionDate = explicit;
+      }
+    }
+    return (this.prisma as any).repairTicket.update({
+      where: { id: ticketId },
+      data,
+      include: { repairFaultType: true },
     });
   }
 

@@ -39,6 +39,11 @@ export class RepairController {
     return this.repairService.getMetrics();
   }
 
+  @Get('fault-types')
+  faultTypes() {
+    return this.repairService.listFaultTypes();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.repairService.findOne(id);
@@ -77,6 +82,14 @@ export class RepairController {
     @Body() dto: { laborCost?: string; discountAmount?: string },
   ) {
     return this.repairService.updateFinancials(id, dto);
+  }
+
+  @Patch(':id/sla')
+  updateSla(
+    @Param('id') id: string,
+    @Body() dto: { repairFaultTypeId?: string | null; estimatedCompletionDate?: string | null },
+  ) {
+    return this.repairService.updateSla(id, dto);
   }
 
   @Delete(':id')

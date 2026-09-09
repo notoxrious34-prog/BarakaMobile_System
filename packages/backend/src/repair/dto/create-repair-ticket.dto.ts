@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsEnum, IsBoolean, Matches } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsEnum, IsBoolean, IsDateString, Matches } from 'class-validator';
 
 export class CreateRepairTicketDto {
   @IsString()
@@ -54,4 +54,12 @@ export class CreateRepairTicketDto {
   @IsOptional()
   @IsString()
   accessories?: string;
+
+  @IsOptional()
+  @IsString()
+  repairFaultTypeId?: string;
+
+  @IsOptional()
+  @IsDateString()
+  estimatedCompletionDate?: string;
 }
