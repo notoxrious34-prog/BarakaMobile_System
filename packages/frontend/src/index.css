@@ -35,6 +35,13 @@
   .animate-fade-in-up {
     animation: fadeInUp 0.45s ease-out both;
   }
+  /* TB-131: frameless drag regions (typed-safe alternative to style prop) */
+  .app-drag {
+    -webkit-app-region: drag;
+  }
+  .app-no-drag {
+    -webkit-app-region: no-drag;
+  }
   /* TB-130: global ultra-thin luxury scrollbars (dark) */
   .scrollbar-premium {
     scrollbar-width: thin;

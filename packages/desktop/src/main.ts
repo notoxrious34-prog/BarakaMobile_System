@@ -176,6 +176,9 @@ async function createWindow(): Promise<void> {
     title: 'BarakaMobile',
     icon: path.join(__dirname, '..', 'build', 'icon.png'),
     show: false,
+    // TB-131: frameless command-center shell (custom WindowControls in renderer).
+    frame: false,
+    titleBarStyle: 'hidden',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -191,6 +194,14 @@ async function createWindow(): Promise<void> {
 
   mainWindow.on('closed', () => {
     mainWindow = null;
+  });
+
+  // TB-131: notify renderer of maximize state for toggle icon.
+  mainWindow.on('maximize', () => {
+    mainWindow?.webContents.send('window:maximized-changed', true);
+  });
+  mainWindow.on('unmaximize', () => {
+    mainWindow?.webContents.send('window:maximized-changed', false);
   });
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -213,6 +224,15 @@ app.whenReady().then(async () => {
   try {
     Menu.setApplicationMenu(null);
     ipcMain.handle('get-version', () => app.getVersion());
+    // TB-131: frameless window controls.
+    ipcMain.handle('window:minimize', () => mainWindow?.minimize());
+    ipcMain.handle('window:maximize', () => {
+      if (!mainWindow) return;
+      if (mainWindow.isMaximized()) mainWindow.unmaximize();
+      else mainWindow.maximize();
+    });
+    ipcMain.handle('window:close', () => mainWindow?.close());
+    ipcMain.handle('window:isMaximized', () => mainWindow?.isMaximized() ?? false);
     ipcMain.handle('export-invoice-pdf', async (_event, invoiceNumber?: string) => {
       if (!mainWindow) {
         return { success: false, error: 'no window' };

@@ -8,6 +8,7 @@ import { BrandMark } from './BrandMark';
 import { AdminSubNav } from './AdminSubNav';
 import { NotificationBell } from './NotificationBell';
 import { BottomStatusBar } from './BottomStatusBar';
+import { WindowControls, toggleWindowMaximize } from './WindowControls';
 import { UserWidget } from '@/features/auth/UserWidget';
 import { GlobalSearch } from '../search/GlobalSearch';
 import { CommandPalette } from '../CommandPalette';
@@ -157,17 +158,21 @@ export function AppShell() {
     <div className="flex min-h-screen bg-navy-950 text-slate-100">
       <Sidebar />
       <div className="flex min-h-screen flex-1 flex-col min-w-0 bg-navy-950">
-        {/* TopBar h-16 — Deep Navy */}
-        <header className="hidden md:flex h-16 items-center justify-between border-b border-cyan-500/10 bg-navy-900/95 backdrop-blur-md px-4 shrink-0 gap-4">
-          {/* Search — clicking triggers Command Palette; brand lives in Sidebar on desktop */}
-          <div className="flex items-center flex-1 min-w-0 max-w-md" onClick={() => setPaletteOpen(true)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') setPaletteOpen(true); }} aria-label="فتح لوحة الأوامر">
+        {/* Command Center header — tri-zone luxury layout (TB-131, frameless drag) */}
+        <header
+          className="hidden md:flex h-16 items-center border-b border-cyan-500/10 bg-navy-900/95 backdrop-blur-md pe-0 ps-4 shrink-0 gap-4 app-drag"
+          onDoubleClick={(e) => {
+            if ((e.target as HTMLElement).closest('[data-nodrag]')) return;
+            toggleWindowMaximize();
+          }}
+        >
+          {/* Zone 1 (RTL start): omnibar search */}
+          <div className="flex items-center flex-1 min-w-0 max-w-md app-no-drag" onClick={() => setPaletteOpen(true)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') setPaletteOpen(true); }} aria-label="فتح لوحة الأوامر" data-nodrag>
             <GlobalSearch />
           </div>
 
-          {/* Live indicators + CTA */}
-          <div className="flex items-center gap-3 shrink-0">
-            <NotificationBell />
-            <UserWidget />
+          {/* Zone 2 (center): live financial + operational HUD */}
+          <div className="hidden xl:flex items-center gap-2 shrink-0 app-no-drag" data-nodrag>
             {/* Cash Balance pill — emerald navy */}
             <div
               className={`hidden lg:inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium shadow-lg transition-all duration-300 ${
@@ -192,23 +197,30 @@ export function AppShell() {
             >
               <span className="h-2 w-2 rounded-full bg-amber-400 shadow shadow-amber-400/50" aria-hidden="true" />
               <span className="hidden sm:inline">الإصلاحات النشطة</span>
-              <span dir="ltr" className="font-mono">
+              <span dir="ltr" className="font-mono tabular-nums">
                 {repairsQ.isLoading ? '...' : String(activeRepairsCount)}
               </span>
             </div>
+          </div>
 
-            {/* CTA — cyan gradient */}
+          {/* Zone 3 (RTL end): actions, profile, window controls */}
+          <div className="ms-auto flex items-center gap-3 shrink-0 app-no-drag" data-nodrag>
+            {/* CTA — cyan gradient with dark glow */}
             <button
               type="button"
               onClick={() => navigate('/pos')}
-              className="inline-flex items-center gap-2 rounded-xl bg-cyan-600 px-4 py-2 text-sm font-extrabold text-navy-950 hover:bg-cyan-500 shadow-lg shadow-cyan-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-navy-950 transition-colors"
+              className="inline-flex items-center gap-2 rounded-xl border border-cyan-400/30 bg-cyan-600 px-4 py-2 text-sm font-extrabold text-navy-950 hover:bg-cyan-500 shadow-lg shadow-cyan-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-navy-950 transition-colors"
             >
               <Plus className="h-4 w-4" aria-hidden="true" />
               عملية جديدة
               {location.pathname !== '/pos' && (
-                <span className="hidden lg:inline rounded bg-navy-950/20 px-1.5 py-0.5 text-xs font-mono text-navy-950">F2</span>
+                <span className="hidden lg:inline rounded bg-navy-950/20 px-1.5 py-0.5 text-xs font-mono tabular-nums text-navy-950">F2</span>
               )}
             </button>
+            <NotificationBell />
+            <UserWidget />
+            <span className="h-6 w-px bg-navy-border/40" aria-hidden="true" />
+            <WindowControls />
           </div>
         </header>
 
