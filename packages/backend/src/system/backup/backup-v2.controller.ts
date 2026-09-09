@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Body, Param, Res, UploadedFile, UseInterceptors, Headers, StreamableFile, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Res, UploadedFile, UseInterceptors, Headers, StreamableFile, NotFoundException, BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import * as fs from 'fs';
 import * as os from 'os';
@@ -62,6 +62,43 @@ export class BackupV2Controller {
         try { fs.rmSync(file.path, { force: true }); } catch { /* best effort */ }
       }
     }
+  }
+
+  @Post('verify')
+  @UseInterceptors(FileInterceptor('file', { dest: os.tmpdir(), limits: { fileSize: 512 * 1024 * 1024 } }))
+  async verify(
+    @UploadedFile() file: { path: string; originalname: string } | undefined,
+    @Body() dto: { path?: string },
+  ) {
+    const cleanup: string[] = [];
+    try {
+      if (file?.path) {
+        cleanup.push(file.path);
+        return await this.backupService.verifyBak(fs.readFileSync(file.path), file.originalname);
+      }
+      if (dto?.path) {
+        const destDir = await this.backupService.backupDestinationDir();
+        const full = path.isAbsolute(dto.path) && fs.existsSync(dto.path)
+          ? dto.path
+          : path.join(destDir, path.basename(dto.path));
+        if (!fs.existsSync(full)) throw new NotFoundException({ code: 'BACKUP_NOT_FOUND', path: dto.path });
+        return await this.backupService.verifyBak(fs.readFileSync(full), path.basename(full));
+      }
+      throw new BadRequestException({ code: 'BACKUP_NO_INPUT', hint: 'Provide multipart file or { path }' });
+    } finally {
+      for (const p of cleanup) {
+        try { fs.rmSync(p, { force: true }); } catch { /* best effort */ }
+      }
+    }
+  }
+
+  @Delete(':filename')
+  async remove(
+    @Param('filename') filename: string,
+    @Headers() headers: Record<string, string | string[] | undefined>,
+  ) {
+    await this.authService.requireAdmin(sessionTokenOf(headers));
+    return this.backupService.deleteBak(filename);
   }
 
   @Get('settings')

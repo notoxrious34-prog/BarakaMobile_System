@@ -600,22 +600,7 @@ export class BackupService implements OnModuleInit, OnModuleDestroy {
       throw new BadRequestException({ code: 'BACKUP_BAD_HEADER' });
     }
     // Integrity pre-check on a temp copy (never touches the live DB yet).
-    const tmpPath = path.join(os.tmpdir(), `bak-restore-${Date.now()}.sqlite`);
-    await fs.promises.writeFile(tmpPath, sqlite);
-    try {
-      const safe = tmpPath.replace(/'/g, "''");
-      await this.prisma.$queryRawUnsafe(`ATTACH DATABASE '${safe}' AS bak_check;`);
-      try {
-        const rows = (await this.prisma.$queryRawUnsafe('PRAGMA bak_check.integrity_check;')) as Array<{ integrity_check: string }>;
-        if ((rows?.[0]?.integrity_check ?? '') !== 'ok') {
-          throw new BadRequestException({ code: 'BACKUP_INTEGRITY_FAILED' });
-        }
-      } finally {
-        await this.prisma.$queryRawUnsafe('DETACH DATABASE bak_check;').catch(() => null);
-      }
-    } finally {
-      try { fs.rmSync(tmpPath, { force: true }); } catch { /* best effort */ }
-    }
+    await this.precheckIntegrity(sqlite);
     const dbPath = this.resolveDbPath();
     const safetyPath = path.join(destDir, `safety_pre_restore_${this.stampName('restore').replace(/^restore_/, '')}.bak`);
     // Emergency fallback uses the same verified .bak envelope.
@@ -652,6 +637,56 @@ export class BackupService implements OnModuleInit, OnModuleDestroy {
     await this.recordLast('SUCCESS', '').catch(() => null);
     void meta;
     return { success: true as const, rollbackPath: safetyPath, integrity, requiresReload: true as const };
+  }
+
+  /** Shared integrity pre-check: ATTACH temp copy, PRAGMA integrity_check must be ok. */
+  private async precheckIntegrity(sqlite: Buffer): Promise<void> {
+    const tmpPath = path.join(os.tmpdir(), `bak-check-${Date.now()}-${Math.floor(Math.random() * 1e6)}.sqlite`);
+    await fs.promises.writeFile(tmpPath, sqlite);
+    try {
+      const safe = tmpPath.replace(/'/g, "''");
+      await this.prisma.$queryRawUnsafe(`ATTACH DATABASE '${safe}' AS bak_check;`);
+      try {
+        const rows = (await this.prisma.$queryRawUnsafe('PRAGMA bak_check.integrity_check;')) as Array<{ integrity_check: string }>;
+        if ((rows?.[0]?.integrity_check ?? '') !== 'ok') {
+          throw new BadRequestException({ code: 'BACKUP_INTEGRITY_FAILED' });
+        }
+      } finally {
+        await this.prisma.$queryRawUnsafe('DETACH DATABASE bak_check;').catch(() => null);
+      }
+    } finally {
+      try { fs.rmSync(tmpPath, { force: true }); } catch { /* best effort */ }
+    }
+  }
+
+  /**
+   * Standalone verification (no writes to live DB, no restore):
+   * magic → metadata → gunzip+sha256 → SQLite header → integrity_check.
+   */
+  async verifyBak(buf: Buffer, label: string) {
+    const { meta, sqlite } = unpackBak(buf);
+    if (!sqlite.subarray(0, 16).toString('utf8').startsWith('SQLite format 3')) {
+      throw new BadRequestException({ code: 'BACKUP_BAD_HEADER' });
+    }
+    await this.precheckIntegrity(sqlite);
+    return {
+      ok: true as const,
+      filename: label,
+      metadata: meta,
+      dbSizeBytes: meta.dbSizeBytes,
+      integrity: 'ok' as const,
+    };
+  }
+
+  /** Delete a stored .bak (ADMIN-gated at controller). Safety snapshots included. */
+  async deleteBak(filename: string) {
+    const destDir = await this.backupDestinationDir();
+    const full = path.join(destDir, path.basename(filename));
+    if (!full.endsWith('.bak') || !fs.existsSync(full)) {
+      throw new NotFoundException({ code: 'BACKUP_NOT_FOUND', path: filename });
+    }
+    await fs.promises.rm(full, { force: true });
+    return { success: true as const, filename: path.basename(full) };
   }
 
   /** Scheduler tick: auto-backup when enabled and interval elapsed. */

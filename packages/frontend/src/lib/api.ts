@@ -40,7 +40,13 @@ async function request<T>(path: string, method: string, opts: RequestOptions = {
   };
 
   if (body !== undefined) {
-    init.body = JSON.stringify(body);
+    if (typeof FormData !== 'undefined' && body instanceof FormData) {
+      const h = init.headers as Record<string, string>;
+      delete h['Content-Type'];
+      init.body = body;
+    } else {
+      init.body = JSON.stringify(body);
+    }
   } else if (method === 'POST' || method === 'PATCH') {
     // Avoid sending undefined body for empty POST/PATCH if caller didn't provide one;
     // keep Content-Type consistent.

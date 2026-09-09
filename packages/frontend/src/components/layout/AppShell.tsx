@@ -7,6 +7,7 @@ import { Sidebar } from './Sidebar';
 import { BrandMark } from './BrandMark';
 import { AdminSubNav } from './AdminSubNav';
 import { NotificationBell } from './NotificationBell';
+import { BottomStatusBar } from './BottomStatusBar';
 import { UserWidget } from '@/features/auth/UserWidget';
 import { GlobalSearch } from '../search/GlobalSearch';
 import { CommandPalette } from '../CommandPalette';
@@ -251,6 +252,9 @@ export function AppShell() {
         <main className="flex-1 min-w-0 bg-navy-950 p-4 lg:p-6 overflow-y-auto">
           <Outlet />
         </main>
+
+        {/* Backup health footer (TB-129) */}
+        <BottomStatusBar />
       </div>
 
       {/* Mobile drawer overlay */}
