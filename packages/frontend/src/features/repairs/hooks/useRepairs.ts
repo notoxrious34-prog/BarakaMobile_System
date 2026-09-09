@@ -77,11 +77,29 @@ export type CreateRepairTicketDto = {
   accessories?: string;
 };
 
+export type RepairSummary = {
+  received: number;
+  diagnosing: number;
+  inRepair: number;
+  ready: number;
+  inWorkshopTotal: number;
+  openTotal: number;
+};
+
 export type UpdateRepairStatusDto = {
   status: string;
   actualCost?: string;
   notes?: string;
 };
+
+/** AD-70 canonical aggregation (TB-132) — sole source for all repair counts. */
+export function useRepairSummary() {
+  return useQuery<RepairSummary>({
+    queryKey: ['repairs', 'summary'],
+    queryFn: () => api.get<RepairSummary>('/repair/summary'),
+    staleTime: 30_000,
+  });
+}
 
 export function useRepairsQuery(filters?: { status?: string; contactId?: string; repairType?: string; search?: string }) {
   return useQuery<RepairTicket[]>({

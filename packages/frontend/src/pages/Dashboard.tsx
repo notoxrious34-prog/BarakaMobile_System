@@ -4,6 +4,7 @@ import Decimal from 'decimal.js';
 import { Wallet, TrendingUp, CreditCard, Wrench, Zap, AlertTriangle, RefreshCw, Package, Users, ChevronLeft } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useDashboard } from '@/features/reports/hooks/useDashboard';
+import { useRepairSummary } from '@/features/repairs/hooks/useRepairs';
 import { useSalesTrend } from '@/features/reports/hooks/useSalesTrend';
 import { SalesTrendWidget } from '@/components/dashboard/SalesTrendWidget';
 import { WatchdogWidget } from '@/components/dashboard/WatchdogWidget';
@@ -156,6 +157,7 @@ export function Dashboard() {
   const navigate = useNavigate();
   const canViewProfits = useCapability('canViewProfits');
   const summaryQ = useDashboard();
+  const repairSummaryQ = useRepairSummary();
 
   const cashQ = useQuery<CashBalance>({
     queryKey: ['cash-balance'],
@@ -209,15 +211,22 @@ export function Dashboard() {
   const digitalNominal = s?.digital?.nominalToday ?? '0';
   const digitalProfit = s?.digital?.profitToday ?? '0';
 
-  // Pipeline distribution
+  // Pipeline distribution — AD-70: all counts from useRepairSummary (TB-132).
+  // repairsQ remains solely as the display list source (rows, never counts).
   const tickets: RepairTicket[] = Array.isArray(repairsQ.data) ? (repairsQ.data as RepairTicket[]) : [];
+  const repairSummary = repairSummaryQ.data;
   const activeTickets = tickets.filter((t) => !['DELIVERED', 'CANCELLED'].includes(t.status));
-  const byStatus = (status: string) => tickets.filter((t) => t.status === status).length;
+  const byStatus = (status: 'RECEIVED' | 'DIAGNOSING' | 'IN_REPAIR' | 'READY') =>
+    status === 'RECEIVED' ? (repairSummary?.received ?? 0)
+    : status === 'DIAGNOSING' ? (repairSummary?.diagnosing ?? 0)
+    : status === 'IN_REPAIR' ? (repairSummary?.inRepair ?? 0)
+    : (repairSummary?.ready ?? 0);
 
   const recentTx: Transaction[] = Array.isArray(txQ.data) ? (txQ.data as Transaction[]).slice(0, 5) : [];
 
   // --- Smart Alerts derived state (Decimal for money) ---
-  const pendingRepairsCount = tickets.filter((t) => ['DIAGNOSING', 'IN_REPAIR', 'IN_PROGRESS', 'RECEIVED'].includes(t.status)).length;
+  // AD-70: workshop widget consumes inWorkshopTotal (dead IN_PROGRESS removed).
+  const pendingRepairsCount = repairSummary?.inWorkshopTotal ?? 0;
   const lowStockCount = s ? (s.inventory.lowStockItems + s.inventory.outOfStockItems) : 0;
   const hasLowStock = lowStockCount > 0;
   const customerDebtRaw = s?.debts.totalCustomerDebt ?? '0';
@@ -457,7 +466,7 @@ export function Dashboard() {
                 dir="ltr"
                 className="font-mono rounded-full bg-cyan-500/20 border border-cyan-400/20 px-2 py-0.5 text-xs"
               >
-                {activeTickets.length}
+                {repairSummary?.openTotal ?? 0}
               </span>
             </span>
           </div>
@@ -481,7 +490,7 @@ export function Dashboard() {
                   <RefreshCw className="h-3 w-3" /> إعادة المحاولة
                 </button>
               </div>
-            ) : activeTickets.length === 0 ? (
+            ) : (repairSummary?.openTotal ?? 0) === 0 ? (
               <p className="rounded-xl border border-dashed border-navy-border/30 bg-navy-950/40 px-3 py-8 text-center text-sm text-slate-400">
                 لا توجد إصلاحات نشطة حالياً
               </p>

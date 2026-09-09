@@ -4,6 +4,7 @@ import { BrandMark } from '@/components/layout/BrandMark';
 import {
   useRepairsQuery,
   useRepairMetricsQuery,
+  useRepairSummary,
   type RepairTicket,
 } from '@/features/repairs/hooks/useRepairs';
 import { RepairDetailModal } from '@/features/repairs/components/RepairDetailModal';
@@ -64,18 +65,16 @@ export function RepairsPage() {
     repairType: repairTypeFilter || undefined,
   });
   const finMetrics = useRepairMetricsQuery();
-  const metricsQ = useRepairsQuery();
+  const summaryQ = useRepairSummary();
 
-  const metrics = useMemo(() => {
-    const all = metricsQ.data ?? [];
-    const count = (s: string) => all.filter((t) => t.status === s).length;
-    return {
-      active: all.filter((t) => t.status !== 'DELIVERED' && t.status !== 'CANCELLED').length,
-      diagnosing: count('DIAGNOSING'),
-      inRepair: count('IN_REPAIR'),
-      ready: count('READY'),
-    };
-  }, [metricsQ.data]);
+  // AD-70: tab counters consumed directly from the canonical summary (TB-132).
+  const metrics = {
+    active: summaryQ.data?.openTotal ?? 0,
+    received: summaryQ.data?.received ?? 0,
+    diagnosing: summaryQ.data?.diagnosing ?? 0,
+    inRepair: summaryQ.data?.inRepair ?? 0,
+    ready: summaryQ.data?.ready ?? 0,
+  };
 
   const filtered = useMemo(() => {
     let list = repairsQ.data ?? [];

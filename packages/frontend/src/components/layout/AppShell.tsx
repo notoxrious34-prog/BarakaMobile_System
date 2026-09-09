@@ -15,26 +15,15 @@ import { CommandPalette } from '../CommandPalette';
 import { useUiStore } from '@/store/ui.store';
 import { PILLAR_NAV_ITEMS } from './navConfig';
 import { api } from '@/lib/api';
+import { useRepairSummary } from '@/features/repairs/hooks/useRepairs';
 
 type CashBalance = { currentBalance: string };
-type RepairTicket = { status: string };
 
 function useCashBalance() {
   return useQuery<CashBalance>({
     queryKey: ['cash-balance'],
     queryFn: () => api.get<CashBalance>('/cash/balance'),
     staleTime: 30_000,
-  });
-}
-
-function useActiveRepairsCount() {
-  return useQuery<RepairTicket[]>({
-    queryKey: ['repairs', null],
-    queryFn: () => api.get<RepairTicket[]>('/repair'),
-    staleTime: 30_000,
-    select: (data) =>
-      // Trick to keep pipeline count without breaking type: return raw array
-      data as unknown as RepairTicket[],
   });
 }
 
@@ -46,14 +35,10 @@ export function AppShell() {
   const closeMobile = useUiStore((s) => s.closeMobileNav);
 
   const cashQ = useCashBalance();
-  const repairsQ = useActiveRepairsCount();
+  const summaryQ = useRepairSummary();
 
-  const activeRepairsCount = (() => {
-    const list = (repairsQ.data as unknown as RepairTicket[] | undefined) ?? [];
-    if (!Array.isArray(list)) return 0;
-    const active = list.filter((r) => !['DELIVERED', 'CANCELLED'].includes(r.status));
-    return active.length;
-  })();
+  // AD-70: header capsule consumes openTotal — zero local recomputation.
+  const activeRepairsCount = summaryQ.data?.openTotal ?? 0;
 
   const cashBalance = cashQ.data?.currentBalance ?? null;
 
@@ -198,7 +183,7 @@ export function AppShell() {
               <span className="h-2 w-2 rounded-full bg-amber-400 shadow shadow-amber-400/50" aria-hidden="true" />
               <span className="hidden sm:inline">الإصلاحات النشطة</span>
               <span dir="ltr" className="font-mono tabular-nums">
-                {repairsQ.isLoading ? '...' : String(activeRepairsCount)}
+                {summaryQ.isLoading ? '...' : String(activeRepairsCount)}
               </span>
             </div>
           </div>

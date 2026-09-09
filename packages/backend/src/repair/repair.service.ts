@@ -475,6 +475,23 @@ export class RepairService {
     });
   }
 
+  /** AD-70 canonical repair aggregation (TB-132): single server-side source of truth. */
+  async getSummary() {
+    const rows = (await (this.prisma as any).repairTicket.groupBy({
+      by: ['status'],
+      where: { isActive: true },
+      _count: { status: true },
+    })) as Array<{ status: string; _count: { status: number } }>;
+    const count = (s: string) => rows.find((r) => r.status === s)?._count.status ?? 0;
+    const received = count('RECEIVED');
+    const diagnosing = count('DIAGNOSING');
+    const inRepair = count('IN_REPAIR');
+    const ready = count('READY');
+    const inWorkshopTotal = received + diagnosing + inRepair;
+    const openTotal = inWorkshopTotal + ready;
+    return { received, diagnosing, inRepair, ready, inWorkshopTotal, openTotal };
+  }
+
   async findAll(filters?: { status?: string; contactId?: string; repairType?: string; search?: string }) {
     const where: any = { isActive: true };
     if (filters?.status) where.status = filters.status;

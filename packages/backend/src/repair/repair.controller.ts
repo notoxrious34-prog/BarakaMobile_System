@@ -39,6 +39,11 @@ export class RepairController {
     return this.repairService.getMetrics();
   }
 
+  @Get('summary')
+  summary() {
+    return this.repairService.getSummary();
+  }
+
   @Get('fault-types')
   faultTypes() {
     return this.repairService.listFaultTypes();
