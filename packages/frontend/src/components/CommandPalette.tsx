@@ -46,7 +46,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       { id: 'nav-catalog', label: 'الكتالوج', icon: Package, category: 'nav', action: () => { navigate('/admin/catalog'); onClose(); } },
       { id: 'nav-finance', label: 'المالية', icon: Wallet, category: 'nav', action: () => { navigate('/admin/finance'); onClose(); } },
       { id: 'nav-reports', label: 'التقارير', icon: BarChart3, category: 'nav', action: () => { navigate('/admin/reports'); onClose(); } },
-      { id: 'nav-settings', label: 'الإعدادات', icon: Settings, category: 'nav', action: () => { navigate('/admin/settings'); onClose(); } },
+      { id: 'nav-settings', label: 'الإعدادات', icon: Settings, category: 'nav', action: () => { navigate('/settings'); onClose(); } },
     ],
     [navigate, onClose],
   );

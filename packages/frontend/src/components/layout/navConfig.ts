@@ -33,8 +33,8 @@ export const PILLAR_NAV_ITEMS: NavItem[] = [
   { to: '/admin', label: 'الإدارة', icon: Shield },
 ];
 
-// Admin Sub-Navigation (TB-130: 7 operational tabs — Settings & Users live
-// in the sidebar system section, routes /admin/settings + /admin/users stay valid)
+// Admin Sub-Navigation (TB-130: 7 operational tabs; TB-139: Settings lives
+// standalone at /settings, reachable from the sidebar system section)
 export const ADMIN_NAV_ITEMS: NavItem[] = [
   { to: '/admin/contacts', label: 'جهات الاتصال', icon: Users },
   { to: '/admin/catalog', label: 'الكتالوج', icon: Package },
@@ -47,7 +47,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
 
 // System & Administration — pinned sidebar bottom section (TB-130)
 export const SYSTEM_NAV_ITEMS: NavItem[] = [
-  { to: '/admin/settings', label: 'الإعدادات', icon: Settings },
+  { to: '/settings', label: 'الإعدادات', icon: Settings },
   { to: '/admin/users', label: 'المستخدمون', icon: Users, adminOnly: true },
 ];
 

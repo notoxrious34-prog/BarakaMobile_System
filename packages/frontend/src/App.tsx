@@ -61,10 +61,12 @@ export default function App() {
           <Route path="finance" element={<FinancePage />} />
           <Route path="transactions" element={<TransactionsPage />} />
           <Route path="reports" element={<ReportsPage />} />
-          <Route path="settings" element={<SettingsPage />} />
           <Route path="users" element={<UsersPage />} />
           <Route path="serials" element={<SerialsRoute />} />
         </Route>
+
+        {/* Standalone settings — renders directly in AppShell, never under AdminLayout (TB-139) */}
+        <Route path="settings" element={<SettingsPage />} />
 
         {/* Legacy redirects — backwards compatibility */}
         <Route path="transactions" element={<Navigate to="/admin/transactions" replace />} />
@@ -74,7 +76,7 @@ export default function App() {
         <Route path="treasury" element={<Navigate to="/admin/finance" replace />} />
         <Route path="expenses" element={<Navigate to="/admin/finance" replace />} />
         <Route path="reports" element={<Navigate to="/admin/reports" replace />} />
-        <Route path="settings" element={<Navigate to="/admin/settings" replace />} />
+        <Route path="admin/settings" element={<Navigate to="/settings" replace />} />
 
         <Route path="*" element={<NotFound />} />
       </Route>
