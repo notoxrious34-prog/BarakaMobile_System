@@ -101,8 +101,8 @@ function KpiCard({
           <Icon className="h-4 w-4" aria-hidden="true" />
         </span>
       </div>
-      <p dir="ltr" className={`mt-3 font-mono text-2xl font-bold ${a.value}`}>
-        {value} <span className="text-sm font-sans font-medium text-slate-400">د.ج</span>
+      <p dir="ltr" className={`mt-3 whitespace-nowrap font-mono text-2xl font-bold tabular-nums ${a.value}`}>
+        {value} <span className="font-sans text-sm font-medium text-slate-400">د.ج</span>
       </p>
       {sub && <p className="mt-1 text-xs text-slate-500">{sub}</p>}
     </div>
@@ -349,7 +349,12 @@ export function Dashboard() {
           few: 'منتجات قاربت على النفاد',
           many: 'منتجاً قارب على النفاد',
         });
-        const gridClass = alertCount === 1 ? 'grid gap-3 grid-cols-1' : 'grid gap-3 sm:grid-cols-2 lg:grid-cols-3';
+        const gridClass =
+          alertCount === 1
+            ? 'grid gap-3 grid-cols-1'
+            : alertCount === 2
+              ? 'grid gap-3 sm:grid-cols-2'
+              : 'grid gap-3 sm:grid-cols-2 lg:grid-cols-3';
         const singleBanner = 'flex items-center justify-between gap-3 rounded-2xl border border-navy-border/30 bg-navy-800 px-4 py-3 text-right shadow-sm focus-visible:outline-none focus-visible:ring-2 motion-reduce:transform-none transition-all duration-200 hover:border-navy-border/50 hover:shadow-md col-span-full';
         const gridCard = 'flex items-center gap-3 rounded-2xl border border-navy-border/30 bg-navy-800 px-4 py-3 text-right shadow-sm focus-visible:outline-none focus-visible:ring-2 motion-reduce:transform-none transition-all duration-200 hover:border-navy-border/50 hover:shadow-md';
         return (
@@ -577,7 +582,7 @@ export function Dashboard() {
                     {TYPE_LABEL[tx.type] ?? tx.type}
                   </span>
                   <div className="min-w-0">
-                    <p className="text-sm text-slate-200 truncate">{tx.account?.contact?.name ?? '—'}</p>
+                    <p className="truncate text-sm text-slate-500">{tx.account?.contact?.name ?? 'زبون نقدي'}</p>
                     <p className="text-xs text-slate-500">{new Date(tx.createdAt).toLocaleString('ar-DZ')}</p>
                   </div>
                 </div>

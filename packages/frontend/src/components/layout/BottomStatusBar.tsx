@@ -16,6 +16,10 @@ export function BottomStatusBar() {
   const s = statusQ.data;
   const health = backupHealth(s);
 
+  // TB-133: never leak the absolute disk path in the always-visible HUD —
+  // show only the last folder segment (full path stays in the modal).
+  const shortDir = (s?.destinationDir ?? '').split(/[/\\]/).filter(Boolean).pop() ?? '';
+
   const dot =
     health === 'healthy' ? 'bg-emerald-500'
     : health === 'warning' ? 'bg-amber-500'
@@ -30,7 +34,7 @@ export function BottomStatusBar() {
 
   return (
     <>
-      <footer className="z-40 flex h-9 shrink-0 items-center justify-between gap-2 border-t border-cyan-500/10 bg-navy-900/95 px-3 text-xs" dir="rtl">
+      <footer className="sticky bottom-0 z-40 flex h-9 shrink-0 items-center justify-between gap-2 border-t border-cyan-500/10 bg-navy-900/95 px-3 text-xs" dir="rtl">
         <button
           type="button"
           onClick={() => setModalOpen(true)}
@@ -42,8 +46,8 @@ export function BottomStatusBar() {
             <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${dot}`} aria-hidden="true" />
           </span>
           <span className="truncate font-bold">{statusQ.isLoading ? '…' : label}</span>
-          <span className="hidden max-w-56 truncate font-mono text-[10px] text-slate-500 md:inline" dir="ltr" title={s?.destinationDir}>
-            {s?.destinationDir ?? ''}
+          <span className="hidden max-w-40 truncate text-[10px] text-slate-500 md:inline" title={s?.destinationDir}>
+            {shortDir !== '' ? `مجلد النسخ: ${shortDir}` : 'مجلد النسخ المحلي'}
           </span>
         </button>
         <button

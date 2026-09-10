@@ -47,23 +47,35 @@ export function WatchdogWidget() {
 
   return (
     <section aria-label="مراقبة الصيانة والضمان" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      {cards.map((c) => (
-        <Link
-          key={c.label}
-          to={c.to}
-          className={`flex items-center gap-3 rounded-2xl border border-navy-border/30 border-r-2 ${c.ring} bg-navy-800 px-4 py-3 text-right shadow-sm transition-all duration-200 hover:border-navy-border/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2`}
-        >
-          <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${c.chip}`}>
-            <c.icon className="h-4 w-4" aria-hidden="true" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-semibold text-slate-200">{c.label}</span>
-            <span dir="ltr" className="block font-mono text-lg font-bold tabular-nums text-slate-100">
-              {q.isLoading ? '…' : c.value}
+      {cards.map((c) => {
+        // AD-71 calibrated (TB-134): zero = calm neutral, always legible —
+        // slate card, slate-400 label, crisp slate-300 value, slate-500 icon.
+        // >0 keeps full AD-63 semantic saturation.
+        const muted = c.value === 0;
+        return (
+          <Link
+            key={c.label}
+            to={c.to}
+            className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-right shadow-sm transition-all duration-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 ${
+              muted
+                ? 'border-slate-800/80 bg-slate-900/60 hover:border-slate-700/60'
+                : `border-navy-border/30 bg-navy-800 border-r-2 ${c.ring} hover:border-navy-border/50`
+            }`}
+          >
+            <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${
+              muted ? 'border-slate-700/60 bg-slate-800/60 text-slate-500' : c.chip
+            }`}>
+              <c.icon className="h-4 w-4" aria-hidden="true" />
             </span>
-          </span>
-        </Link>
-      ))}
+            <span className="min-w-0 flex-1">
+              <span className={`block truncate text-sm font-semibold ${muted ? 'text-slate-400' : 'text-slate-200'}`}>{c.label}</span>
+              <span dir="ltr" className={`block font-mono text-lg font-bold tabular-nums ${muted ? 'text-slate-300' : 'text-slate-100'}`}>
+                {q.isLoading ? '…' : c.value}
+              </span>
+            </span>
+          </Link>
+        );
+      })}
     </section>
   );
 }
