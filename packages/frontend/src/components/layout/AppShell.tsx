@@ -7,8 +7,7 @@ import { Sidebar } from './Sidebar';
 import { BrandMark } from './BrandMark';
 import { AdminSubNav } from './AdminSubNav';
 import { NotificationBell } from './NotificationBell';
-import { BottomStatusBar } from './BottomStatusBar';
-import { WindowControls, toggleWindowMaximize } from './WindowControls';
+import { WindowControls, toggleWindowMaximize, isDesktopShell, useDesktopVersion } from './WindowControls';
 import { UserWidget } from '@/features/auth/UserWidget';
 import { GlobalSearch } from '../search/GlobalSearch';
 import { CommandPalette } from '../CommandPalette';
@@ -138,26 +137,58 @@ export function AppShell() {
   }, []);
 
   const showAdminSubNav = location.pathname.startsWith('/admin');
+  const desktop = isDesktopShell();
+  const appVersion = useDesktopVersion();
 
   return (
-    <div className="flex min-h-screen bg-navy-950 text-slate-100">
-      <Sidebar />
-      <div className="flex min-h-screen flex-1 flex-col min-w-0 bg-navy-950">
-        {/* Command Center header — tri-zone luxury layout (TB-131, frameless drag) */}
-        <header
-          className="hidden md:flex h-16 items-center border-b border-cyan-500/10 bg-navy-900/95 backdrop-blur-md pe-0 ps-4 shrink-0 gap-4 app-drag"
+    <div className="flex h-screen w-screen flex-col overflow-hidden bg-slate-950 text-slate-100 select-none">
+      {/* Tier 1: full-width native titlebar — desktop shell only (TB-135) */}
+      {desktop && (
+        <div
+          className="app-drag flex h-8 w-full shrink-0 items-center justify-between border-b border-slate-800/60 bg-slate-950"
           onDoubleClick={(e) => {
             if ((e.target as HTMLElement).closest('[data-nodrag]')) return;
             toggleWindowMaximize();
           }}
+          aria-label="شريط العنوان"
         >
-          {/* Zone 1 (RTL start): omnibar search */}
-          <div className="flex items-center flex-1 min-w-0 max-w-md app-no-drag" onClick={() => setPaletteOpen(true)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') setPaletteOpen(true); }} aria-label="فتح لوحة الأوامر" data-nodrag>
+          <WindowControls />
+          <div className="pointer-events-none flex select-none items-center gap-2 ps-3 text-xs font-medium text-slate-500">
+            <span>Baraka Mobile</span>
+            {appVersion && (
+              <span dir="ltr" className="rounded bg-white/[0.06] px-1.5 py-0.5 font-mono text-[10px] tabular-nums text-slate-400">
+                v{appVersion}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+      <div className="flex min-h-0 flex-1 flex-row overflow-hidden">
+      <Sidebar />
+      <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-navy-950">
+        {/* Tier 2: operational command center (TB-131 zones, h-14) */}
+        <header
+          className="hidden md:flex h-14 items-center border-b border-cyan-500/10 bg-navy-900/95 backdrop-blur-md px-4 shrink-0 gap-4"
+        >
+          {/* Zone 1 (RTL start, adjacent to sidebar): omnibar search */}
+          <div className="flex items-center min-w-[200px] max-w-xs flex-1" onClick={() => setPaletteOpen(true)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') setPaletteOpen(true); }} aria-label="فتح لوحة الأوامر" data-nodrag>
             <GlobalSearch />
           </div>
 
-          {/* Zone 2 (center): live financial + operational HUD */}
-          <div className="hidden xl:flex items-center gap-2 shrink-0 app-no-drag" data-nodrag>
+          {/* Zone 2 (center): CTA + status capsules (TB-135) */}
+          <div className="mx-auto hidden items-center gap-2 shrink-0 xl:flex" data-nodrag>
+            {/* CTA — cyan gradient with dark glow */}
+            <button
+              type="button"
+              onClick={() => navigate('/pos')}
+              className="inline-flex items-center gap-2 rounded-xl border border-cyan-400/30 bg-cyan-600 px-4 py-2 text-sm font-extrabold text-navy-950 hover:bg-cyan-500 shadow-lg shadow-cyan-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-navy-950 transition-colors"
+            >
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              عملية جديدة
+              {location.pathname !== '/pos' && (
+                <span className="hidden lg:inline rounded bg-navy-950/20 px-1.5 py-0.5 text-xs font-mono tabular-nums text-navy-950">F2</span>
+              )}
+            </button>
             {/* Cash Balance pill — emerald navy */}
             <div
               className={`hidden lg:inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium shadow-lg transition-all duration-300 ${
@@ -188,24 +219,10 @@ export function AppShell() {
             </div>
           </div>
 
-          {/* Zone 3 (RTL end): actions, profile, window controls */}
-          <div className="ms-auto flex items-center gap-3 shrink-0 app-no-drag" data-nodrag>
-            {/* CTA — cyan gradient with dark glow */}
-            <button
-              type="button"
-              onClick={() => navigate('/pos')}
-              className="inline-flex items-center gap-2 rounded-xl border border-cyan-400/30 bg-cyan-600 px-4 py-2 text-sm font-extrabold text-navy-950 hover:bg-cyan-500 shadow-lg shadow-cyan-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-navy-950 transition-colors"
-            >
-              <Plus className="h-4 w-4" aria-hidden="true" />
-              عملية جديدة
-              {location.pathname !== '/pos' && (
-                <span className="hidden lg:inline rounded bg-navy-950/20 px-1.5 py-0.5 text-xs font-mono tabular-nums text-navy-950">F2</span>
-              )}
-            </button>
+          {/* Zone 3 (RTL end): notifications + profile (TB-135: zero window controls) */}
+          <div className="ms-auto flex items-center gap-3 shrink-0" data-nodrag>
             <NotificationBell />
             <UserWidget />
-            <span className="h-6 w-px bg-navy-border/40" aria-hidden="true" />
-            <WindowControls />
           </div>
         </header>
 
@@ -215,7 +232,7 @@ export function AppShell() {
             type="button"
             onClick={openMobile}
             aria-label="فتح القائمة"
-            className="inline-flex items-center justify-center rounded-md p-2 text-slate-300 hover:bg-white/[0.06] hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-navy-950 min-h-11 min-w-11"
+            className="inline-flex items-center justify-center rounded-xl p-2 text-slate-300 hover:bg-white/[0.06] hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-navy-950 min-h-11 min-w-11"
           >
             <Menu className="h-5 w-5" aria-hidden="true" />
           </button>
@@ -236,7 +253,7 @@ export function AppShell() {
               type="button"
               onClick={() => setPaletteOpen(true)}
               aria-label="بحث"
-              className="inline-flex items-center justify-center rounded-md p-2 text-slate-400 hover:bg-white/[0.06] hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 min-h-11 min-w-11"
+              className="inline-flex items-center justify-center rounded-xl p-2 text-slate-400 hover:bg-white/[0.06] hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 min-h-11 min-w-11"
             >
               <Search className="h-5 w-5" aria-hidden="true" />
             </button>
@@ -246,12 +263,11 @@ export function AppShell() {
         {/* Admin Sub-Navigation */}
         {showAdminSubNav && <AdminSubNav />}
 
-        <main className="flex-1 min-w-0 bg-navy-950 p-4 lg:p-6 overflow-y-auto">
+        {/* VIEWPORT CANVAS: only this element scrolls (TB-136) */}
+        <main className="min-h-0 flex-1 overflow-y-auto bg-slate-900/40 p-4 md:p-6">
           <Outlet />
         </main>
-
-        {/* Backup health footer (TB-129) */}
-        <BottomStatusBar />
+      </div>
       </div>
 
       {/* Mobile drawer overlay */}
@@ -268,7 +284,7 @@ export function AppShell() {
                 type="button"
                 onClick={closeMobile}
                 aria-label="إغلاق القائمة"
-                className="inline-flex items-center justify-center rounded-md p-2 text-slate-400 hover:bg-white/[0.06] hover:text-slate-100 min-h-11 min-w-11"
+                className="inline-flex items-center justify-center rounded-xl p-2 text-slate-400 hover:bg-white/[0.06] hover:text-slate-100 min-h-11 min-w-11"
               >
                 <X className="h-5 w-5" aria-hidden="true" />
               </button>
