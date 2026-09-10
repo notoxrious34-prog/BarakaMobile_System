@@ -16,8 +16,9 @@ export class BackupV2Controller {
   ) {}
 
   @Post('create')
-  create() {
-    return this.backupService.createBakBackup('manual');
+  create(@Body() body?: { kind?: string }) {
+    const kind = body?.kind === 'pre-update' ? 'pre-update' : body?.kind === 'auto' ? 'auto' : 'manual';
+    return this.backupService.createBakBackup(kind);
   }
 
   @Get('download/:filename')

@@ -16,6 +16,39 @@ const HEADERS = {
   Accept: 'application/vnd.github.v3+json',
 };
 
+/**
+ * TB-145: ETag persistence for conditional release checks. Stored beside
+ * the app userData when available, falling back to %TEMP%/baraka-updates
+ * (unit-test / pre-ready contexts). Zero deps — node:fs only.
+ */
+function etagFilePath(): string {
+  try {
+    return path.join(app.getPath('userData'), 'updater-etag.json');
+  } catch {
+    return path.join(os.tmpdir(), 'baraka-updates', 'updater-etag.json');
+  }
+}
+
+function readCachedEtag(): string | null {
+  try {
+    const raw = fs.readFileSync(etagFilePath(), 'utf8');
+    const parsed = JSON.parse(raw) as { etag?: unknown };
+    return typeof parsed.etag === 'string' && parsed.etag.length > 0 ? parsed.etag : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedEtag(etag: string): void {
+  try {
+    const p = etagFilePath();
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    fs.writeFileSync(p, JSON.stringify({ etag }), 'utf8');
+  } catch {
+    /* cache is best-effort — a missed write only costs one quota unit */
+  }
+}
+
 export type UpdaterStatus =
   | 'idle'
   | 'checking'
@@ -83,9 +116,11 @@ class UpdaterEngine {
   private listeners = new Set<StatusListener>();
   private abort: AbortController | null = null;
   private downloadStartMs = 0;
+  private etag: string | null = null;
 
   constructor() {
     this.state = this.fresh();
+    this.etag = readCachedEtag();
   }
 
   private fresh(): UpdaterState {
@@ -133,14 +168,42 @@ class UpdaterEngine {
     if (this.state.status === 'checking' || this.state.status === 'downloading') {
       return this.getStatus();
     }
+    const priorStatus: UpdaterStatus = this.state.status;
     this.emit({ status: 'checking', error: null });
     try {
-      const res = await fetch(REPO_LATEST_URL, { headers: HEADERS });
+      // TB-145: ETag-conditional check (zero-dep, native fetch). A 304
+      // consumes no rate-limit quota; a 403 degrades to not-available.
+      const headers: Record<string, string> = { ...HEADERS };
+      if (this.etag) headers['If-None-Match'] = this.etag;
+      const res = await fetch(REPO_LATEST_URL, { headers });
+      if (res.status === 304) {
+        // Release feed unchanged since the last check — keep a staged
+        // update, otherwise report not-available without consuming quota.
+        const staged: readonly UpdaterStatus[] = ['available', 'downloaded', 'downloading'];
+        if (!staged.includes(priorStatus)) {
+          this.emit({ status: 'not-available', targetVersion: null, releaseNotes: null });
+        } else {
+          // Keep the staged update — restore pre-check status (check()
+          // emits 'checking' on entry, which must not stick on a 304).
+          this.emit({ status: priorStatus });
+        }
+        return this.getStatus();
+      }
+      if (res.status === 403) {
+        console.debug('[updater] GitHub API rate-limited (403) — treating as no update');
+        this.emit({ status: 'not-available', targetVersion: null, releaseNotes: null, error: null });
+        return this.getStatus();
+      }
       if (res.status === 404) {
         this.emit({ status: 'not-available', targetVersion: null, releaseNotes: null });
         return this.getStatus();
       }
       if (!res.ok) throw new Error(`GitHub API HTTP ${res.status}`);
+      const freshEtag = res.headers.get('etag');
+      if (freshEtag) {
+        this.etag = freshEtag;
+        writeCachedEtag(freshEtag);
+      }
       const rel = (await res.json()) as { tag_name?: string; body?: string; assets?: Array<{ name?: string; size?: number; browser_download_url?: string }> };
       const tag = rel.tag_name ?? '';
       const exe = (rel.assets ?? []).find((a) => typeof a?.name === 'string' && a.name.endsWith('.exe'));

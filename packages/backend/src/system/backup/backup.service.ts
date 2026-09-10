@@ -501,12 +501,14 @@ export class BackupService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  /** Create a .bak backup (VACUUM INTO snapshot → sha256 → gzip → BMBAK1). */
-  async createBakBackup(kind: 'auto' | 'manual') {
+  /** Create a .bak backup (VACUUM INTO snapshot → sha256 → gzip → BMBAK1).
+   * kind 'pre-update' (TB-145) stamps safety-shield snapshots as
+   * pre_update_<ts>.bak so they are distinguishable from routine backups. */
+  async createBakBackup(kind: 'auto' | 'manual' | 'pre-update') {
     const dbPath = this.resolveDbPath();
     if (!fs.existsSync(dbPath)) throw new NotFoundException({ code: 'BACKUP_DB_MISSING', dbPath });
     const destDir = await this.backupDestinationDir();
-    const stamp = this.stampName(kind);
+    const stamp = this.stampName(kind === 'pre-update' ? 'pre_update' : kind);
     const filename = `${stamp}.bak`;
     const snapshotPath = path.join(os.tmpdir(), `${stamp}.snapshot.sqlite`);
     try {

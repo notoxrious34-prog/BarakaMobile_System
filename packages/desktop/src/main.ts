@@ -1,7 +1,7 @@
 import { app, BrowserWindow, shell, dialog, ipcMain, Menu } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
-import { spawn, ChildProcess } from 'child_process';
+import { spawn, execSync, ChildProcess } from 'child_process';
 import { updater, getAppVersion } from './updater';
 
 let backendProcess: ChildProcess | null = null;
@@ -168,6 +168,33 @@ function killBackend(): void {
   }
 }
 
+/**
+ * TB-145: synchronous backend process-TREE termination before the update
+ * installer runs. On Windows the Prisma query-engine DLL stays memory-mapped
+ * inside the backend Node process; taskkill /F /T releases every handle so
+ * the installer never hits EBUSY. Zero deps — native child_process only.
+ */
+function killBackendTreeSync(): void {
+  const proc = backendProcess;
+  const pid = proc?.pid;
+  backendProcess = null;
+  if (!proc || !pid) return;
+  if (process.platform === 'win32') {
+    try {
+      execSync(`taskkill /F /T /PID ${pid}`, { stdio: 'ignore', timeout: 10000 });
+      return;
+    } catch {
+      try {
+        proc.kill('SIGKILL');
+      } catch {}
+      return;
+    }
+  }
+  try {
+    proc.kill('SIGTERM');
+  } catch {}
+}
+
 async function createWindow(): Promise<void> {
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -245,7 +272,12 @@ app.whenReady().then(async () => {
       pushUpdater();
       return s;
     });
-    ipcMain.handle('updater:install-now', () => updater.installNow());
+    ipcMain.handle('updater:install-now', () => {
+      // TB-145: release the backend tree (DLL handles) BEFORE the
+      // installer spawns — the engine owns the installer, main owns pid.
+      killBackendTreeSync();
+      return updater.installNow();
+    });
     ipcMain.handle('updater:get-status', () => updater.getStatus());
     // TB-131: frameless window controls.
     ipcMain.handle('window:minimize', () => mainWindow?.minimize());

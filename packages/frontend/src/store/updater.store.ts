@@ -122,9 +122,9 @@ export const useUpdaterStore = create<UpdaterStore>((set, get) => ({
     if (!b) return;
     set({ backingUp: true, error: null });
     try {
-      // Mandatory safety snapshot (label pre-update); a backup failure
-      // blocks the install — data safety first.
-      await api.post<{ success: boolean }>('/backup/create');
+      // Mandatory safety snapshot stamped pre_update_*.bak (TB-145); a
+      // backup failure blocks the install — data safety first.
+      await api.post<{ success: boolean }>('/backup/create', { kind: 'pre-update' });
     } catch (e) {
       set({ backingUp: false, error: `تعذّر أخذ نسخة الأمان: ${e instanceof Error ? e.message : String(e)}` });
       return;
