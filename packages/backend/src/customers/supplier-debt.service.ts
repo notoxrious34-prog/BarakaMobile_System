@@ -262,4 +262,59 @@ export class SupplierDebtService {
       return { ...created, opening };
     });
   }
+
+  /**
+   * AD-77 supplier payment voucher (TB-143). Atomically posts the PAYMENT
+   * ledger entry AND the cash drawer OUT movement in ONE $transaction,
+   * reusing the caller's tx when provided (Rule ⑬). DEBIT direction:
+   * reduces the store's payable toward the supplier. Backdated paymentDate
+   * supported. Fails when the drawer cannot cover the amount.
+   */
+  async settleWithVoucher(
+    contactId: string,
+    dto: { amount: string; paymentDate?: string; notes?: string; createdById?: string },
+    outerTx?: PrismaTx,
+  ) {
+    const run = async (tx: PrismaTx) => {
+      const normalized = this.normalizeAmount(dto.amount);
+      const amountDec = this.assertDecimalPositive(normalized);
+      let paymentDate = new Date();
+      if (dto.paymentDate !== undefined) {
+        const t = new Date(dto.paymentDate);
+        if (Number.isNaN(t.getTime())) throw new BadRequestException('تاريخ الدفعة غير صالح');
+        paymentDate = t;
+      }
+      const contact = await (tx as any).contact.findUnique({ where: { id: contactId } });
+      if (!contact) throw new NotFoundException(`Contact with id ${contactId} not found`);
+      if (!contact.isActive) throw new BadRequestException('المورد غير نشط — لا يمكن تسجيل دفعة');
+      const account = await this.resolveOrCreateSupplierAccount(contactId, tx);
+      const balanceBefore = this.to2dp(account.currentBalance);
+      const balanceDec = new Decimal(balanceBefore);
+      if (balanceDec.lte(0)) throw new BadRequestException('لا يوجد دين مستحق لهذا المورد');
+      if (amountDec.gt(balanceDec)) throw new BadRequestException('المبلغ يتجاوز الدين المستحق');
+      const balanceAfter = this.to2dp(balanceDec.minus(amountDec));
+      await (tx as any).account.update({ where: { id: account.id }, data: { currentBalance: balanceAfter } });
+      const ledgerEntry = await (tx as any).supplierDebtLedgerEntry.create({
+        data: {
+          contactId,
+          type: 'PAYMENT',
+          amount: normalized,
+          balanceBefore,
+          balanceAfter,
+          notes: dto.notes ?? 'سداد دفعة نقدية للمورد',
+          createdById: dto.createdById ?? null,
+          createdAt: paymentDate,
+        },
+      });
+      const movement = await this.cashService.postCashMovement(tx, {
+        type: 'OUT',
+        category: 'SUPPLIER_PAYMENT',
+        amount: normalized,
+        note: dto.notes ? `Supplier payment ${contactId}: ${dto.notes}` : `Supplier payment ${contactId}`,
+      });
+      return { success: true as const, ledgerEntry, currentBalance: balanceAfter, cashMovementId: movement.id };
+    };
+    if (outerTx) return run(outerTx);
+    return this.prisma.$transaction((tx: PrismaTx) => run(tx));
+  }
 }

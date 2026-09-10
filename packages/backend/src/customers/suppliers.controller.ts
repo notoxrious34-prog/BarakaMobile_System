@@ -3,6 +3,7 @@ import { SupplierDebtService } from './supplier-debt.service';
 import { DebtSettlementDto } from './dto/debt-settlement.dto';
 import { CreateSupplierDto } from './dto/create-supplier.dto';
 import { OpeningBalanceDto } from './dto/opening-balance.dto';
+import { SettlementPaymentDto } from './dto/settlement-payment.dto';
 
 /** AD-76 supplier counterparty endpoints (TB-141). Colocated with the
  * customer ledger domain per the established TB-114 layout. */
@@ -18,6 +19,11 @@ export class SuppliersController {
   @Post(':id/opening-balance')
   setOpeningBalance(@Param('id') id: string, @Body() dto: OpeningBalanceDto) {
     return this.supplierDebtService.recordOpeningBalance(id, dto);
+  }
+
+  @Post(':id/payments')
+  paySupplier(@Param('id') id: string, @Body() dto: SettlementPaymentDto) {
+    return this.supplierDebtService.settleWithVoucher(id, dto);
   }
 
   @Get(':id/payable')

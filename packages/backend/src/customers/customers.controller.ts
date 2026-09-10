@@ -4,6 +4,7 @@ import { SupplierDebtService } from './supplier-debt.service';
 import { DebtSettlementDto } from './dto/debt-settlement.dto';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { OpeningBalanceDto } from './dto/opening-balance.dto';
+import { SettlementPaymentDto } from './dto/settlement-payment.dto';
 
 @Controller('customers')
 export class CustomersController {
@@ -20,6 +21,11 @@ export class CustomersController {
   @Post(':id/opening-balance')
   setOpeningBalance(@Param('id') id: string, @Body() dto: OpeningBalanceDto) {
     return this.debtService.recordOpeningBalance(id, dto);
+  }
+
+  @Post(':id/payments')
+  payCustomer(@Param('id') id: string, @Body() dto: SettlementPaymentDto) {
+    return this.debtService.settleWithVoucher(id, dto);
   }
 
   @Get(':id/debt')
