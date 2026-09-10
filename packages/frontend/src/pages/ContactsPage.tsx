@@ -14,6 +14,7 @@ import { ContactsTable } from '@/features/contacts/components/ContactsTable';
 import { ContactFormModal } from '@/features/contacts/components/ContactFormModal';
 import { PaymentForm } from '@/features/transactions/components/PaymentForm';
 import { ContactLedgerModal } from '@/features/reports/components/ContactLedgerModal';
+import { DebtStatementModal } from '@/features/contacts/components/DebtStatementModal';
 import { CustomerDebtSettlementModal } from '@/features/contacts/components/CustomerDebtSettlementModal';
 import { SupplierDebtSettlementModal } from '@/features/contacts/components/SupplierDebtSettlementModal';
 import { getQuickPayPreset } from '@/features/contacts/utils/getQuickPayPreset';
@@ -49,6 +50,7 @@ export function ContactsPage() {
   const [filter, setFilter] = useState<DebtFilter>('ALL');
   const [search, setSearch] = useState('');
   const [ledger, setLedger] = useState<{ accountId: string; contactName: string; role: string } | null>(null);
+  const [debtStmt, setDebtStmt] = useState<{ id: string; name: string; kind: 'customer' | 'supplier' } | null>(null);
   const [debtSettle, setDebtSettle] = useState<{ id: string; name: string; balance: string } | null>(null);
   const [supplierSettle, setSupplierSettle] = useState<{ id: string; name: string; balance: string } | null>(null);
 
@@ -272,6 +274,7 @@ export function ContactsPage() {
             onViewStatement={(accountId, contactName, role) =>
               setLedger({ accountId, contactName, role })
             }
+            onDebtStatement={(c, kind) => setDebtStmt({ id: c.id, name: c.name, kind })}
           />
         )}
       </div>
@@ -291,6 +294,15 @@ export function ContactsPage() {
         contactName={ledger?.contactName ?? null}
         role={ledger?.role ?? null}
       />
+      {debtStmt && (
+        <DebtStatementModal
+          open={!!debtStmt}
+          onClose={() => setDebtStmt(null)}
+          contactId={debtStmt.id}
+          contactName={debtStmt.name}
+          kind={debtStmt.kind}
+        />
+      )}
       {debtSettle && (
         <CustomerDebtSettlementModal
           open={!!debtSettle}

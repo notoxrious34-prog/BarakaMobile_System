@@ -8,6 +8,14 @@ import {
   type ContactRole,
 } from '../hooks/useContacts';
 import { roleLabel } from '../utils/contactLabels';
+import { OpeningBalanceSection, EMPTY_OPENING, type OpeningFormState } from './OpeningBalanceSection';
+import {
+  createCustomer,
+  createSupplier,
+  postCustomerOpeningBalance,
+  postSupplierOpeningBalance,
+} from '../api/counterpartyApi';
+import { fetchDebtLedger, fetchSupplierLedger } from '../api/debtApi';
 
 type Props = {
   open: boolean;
@@ -21,9 +29,21 @@ const ROLE_OPTIONS: { value: ContactRole; label: string }[] = [
   { value: 'BOTH', label: 'مورد وعميل' },
 ];
 
+const AMOUNT_RE = /^\d+(\.\d{1,2})?$/;
+
+function toPayload(s: OpeningFormState) {
+  return {
+    amount: s.amount.trim(),
+    direction: s.direction,
+    ...(s.date ? { date: new Date(`${s.date}T00:00:00`).toISOString() } : {}),
+    ...(s.note.trim() ? { notes: s.note.trim() } : {}),
+  };
+}
+
 /**
- * TB-074 — Deep Navy refactor (behavior unchanged): create/edit contact,
- * name+phone required, role locked on edit.
+ * TB-074 base + TB-142 AD-76 opening balance (behavior: create/edit contact,
+ * name+phone required, role locked on edit; opening card on create, lock
+ * callout on edit once ledger movements exist).
  */
 export function ContactFormModal({ open, onClose, contact }: Props) {
   const isEdit = !!contact;
@@ -33,33 +53,72 @@ export function ContactFormModal({ open, onClose, contact }: Props) {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [role, setRole] = useState<ContactRole>('CUSTOMER');
-  const [fieldErrors, setFieldErrors] = useState<{ name?: string; phone?: string }>({});
+  const [customerOpening, setCustomerOpening] = useState<OpeningFormState>(EMPTY_OPENING);
+  const [supplierOpening, setSupplierOpening] = useState<OpeningFormState>(EMPTY_OPENING);
+  const [customerLocked, setCustomerLocked] = useState(true);
+  const [supplierLocked, setSupplierLocked] = useState(true);
+  const [fieldErrors, setFieldErrors] = useState<{ name?: string; phone?: string; opening?: string }>({});
   const [apiError, setApiError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (open) {
-      if (contact) {
-        setName(contact.name);
-        setPhone(contact.phone ?? '');
-        setRole(contact.role);
+    if (!open) return;
+    if (contact) {
+      setName(contact.name);
+      setPhone(contact.phone ?? '');
+      setRole(contact.role);
+      setCustomerOpening(EMPTY_OPENING);
+      setSupplierOpening(EMPTY_OPENING);
+      setCustomerLocked(true);
+      setSupplierLocked(true);
+      const id = contact.id;
+      const needsCustomer = contact.role === 'CUSTOMER' || contact.role === 'BOTH';
+      const needsSupplier = contact.role === 'SUPPLIER' || contact.role === 'BOTH';
+      if (needsCustomer) {
+        fetchDebtLedger(id).then(
+          (r) => setCustomerLocked(r.entries.length > 0),
+          () => setCustomerLocked(true),
+        );
       } else {
-        setName('');
-        setPhone('');
-        setRole('CUSTOMER');
+        setCustomerLocked(true);
       }
-      setFieldErrors({});
-      setApiError(null);
+      if (needsSupplier) {
+        fetchSupplierLedger(id).then(
+          (r) => setSupplierLocked(r.entries.length > 0),
+          () => setSupplierLocked(true),
+        );
+      } else {
+        setSupplierLocked(true);
+      }
+    } else {
+      setName('');
+      setPhone('');
+      setRole('CUSTOMER');
+      setCustomerOpening(EMPTY_OPENING);
+      setSupplierOpening(EMPTY_OPENING);
+      setCustomerLocked(false);
+      setSupplierLocked(false);
     }
+    setFieldErrors({});
+    setApiError(null);
   }, [open, contact]);
 
   if (!open) return null;
 
   const isSubmitting = createMut.isPending || updateMut.isPending;
+  const showCustomer = role === 'CUSTOMER' || role === 'BOTH';
+  const showSupplier = role === 'SUPPLIER' || role === 'BOTH';
+
+  function validateOpening(s: OpeningFormState): boolean {
+    if (!s.amount.trim()) return true;
+    return AMOUNT_RE.test(s.amount.trim());
+  }
 
   function validate(): boolean {
     const errs: typeof fieldErrors = {};
     if (!name.trim()) errs.name = 'الاسم مطلوب';
     if (!phone.trim()) errs.phone = 'الهاتف مطلوب';
+    if (showCustomer && !validateOpening(customerOpening)) errs.opening = 'مبلغ الرصيد الافتتاحي (عميل) غير صالح';
+    else if (showSupplier && !validateOpening(supplierOpening)) errs.opening = 'مبلغ الرصيد الافتتاحي (مورد) غير صالح';
     setFieldErrors(errs);
     return Object.keys(errs).length === 0;
   }
@@ -74,12 +133,34 @@ export function ContactFormModal({ open, onClose, contact }: Props) {
           id: contact.id,
           payload: { name: name.trim(), phone: phone.trim() },
         });
+      } else if (role === 'CUSTOMER') {
+        await createCustomer({
+          name: name.trim(),
+          phone: phone.trim(),
+          ...(customerOpening.amount.trim()
+            ? { openingBalance: toPayload(customerOpening) }
+            : {}),
+        });
+      } else if (role === 'SUPPLIER') {
+        await createSupplier({
+          name: name.trim(),
+          phone: phone.trim(),
+          ...(supplierOpening.amount.trim()
+            ? { openingBalance: toPayload(supplierOpening) }
+            : {}),
+        });
       } else {
-        await createMut.mutateAsync({
+        const created = await createMut.mutateAsync({
           name: name.trim(),
           phone: phone.trim(),
           role,
         });
+        if (customerOpening.amount.trim()) {
+          await postCustomerOpeningBalance(created.id, toPayload(customerOpening));
+        }
+        if (supplierOpening.amount.trim()) {
+          await postSupplierOpeningBalance(created.id, toPayload(supplierOpening));
+        }
       }
       onClose();
     } catch (err) {
@@ -100,7 +181,7 @@ export function ContactFormModal({ open, onClose, contact }: Props) {
         role="dialog"
         aria-modal="true"
         aria-label={isEdit ? 'تعديل جهة الاتصال' : 'إضافة جهة اتصال'}
-        className="relative z-10 w-full max-w-md rounded-2xl border border-navy-border/40 bg-navy-900 p-6 text-slate-100 shadow-xl"
+        className="scrollbar-premium relative z-10 max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-navy-border/40 bg-navy-900 p-6 text-slate-100 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
@@ -186,6 +267,30 @@ export function ContactFormModal({ open, onClose, contact }: Props) {
               </select>
             )}
           </div>
+
+          {showCustomer && (
+            <OpeningBalanceSection
+              kind="customer"
+              value={customerOpening}
+              onChange={setCustomerOpening}
+              locked={isEdit && customerLocked}
+              disabled={isSubmitting}
+            />
+          )}
+          {showSupplier && (
+            <OpeningBalanceSection
+              kind="supplier"
+              value={supplierOpening}
+              onChange={setSupplierOpening}
+              locked={isEdit && supplierLocked}
+              disabled={isSubmitting}
+            />
+          )}
+          {fieldErrors.opening && (
+            <p className="text-xs text-rose-400" role="alert">
+              {fieldErrors.opening}
+            </p>
+          )}
 
           <div className="flex justify-end gap-2 pt-2">
             <button
