@@ -362,7 +362,7 @@ function UpdateSystemSection() {
       <section className={CARD_CLS} aria-label="إصدار وتحديثات النظام">
         <h2 className="mb-1 text-sm font-bold text-slate-100">إصدار وتحديثات النظام</h2>
         <p className="text-xs text-slate-400">
-          الإصدار الحالي: <span dir="ltr" className="font-mono tabular-nums">v2.7.0</span>
+          الإصدار الحالي: <span dir="ltr" className="font-mono tabular-nums">v2.8.1</span>
         </p>
         <p className="mt-2 text-xs text-slate-500">التحديث التلقائي متاح في نسخة سطح المكتب فقط.</p>
       </section>
@@ -389,7 +389,7 @@ function UpdateSystemSection() {
     <section className={CARD_CLS} aria-label="إصدار وتحديثات النظام">
       <h2 className="mb-1 text-sm font-bold text-slate-100">إصدار وتحديثات النظام</h2>
       <p className="mb-3 text-xs text-slate-400">
-        الإصدار الحالي: <span dir="ltr" className="font-mono tabular-nums">v{current ?? '2.7.0'}</span>
+        الإصدار الحالي: <span dir="ltr" className="font-mono tabular-nums">v{current ?? '2.8.1'}</span>
       </p>
       <div className="flex flex-wrap items-center gap-2">
         <button
