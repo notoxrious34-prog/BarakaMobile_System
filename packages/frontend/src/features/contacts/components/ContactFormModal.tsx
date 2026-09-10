@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '@/lib/api';
 import {
   useCreateContactMutation,
@@ -47,6 +48,7 @@ function toPayload(s: OpeningFormState) {
  */
 export function ContactFormModal({ open, onClose, contact }: Props) {
   const isEdit = !!contact;
+  const qc = useQueryClient();
   const createMut = useCreateContactMutation();
   const updateMut = useUpdateContactMutation();
 
@@ -123,16 +125,51 @@ export function ContactFormModal({ open, onClose, contact }: Props) {
     return Object.keys(errs).length === 0;
   }
 
+  async function refreshLedgerCaches() {
+    await qc.invalidateQueries({ queryKey: ['contacts'] });
+    await qc.invalidateQueries({ queryKey: ['debt-ledger'] });
+    await qc.invalidateQueries({ queryKey: ['supplier-ledger'] });
+    await qc.invalidateQueries({ queryKey: ['cash-balance'] });
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setApiError(null);
     if (!validate()) return;
     try {
       if (isEdit && contact) {
+        // 1) Contact details first.
         await updateMut.mutateAsync({
           id: contact.id,
           payload: { name: name.trim(), phone: phone.trim() },
         });
+        // 2) Sequentially persist opening balances on unlocked sides.
+        // A failure here keeps the modal open with an explicit error —
+        // details are saved, the opening is not, nothing is corrupted.
+        const sides: { kind: 'customer' | 'supplier'; state: OpeningFormState; locked: boolean }[] = [
+          { kind: 'customer', state: customerOpening, locked: customerLocked },
+          { kind: 'supplier', state: supplierOpening, locked: supplierLocked },
+        ];
+        for (const side of sides) {
+          const visible = side.kind === 'customer' ? showCustomer : showSupplier;
+          if (!visible || side.locked || !side.state.amount.trim()) continue;
+          try {
+            if (side.kind === 'customer') {
+              await postCustomerOpeningBalance(contact.id, toPayload(side.state));
+            } else {
+              await postSupplierOpeningBalance(contact.id, toPayload(side.state));
+            }
+          } catch (err) {
+            const msg =
+              err instanceof ApiError
+                ? `تم حفظ بيانات الجهة، لكن فشل حفظ الرصيد الافتتاحي: ${err.message}`
+                : 'تم حفظ بيانات الجهة، لكن فشل حفظ الرصيد الافتتاحي';
+            setApiError(msg);
+            await refreshLedgerCaches();
+            return;
+          }
+        }
+        await refreshLedgerCaches();
       } else if (role === 'CUSTOMER') {
         await createCustomer({
           name: name.trim(),
@@ -141,6 +178,7 @@ export function ContactFormModal({ open, onClose, contact }: Props) {
             ? { openingBalance: toPayload(customerOpening) }
             : {}),
         });
+        await refreshLedgerCaches();
       } else if (role === 'SUPPLIER') {
         await createSupplier({
           name: name.trim(),
@@ -149,6 +187,7 @@ export function ContactFormModal({ open, onClose, contact }: Props) {
             ? { openingBalance: toPayload(supplierOpening) }
             : {}),
         });
+        await refreshLedgerCaches();
       } else {
         const created = await createMut.mutateAsync({
           name: name.trim(),
@@ -161,6 +200,7 @@ export function ContactFormModal({ open, onClose, contact }: Props) {
         if (supplierOpening.amount.trim()) {
           await postSupplierOpeningBalance(created.id, toPayload(supplierOpening));
         }
+        await refreshLedgerCaches();
       }
       onClose();
     } catch (err) {
