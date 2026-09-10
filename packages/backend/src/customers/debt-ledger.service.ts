@@ -172,4 +172,98 @@ export class DebtLedgerService {
       return entry;
     });
   }
+
+  /**
+   * AD-76 opening balance (TB-141). Records a historical pre-system balance
+   * as the FIRST ledger entry and folds it into Account.currentBalance.
+   * DEBIT = customer owes shop (positive), CREDIT = shop owes customer
+   * (negative). Reuses the caller's tx when provided (Rule ⑬); otherwise
+   * opens its own $transaction. Locked once any ledger entry exists.
+   * ZERO cash impact by construction — cashService is never called.
+   */
+  async recordOpeningBalance(
+    contactId: string,
+    dto: { amount: string; direction: 'DEBIT' | 'CREDIT'; date?: string; notes?: string; createdById?: string },
+    outerTx?: PrismaTx,
+  ) {
+    const run = async (tx: PrismaTx) => {
+      const normalized = this.normalizeAmount(dto.amount);
+      const amountDec = this.assertDecimalPositive(normalized);
+      if (dto.direction !== 'DEBIT' && dto.direction !== 'CREDIT') {
+        throw new BadRequestException('direction يجب أن يكون DEBIT أو CREDIT');
+      }
+      let createdAt: Date | undefined;
+      if (dto.date !== undefined) {
+        const t = new Date(dto.date);
+        if (Number.isNaN(t.getTime())) throw new BadRequestException('تاريخ الرصيد الافتتاحي غير صالح');
+        createdAt = t;
+      }
+      const account = await this.resolveOrCreateCustomerAccount(contactId, tx);
+      const existing = await (tx as any).customerDebtLedgerEntry.count({ where: { customerId: contactId } });
+      if (existing > 0) throw new BadRequestException('لا يمكن تسجيل رصيد افتتاحي بعد وجود حركات على الحساب');
+      const signed = dto.direction === 'DEBIT' ? amountDec : amountDec.neg();
+      const balanceBefore = this.to2dp(account.currentBalance);
+      const balanceAfter = this.to2dp(new Decimal(balanceBefore).plus(signed));
+      const openingBalance = this.to2dp(signed);
+      await (tx as any).account.update({
+        where: { id: account.id },
+        data: { currentBalance: balanceAfter, openingBalance },
+      });
+      const entry = await (tx as any).customerDebtLedgerEntry.create({
+        data: {
+          customerId: contactId,
+          type: 'OPENING_BALANCE',
+          amount: normalized,
+          balanceBefore,
+          balanceAfter,
+          notes: dto.notes ?? 'رصيد افتتاحي مرحل',
+          createdById: dto.createdById ?? null,
+          ...(createdAt ? { createdAt } : {}),
+        },
+      });
+      return entry;
+    };
+    if (outerTx) return run(outerTx);
+    return this.prisma.$transaction((tx: PrismaTx) => run(tx));
+  }
+
+  /**
+   * AD-76 customer creation (TB-141). Atomically creates Contact (CUSTOMER)
+   * + Account + optional OPENING_BALANCE entry in ONE $transaction.
+   */
+  async createCustomer(dto: {
+    name: string;
+    phone?: string;
+    address?: string;
+    notes?: string;
+    creditLimit?: string;
+    openingBalance?: { amount: string; direction: 'DEBIT' | 'CREDIT'; date?: string; notes?: string; createdById?: string };
+  }) {
+    if (!dto.name || dto.name.trim().length < 2) throw new BadRequestException('اسم العميل مطلوب');
+    return this.prisma.$transaction(async (tx: PrismaTx) => {
+      const creditLimit = this.normalizeAmount(dto.creditLimit ?? '0.00');
+      const contact = await (tx as any).contact.create({
+        data: {
+          name: dto.name.trim(),
+          phone: dto.phone ?? null,
+          address: dto.address ?? null,
+          role: 'CUSTOMER',
+          notes: dto.notes ?? null,
+          creditLimit,
+        },
+      });
+      await (tx as any).account.create({
+        data: { contactId: contact.id, role: 'CUSTOMER', openingBalance: '0.00', currentBalance: '0.00' },
+      });
+      let opening: unknown = null;
+      if (dto.openingBalance) {
+        opening = await this.recordOpeningBalance(contact.id, dto.openingBalance, tx);
+      }
+      const created = await (tx as any).contact.findUnique({
+        where: { id: contact.id },
+        include: { accounts: true },
+      });
+      return { ...created, opening };
+    });
+  }
 }

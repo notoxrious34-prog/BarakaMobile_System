@@ -2,6 +2,8 @@ import { Controller, Get, Post, Param, Body, Query } from '@nestjs/common';
 import { DebtLedgerService } from './debt-ledger.service';
 import { SupplierDebtService } from './supplier-debt.service';
 import { DebtSettlementDto } from './dto/debt-settlement.dto';
+import { CreateCustomerDto } from './dto/create-customer.dto';
+import { OpeningBalanceDto } from './dto/opening-balance.dto';
 
 @Controller('customers')
 export class CustomersController {
@@ -9,6 +11,16 @@ export class CustomersController {
     private readonly debtService: DebtLedgerService,
     private readonly supplierDebtService: SupplierDebtService,
   ) {}
+
+  @Post()
+  createCustomer(@Body() dto: CreateCustomerDto) {
+    return this.debtService.createCustomer(dto);
+  }
+
+  @Post(':id/opening-balance')
+  setOpeningBalance(@Param('id') id: string, @Body() dto: OpeningBalanceDto) {
+    return this.debtService.recordOpeningBalance(id, dto);
+  }
 
   @Get(':id/debt')
   getDebt(@Param('id') id: string) {

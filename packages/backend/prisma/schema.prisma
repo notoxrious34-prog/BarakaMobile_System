@@ -542,6 +542,7 @@ model WalletLedgerEntry {
 }
 
 enum CustomerDebtEntryType {
+  OPENING_BALANCE
   CREDIT_SALE
   CREDIT_REPAIR
   PAYMENT
@@ -572,6 +573,7 @@ model CustomerDebtLedgerEntry {
 }
 
 enum SupplierDebtEntryType {
+  OPENING_BALANCE
   CREDIT_PURCHASE
   PAYMENT
   DEBT_ADJUSTMENT_ADD
