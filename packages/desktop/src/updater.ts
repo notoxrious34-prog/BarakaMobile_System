@@ -89,7 +89,7 @@ export function getAppVersion(): string {
   try {
     return app.getVersion();
   } catch {
-    return '2.9.0';
+    return '2.9.1';
   }
 }
 

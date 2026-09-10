@@ -1,6 +1,6 @@
 {
   "name": "barakamobile",
-  "version": "2.9.0",
+  "version": "2.9.1",
   "private": true,
   "scripts": {
     "dev:backend": "pnpm --filter backend run start:dev",
