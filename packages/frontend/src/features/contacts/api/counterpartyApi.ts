@@ -57,3 +57,37 @@ export async function postSupplierOpeningBalance(
 ): Promise<unknown> {
   return api.post(`/suppliers/${contactId}/opening-balance`, payload);
 }
+
+export type SettlementPaymentPayload = {
+  amount: string;
+  paymentDate?: string;
+  notes?: string;
+};
+
+export type SettlementVoucherResult = {
+  success: boolean;
+  ledgerEntry: {
+    id: string;
+    type: string;
+    amount: string;
+    balanceBefore: string;
+    balanceAfter: string;
+    createdAt: string;
+  };
+  currentBalance: string;
+  cashMovementId: string;
+};
+
+export async function recordCustomerPayment(
+  customerId: string,
+  payload: SettlementPaymentPayload,
+): Promise<SettlementVoucherResult> {
+  return api.post<SettlementVoucherResult>(`/customers/${customerId}/payments`, payload);
+}
+
+export async function recordSupplierPayment(
+  supplierId: string,
+  payload: SettlementPaymentPayload,
+): Promise<SettlementVoucherResult> {
+  return api.post<SettlementVoucherResult>(`/suppliers/${supplierId}/payments`, payload);
+}

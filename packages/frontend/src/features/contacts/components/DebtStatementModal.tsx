@@ -11,6 +11,7 @@ type Props = {
   contactId: string | null;
   contactName: string | null;
   kind: 'customer' | 'supplier';
+  onPay?: () => void;
 };
 
 const TYPE_META: Record<string, { label: string; className: string }> = {
@@ -53,7 +54,7 @@ function formatArabicDate(iso: string): string {
  * chronologically (opening balance first as genesis row). Running
  * balances come from the server — no client-side money math.
  */
-export function DebtStatementModal({ open, onClose, contactId, contactName, kind }: Props) {
+export function DebtStatementModal({ open, onClose, contactId, contactName, kind, onPay }: Props) {
   const query = useQuery<DebtLedgerResponse | SupplierLedgerResponse>({
     queryKey: kind === 'customer' ? ['debt-ledger', contactId] : ['supplier-ledger', contactId],
     queryFn: () =>
@@ -101,6 +102,19 @@ export function DebtStatementModal({ open, onClose, contactId, contactName, kind
             <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
+        {onPay && (
+          <button
+            type="button"
+            onClick={onPay}
+            className={`mb-3 inline-flex items-center gap-1 rounded-xl px-4 py-2 text-xs font-extrabold text-white ${
+              kind === 'customer'
+                ? 'bg-emerald-600 hover:bg-emerald-500'
+                : 'bg-amber-600 hover:bg-amber-500'
+            }`}
+          >
+            {kind === 'customer' ? 'قبض دفعة' : 'سداد دفعة'}
+          </button>
+        )}
 
         {query.isLoading ? (
           <Loading text="جاري تحميل الكشف..." />
@@ -131,6 +145,12 @@ export function DebtStatementModal({ open, onClose, contactId, contactName, kind
                       label: e.type,
                       className: 'border-navy-700/60 bg-navy-950/60 text-slate-300',
                     };
+                    const voucherCfg =
+                      e.type === 'PAYMENT'
+                        ? kind === 'customer'
+                          ? { label: 'سند قبض', className: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' }
+                          : { label: 'سند صرف', className: 'border-amber-500/30 bg-amber-500/10 text-amber-300' }
+                        : null;
                     return (
                       <tr key={e.id} className="border-t border-navy-800/60 bg-navy-950/40 hover:bg-navy-800/40">
                         <td className="px-3 py-2 font-mono text-slate-300" dir="ltr">
@@ -140,6 +160,11 @@ export function DebtStatementModal({ open, onClose, contactId, contactName, kind
                           <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${cfg.className}`}>
                             {cfg.label}
                           </span>
+                          {voucherCfg && (
+                            <span className={`ms-1 inline-flex rounded-full border px-2 py-0.5 text-xs font-bold ${voucherCfg.className}`}>
+                              {voucherCfg.label}
+                            </span>
+                          )}
                           {e.notes && <p className="mt-1 max-w-56 text-[11px] leading-4 text-slate-500">{e.notes}</p>}
                         </td>
                         <td className="px-3 py-2 text-slate-200">

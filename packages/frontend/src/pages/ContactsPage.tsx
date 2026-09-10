@@ -15,8 +15,7 @@ import { ContactFormModal } from '@/features/contacts/components/ContactFormModa
 import { PaymentForm } from '@/features/transactions/components/PaymentForm';
 import { ContactLedgerModal } from '@/features/reports/components/ContactLedgerModal';
 import { DebtStatementModal } from '@/features/contacts/components/DebtStatementModal';
-import { CustomerDebtSettlementModal } from '@/features/contacts/components/CustomerDebtSettlementModal';
-import { SupplierDebtSettlementModal } from '@/features/contacts/components/SupplierDebtSettlementModal';
+import { SettlementVoucherModal } from '@/features/contacts/components/SettlementVoucherModal';
 import { getQuickPayPreset } from '@/features/contacts/utils/getQuickPayPreset';
 import {
   isPositiveBalance,
@@ -51,8 +50,7 @@ export function ContactsPage() {
   const [search, setSearch] = useState('');
   const [ledger, setLedger] = useState<{ accountId: string; contactName: string; role: string } | null>(null);
   const [debtStmt, setDebtStmt] = useState<{ id: string; name: string; kind: 'customer' | 'supplier' } | null>(null);
-  const [debtSettle, setDebtSettle] = useState<{ id: string; name: string; balance: string } | null>(null);
-  const [supplierSettle, setSupplierSettle] = useState<{ id: string; name: string; balance: string } | null>(null);
+  const [voucher, setVoucher] = useState<{ id: string; name: string; balance: string; kind: 'customer' | 'supplier' } | null>(null);
 
   const metrics = useMemo(() => {
     const list = contacts ?? [];
@@ -264,12 +262,12 @@ export function ContactsPage() {
             onSettleDebt={(c) => {
               const acc = c.accounts.find((a) => a.role === 'CUSTOMER');
               if (!acc) return;
-              setDebtSettle({ id: c.id, name: c.name, balance: acc.currentBalance });
+              setVoucher({ id: c.id, name: c.name, balance: acc.currentBalance, kind: 'customer' });
             }}
             onSettleSupplier={(c) => {
               const acc = c.accounts.find((a) => a.role === 'SUPPLIER');
               if (!acc) return;
-              setSupplierSettle({ id: c.id, name: c.name, balance: acc.currentBalance });
+              setVoucher({ id: c.id, name: c.name, balance: acc.currentBalance, kind: 'supplier' });
             }}
             onViewStatement={(accountId, contactName, role) =>
               setLedger({ accountId, contactName, role })
@@ -301,25 +299,23 @@ export function ContactsPage() {
           contactId={debtStmt.id}
           contactName={debtStmt.name}
           kind={debtStmt.kind}
+          onPay={() => {
+            const c = contacts?.find((x) => x.id === debtStmt.id);
+            const acc = c?.accounts.find((a) =>
+              debtStmt.kind === 'customer' ? a.role === 'CUSTOMER' : a.role === 'SUPPLIER',
+            );
+            setVoucher({ id: debtStmt.id, name: debtStmt.name, balance: acc?.currentBalance ?? '0.00', kind: debtStmt.kind });
+          }}
         />
       )}
-      {debtSettle && (
-        <CustomerDebtSettlementModal
-          open={!!debtSettle}
-          onClose={() => setDebtSettle(null)}
-          contactId={debtSettle.id}
-          contactName={debtSettle.name}
-          currentDebt={debtSettle.balance}
-          onSettled={() => qc.invalidateQueries({ queryKey: ['contacts'] })}
-        />
-      )}
-      {supplierSettle && (
-        <SupplierDebtSettlementModal
-          open={!!supplierSettle}
-          onClose={() => setSupplierSettle(null)}
-          contactId={supplierSettle.id}
-          contactName={supplierSettle.name}
-          currentPayable={supplierSettle.balance}
+      {voucher && (
+        <SettlementVoucherModal
+          open={!!voucher}
+          onClose={() => setVoucher(null)}
+          contactId={voucher.id}
+          contactName={voucher.name}
+          currentBalance={voucher.balance}
+          kind={voucher.kind}
           onSettled={() => qc.invalidateQueries({ queryKey: ['contacts'] })}
         />
       )}
