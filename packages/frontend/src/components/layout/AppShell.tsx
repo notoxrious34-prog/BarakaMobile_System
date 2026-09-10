@@ -7,6 +7,9 @@ import { Sidebar } from './Sidebar';
 import { BrandMark } from './BrandMark';
 import { AdminSubNav } from './AdminSubNav';
 import { NotificationBell } from './NotificationBell';
+import { UpdateCapsule } from '@/components/updater/UpdateCapsule';
+import { UpdateModal } from '@/components/updater/UpdateModal';
+import { useUpdaterStore } from '@/store/updater.store';
 import { WindowControls, toggleWindowMaximize, isDesktopShell, useDesktopVersion } from './WindowControls';
 import { UserWidget } from '@/features/auth/UserWidget';
 import { GlobalSearch } from '../search/GlobalSearch';
@@ -24,6 +27,13 @@ function useCashBalance() {
     queryFn: () => api.get<CashBalance>('/cash/balance'),
     staleTime: 30_000,
   });
+}
+
+function UpdaterModalMount() {
+  const modalOpen = useUpdaterStore((s) => s.modalOpen);
+  const setModalOpen = useUpdaterStore((s) => s.setModalOpen);
+  if (!modalOpen) return null;
+  return <UpdateModal onClose={() => setModalOpen(false)} />;
 }
 
 export function AppShell() {
@@ -175,8 +185,9 @@ export function AppShell() {
             <GlobalSearch />
           </div>
 
-          {/* Zone 2 (center): CTA + status capsules (TB-135) */}
+          {/* Zone 2 (center): CTA + status capsules + updater (TB-135/138) */}
           <div className="mx-auto hidden items-center gap-2 shrink-0 xl:flex" data-nodrag>
+            <UpdateCapsule />
             {/* CTA — cyan gradient with dark glow */}
             <button
               type="button"
@@ -334,6 +345,7 @@ export function AppShell() {
         </div>
       )}
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <UpdaterModalMount />
     </div>
   );
 }

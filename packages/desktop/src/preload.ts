@@ -22,4 +22,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
       return () => ipcRenderer.removeListener('window:maximized-changed', listener as never);
     },
   },
+  // TB-137: native updater bridge (absent in browser mode).
+  updater: {
+    check: (): Promise<unknown> => ipcRenderer.invoke('updater:check'),
+    startDownload: (): Promise<unknown> => ipcRenderer.invoke('updater:start-download'),
+    installNow: (): Promise<void> => ipcRenderer.invoke('updater:install-now'),
+    getStatus: (): Promise<unknown> => ipcRenderer.invoke('updater:get-status'),
+    onStatusChange: (cb: (state: unknown) => void): (() => void) => {
+      const listener = (_event: unknown, state: unknown) => cb(state);
+      ipcRenderer.on('updater:status-changed', listener as never);
+      return () => ipcRenderer.removeListener('updater:status-changed', listener as never);
+    },
+  },
 });

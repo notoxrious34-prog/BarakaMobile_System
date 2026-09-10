@@ -2,6 +2,7 @@ import { app, BrowserWindow, shell, dialog, ipcMain, Menu } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { spawn, ChildProcess } from 'child_process';
+import { updater, getAppVersion } from './updater';
 
 let backendProcess: ChildProcess | null = null;
 let mainWindow: BrowserWindow | null = null;
@@ -223,7 +224,29 @@ async function createWindow(): Promise<void> {
 app.whenReady().then(async () => {
   try {
     Menu.setApplicationMenu(null);
-    ipcMain.handle('get-version', () => app.getVersion());
+    ipcMain.handle('get-version', () => getAppVersion());
+    // TB-137: native GitHub Releases updater (AD-74, zero-dep).
+    const pushUpdater = () => {
+      try {
+        mainWindow?.webContents.send('updater:status-changed', updater.getStatus());
+      } catch {
+        /* renderer may be gone */
+      }
+    };
+    const offUpdater = updater.onStatusChange(pushUpdater);
+    process.on('exit', offUpdater);
+    ipcMain.handle('updater:check', async () => {
+      const s = await updater.check();
+      pushUpdater();
+      return s;
+    });
+    ipcMain.handle('updater:start-download', async () => {
+      const s = await updater.startDownload();
+      pushUpdater();
+      return s;
+    });
+    ipcMain.handle('updater:install-now', () => updater.installNow());
+    ipcMain.handle('updater:get-status', () => updater.getStatus());
     // TB-131: frameless window controls.
     ipcMain.handle('window:minimize', () => mainWindow?.minimize());
     ipcMain.handle('window:maximize', () => {
@@ -314,6 +337,14 @@ app.whenReady().then(async () => {
     }
 
     await createWindow();
+
+    // TB-137: silent update check 5s after boot (packaged only — no network
+    // noise in dev, and dev version never matches a release tag).
+    if (app.isPackaged) {
+      setTimeout(() => {
+        updater.check().then(pushUpdater).catch(() => null);
+      }, 5000);
+    }
 
     app.on('activate', async () => {
       if (BrowserWindow.getAllWindows().length === 0) {

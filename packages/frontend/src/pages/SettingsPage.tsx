@@ -8,6 +8,9 @@ import { useWalletsQuery } from '@/features/wallets/hooks/useWallets';
 import { WalletServicesPanel } from '@/features/wallets/components/WalletServicesPanel';
 import { api } from '@/lib/api';
 import { useCapability } from '@/features/auth/AuthContext';
+import { useUpdaterStore, isUpdaterAvailable } from '@/store/updater.store';
+import { useDesktopVersion } from '@/components/layout/WindowControls';
+import { UpdateModal } from '@/components/updater/UpdateModal';
 
 type FormState = {
   business_name: string;
@@ -363,6 +366,83 @@ function BackupRecoverySection() {
           <span className="text-[11px] text-slate-500">سيُطلب إعادة تشغيل التطبيق بعد الاستعادة</span>
         </div>
       </div>
+    </section>
+  );
+}
+
+function UpdateSystemSection() {
+  const status = useUpdaterStore((s) => s.status);
+  const version = useUpdaterStore((s) => s.version);
+  const error = useUpdaterStore((s) => s.error);
+  const modalOpen = useUpdaterStore((s) => s.modalOpen);
+  const setModalOpen = useUpdaterStore((s) => s.setModalOpen);
+  const check = useUpdaterStore((s) => s.check);
+  const subscribe = useUpdaterStore((s) => s.subscribe);
+  const current = useDesktopVersion();
+  const [checking, setChecking] = useState(false);
+
+  useEffect(() => {
+    subscribe();
+  }, [subscribe]);
+
+  if (!isUpdaterAvailable()) {
+    return (
+      <section className={CARD_CLS} aria-label="إصدار وتحديثات النظام">
+        <h2 className="mb-1 text-sm font-bold text-slate-100">إصدار وتحديثات النظام</h2>
+        <p className="text-xs text-slate-400">
+          الإصدار الحالي: <span dir="ltr" className="font-mono tabular-nums">v2.7.0</span>
+        </p>
+        <p className="mt-2 text-xs text-slate-500">التحديث التلقائي متاح في نسخة سطح المكتب فقط.</p>
+      </section>
+    );
+  }
+
+  const statusLine =
+    status === 'checking' ? 'جارٍ التحقق…'
+    : status === 'available' || status === 'downloaded' || status === 'downloading' ? 'يوجد تحديث متوفر'
+    : status === 'error' ? 'فشل الاتصال بالخادم'
+    : status === 'not-available' ? 'أنت تستخدم أحدث إصدار'
+    : 'لم يتم التحقق بعد';
+
+  async function onCheck() {
+    setChecking(true);
+    try {
+      await check();
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  return (
+    <section className={CARD_CLS} aria-label="إصدار وتحديثات النظام">
+      <h2 className="mb-1 text-sm font-bold text-slate-100">إصدار وتحديثات النظام</h2>
+      <p className="mb-3 text-xs text-slate-400">
+        الإصدار الحالي: <span dir="ltr" className="font-mono tabular-nums">v{current ?? '2.7.0'}</span>
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => void onCheck()}
+          disabled={checking || status === 'checking'}
+          className="rounded-xl bg-cyan-600 px-4 py-2 text-sm font-extrabold text-navy-950 hover:bg-cyan-500 disabled:opacity-50"
+        >
+          {checking || status === 'checking' ? 'جارٍ التحقق…' : 'التحقق من وجود تحديثات الآن'}
+        </button>
+        {(status === 'available' || status === 'downloaded' || status === 'downloading') && (
+          <button
+            type="button"
+            onClick={() => setModalOpen(true)}
+            className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-2 text-sm font-bold text-emerald-300 hover:bg-emerald-500/20"
+          >
+            عرض التحديث {version ? <span dir="ltr" className="font-mono tabular-nums">v{version}</span> : ''}
+          </button>
+        )}
+      </div>
+      <p className="mt-2 text-xs font-bold text-slate-300" aria-live="polite">{statusLine}</p>
+      {error && (
+        <p role="alert" className="mt-1 text-xs font-bold text-rose-400">{error}</p>
+      )}
+      {modalOpen && <UpdateModal onClose={() => setModalOpen(false)} />}
     </section>
   );
 }
@@ -727,6 +807,7 @@ export function SettingsPage() {
             </section>
 
             <WalletSettingsSection />
+            <UpdateSystemSection />
             {canAccessBackups ? (
               <BackupRecoverySection />
             ) : (
