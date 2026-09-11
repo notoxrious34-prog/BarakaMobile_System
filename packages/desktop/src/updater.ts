@@ -2,6 +2,7 @@ import { app } from 'electron';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
+import * as crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
 
 /**
@@ -64,6 +65,8 @@ export type UpdaterState = {
   targetVersion: string | null;
   releaseNotes: string | null;
   installerPath: string | null;
+  /** SHA-256 of the downloaded installer (computed post-download, Rule ⑨ native crypto). */
+  installerSha256: string | null;
   totalBytes: number;
   transferredBytes: number;
   percent: number;
@@ -111,12 +114,114 @@ export function isRemoteNewer(local: string, remoteTag: string): boolean {
   return false;
 }
 
+/**
+ * DIRECTIVE-004 / DEF-DS-004: verify a staged installer file. Enforces
+ * expected size (when the release asset advertised one) and an expected
+ * SHA-256 digest (when release notes pin one via `SHA256: <hex>`). Any
+ * mismatch purges the file and throws — callers must refuse installation.
+ * Pure node:crypto/node:fs — unit-verifiable without Electron.
+ */
+export function verifyInstallerFile(
+  filePath: string,
+  opts: { expectedBytes?: number; expectedSha256?: string | null } = {},
+): { bytes: number; sha256: string } {
+  const fail = (reason: string): never => {
+    try {
+      fs.rmSync(filePath, { force: true });
+    } catch {
+      /* purge is best-effort */
+    }
+    throw new Error(reason);
+  };
+  let st: fs.Stats;
+  try {
+    st = fs.statSync(filePath);
+  } catch {
+    throw new Error(`Installer missing at ${filePath}`);
+  }
+  if (!st.isFile() || st.size === 0) fail(`Installer empty or not a file: ${filePath}`);
+  if (opts.expectedBytes && opts.expectedBytes > 0 && st.size !== opts.expectedBytes) {
+    fail(`Installer size mismatch — expected ${opts.expectedBytes} bytes, got ${st.size}`);
+  }
+  const sha256 = crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
+  const want = (opts.expectedSha256 ?? '').trim().toLowerCase();
+  if (want && want !== sha256) {
+    fail('Installer SHA-256 mismatch — file purged, refusing installation');
+  }
+  return { bytes: st.size, sha256 };
+}
+
+/** Extract a pinned `SHA256: <64 hex>` digest from release notes, if present. */
+export function parsePinnedDigest(releaseNotes: string | null | undefined): string | null {
+  if (!releaseNotes) return null;
+  const m = releaseNotes.match(/sha256\s*[:=]\s*([0-9a-f]{64})/i);
+  return m ? m[1].toLowerCase() : null;
+}
+
+export type PreUpdateShieldOptions = {
+  /** Backend status endpoint exposing destinationDir. */
+  statusUrl?: string;
+  /** Max age of an acceptable pre_update_*.bak (default 24h). */
+  maxAgeMs?: number;
+  /** Fetch implementation (injectable for verification). Defaults to global fetch. */
+  fetchImpl?: typeof fetch;
+};
+
+/**
+ * DIRECTIVE-004 / DEF-DS-003: main-side pre-update shield. Resolves the
+ * backend backup destination dir via /backup/status and requires a fresh
+ * `pre_update_*.bak` snapshot. Throws `BACKUP_REQUIRED...` otherwise —
+ * the install-now IPC handler aborts BEFORE killing the backend tree.
+ */
+export async function assertFreshPreUpdateBackup(
+  opts: PreUpdateShieldOptions = {},
+): Promise<{ dir: string; file: string; mtimeMs: number }> {
+  const {
+    statusUrl = 'http://localhost:3001/api/backup/status',
+    maxAgeMs = 24 * 3600 * 1000,
+    fetchImpl = fetch,
+  } = opts;
+  let dir: string | null = null;
+  try {
+    const res = await fetchImpl(statusUrl);
+    if (res.ok) {
+      const body = (await res.json()) as { destinationDir?: unknown };
+      if (typeof body?.destinationDir === 'string' && body.destinationDir.length > 0) dir = body.destinationDir;
+    }
+  } catch {
+    /* unreachable backend → throw below */
+  }
+  if (!dir) throw new Error('BACKUP_REQUIRED: backup service unreachable — cannot confirm a pre-update snapshot');
+  let entries: string[];
+  try {
+    entries = fs.readdirSync(dir);
+  } catch {
+    throw new Error('BACKUP_REQUIRED: backup directory unreadable — cannot confirm a pre-update snapshot');
+  }
+  const now = Date.now();
+  let best: { file: string; mtimeMs: number } | null = null;
+  for (const f of entries) {
+    if (!f.startsWith('pre_update_') || !f.endsWith('.bak')) continue;
+    try {
+      const mtimeMs = fs.statSync(path.join(dir, f)).mtimeMs;
+      if (now - mtimeMs <= maxAgeMs && (!best || mtimeMs > best.mtimeMs)) best = { file: f, mtimeMs };
+    } catch {
+      /* unreadable entry — skip */
+    }
+  }
+  if (!best) throw new Error('BACKUP_REQUIRED: no fresh pre_update_*.bak snapshot — create a pre-update backup first');
+  return { dir, ...best };
+}
+
 class UpdaterEngine {
   private state: UpdaterState;
   private listeners = new Set<StatusListener>();
   private abort: AbortController | null = null;
   private downloadStartMs = 0;
   private etag: string | null = null;
+  /** Expected installer size/digest captured at check() for post-download enforcement. */
+  private expectedBytes = 0;
+  private expectedDigest: string | null = null;
 
   constructor() {
     this.state = this.fresh();
@@ -130,6 +235,7 @@ class UpdaterEngine {
       targetVersion: null,
       releaseNotes: null,
       installerPath: null,
+      installerSha256: null,
       totalBytes: 0,
       transferredBytes: 0,
       percent: 0,
@@ -219,6 +325,7 @@ class UpdaterEngine {
         status: 'available',
         targetVersion: tag.replace(/^v/i, ''),
         releaseNotes: rel.body ?? null,
+        installerSha256: null,
         totalBytes: exe.size ?? 0,
         transferredBytes: 0,
         percent: 0,
@@ -226,6 +333,10 @@ class UpdaterEngine {
       // Stash the URL for the download step.
       (this as { pendingUrl?: string }).pendingUrl = exe.browser_download_url;
       (this as { pendingName?: string }).pendingName = exe.name as string;
+      // DIRECTIVE-004 / DEF-DS-004: capture enforcement expectations now —
+      // asset size when advertised, digest when release notes pin one.
+      this.expectedBytes = typeof exe.size === 'number' && exe.size > 0 ? exe.size : 0;
+      this.expectedDigest = parsePinnedDigest(rel.body ?? null);
       return this.getStatus();
     } catch (e) {
       this.emit({ status: 'error', error: e instanceof Error ? e.message : String(e) });
@@ -275,7 +386,14 @@ class UpdaterEngine {
       } finally {
         await new Promise<void>((resolve) => file.close(() => resolve()));
       }
-      this.emit({ status: 'downloaded', percent: 100 });
+      // DIRECTIVE-004 / DEF-DS-004: enforce size + pinned digest BEFORE the
+      // state ever reads 'downloaded'. verifyInstallerFile purges + throws
+      // on mismatch, so a corrupt/tampered installer can never stage.
+      const { bytes, sha256 } = verifyInstallerFile(dest, {
+        expectedBytes: total > 0 ? total : this.expectedBytes,
+        expectedSha256: this.expectedDigest,
+      });
+      this.emit({ status: 'downloaded', percent: 100, totalBytes: bytes, installerSha256: sha256 });
       return this.getStatus();
     } catch (e) {
       try {
@@ -303,6 +421,12 @@ class UpdaterEngine {
     if (this.state.status !== 'downloaded' || !p || !fs.existsSync(p)) {
       throw new Error('No downloaded installer to run');
     }
+    // DIRECTIVE-004 / DEF-DS-004: last-second re-verification — the bytes on
+    // disk must still match what the download step verified.
+    verifyInstallerFile(p, {
+      expectedBytes: this.state.totalBytes,
+      expectedSha256: this.state.installerSha256,
+    });
     const child = spawn(p, [], { detached: true, stdio: 'ignore' });
     child.unref();
     app.quit();

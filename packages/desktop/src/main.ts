@@ -2,7 +2,7 @@ import { app, BrowserWindow, shell, dialog, ipcMain, Menu } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { spawn, execSync, ChildProcess } from 'child_process';
-import { updater, getAppVersion } from './updater';
+import { updater, getAppVersion, assertFreshPreUpdateBackup } from './updater';
 
 let backendProcess: ChildProcess | null = null;
 let mainWindow: BrowserWindow | null = null;
@@ -152,20 +152,24 @@ function spawnBackend(): Promise<void> {
 }
 
 function killBackend(): void {
-  if (backendProcess) {
-    console.log('[Desktop] Killing backend process...');
+  // DIRECTIVE-004 / DEF-DS-001: capture the reference BEFORE nulling —
+  // the old code nulled first, so the SIGKILL timer guard could never fire.
+  const proc = backendProcess;
+  backendProcess = null;
+  if (!proc) return;
+  console.log('[Desktop] Killing backend process...');
+  try {
+    proc.kill('SIGTERM');
+  } catch {}
+  setTimeout(() => {
     try {
-      backendProcess.kill('SIGTERM');
-    } catch {}
-    setTimeout(() => {
-      if (backendProcess && !backendProcess.killed) {
-        try {
-          backendProcess.kill('SIGKILL');
-        } catch {}
+      // ChildProcess.kill() marks killed=true on send, so liveness must be
+      // read from exitCode/signalCode — never from .killed.
+      if (proc.exitCode === null && (proc as { signalCode?: unknown }).signalCode == null) {
+        proc.kill('SIGKILL');
       }
-    }, 3000);
-    backendProcess = null;
-  }
+    } catch {}
+  }, 3000);
 }
 
 /**
@@ -173,26 +177,33 @@ function killBackend(): void {
  * installer runs. On Windows the Prisma query-engine DLL stays memory-mapped
  * inside the backend Node process; taskkill /F /T releases every handle so
  * the installer never hits EBUSY. Zero deps — native child_process only.
+ *
+ * DIRECTIVE-004 / DEF-DS-001+002: exported for verification and usable on
+ * every quit path. An explicit target may be injected (tests); defaults to
+ * the live backend child.
  */
-function killBackendTreeSync(): void {
-  const proc = backendProcess;
+export function killBackendTreeSync(target?: { pid?: number } | ChildProcess | null): void {
+  const proc = target ?? backendProcess;
   const pid = proc?.pid;
-  backendProcess = null;
+  if (!target) backendProcess = null;
   if (!proc || !pid) return;
+  const signal = (sig: 'SIGTERM' | 'SIGKILL'): void => {
+    try {
+      (proc as ChildProcess).kill(sig);
+    } catch {
+      /* best effort */
+    }
+  };
   if (process.platform === 'win32') {
     try {
       execSync(`taskkill /F /T /PID ${pid}`, { stdio: 'ignore', timeout: 10000 });
       return;
     } catch {
-      try {
-        proc.kill('SIGKILL');
-      } catch {}
+      signal('SIGKILL');
       return;
     }
   }
-  try {
-    proc.kill('SIGTERM');
-  } catch {}
+  signal('SIGTERM');
 }
 
 async function createWindow(): Promise<void> {
@@ -272,7 +283,11 @@ app.whenReady().then(async () => {
       pushUpdater();
       return s;
     });
-    ipcMain.handle('updater:install-now', () => {
+    ipcMain.handle('updater:install-now', async () => {
+      // DIRECTIVE-004 / DEF-DS-003: main-side shield — a fresh pre-update
+      // snapshot must exist BEFORE anything destructive. Throws
+      // BACKUP_REQUIRED when the renderer pre-check was skipped or stale.
+      await assertFreshPreUpdateBackup();
       // TB-145: release the backend tree (DLL handles) BEFORE the
       // installer spawns — the engine owns the installer, main owns pid.
       killBackendTreeSync();
@@ -398,15 +413,17 @@ app.on('window-all-closed', () => {
 });
 
 app.on('will-quit', () => {
-  killBackend();
+  // DIRECTIVE-004 / DEF-DS-002: quit paths use the tree-kill — the exact
+  // EBUSY class TB-145 fixed on the update path applies here too.
+  killBackendTreeSync();
 });
 
-process.on('exit', killBackend);
+process.on('exit', () => killBackendTreeSync());
 process.on('SIGINT', () => {
-  killBackend();
+  killBackendTreeSync();
   app.quit();
 });
 process.on('SIGTERM', () => {
-  killBackend();
+  killBackendTreeSync();
   app.quit();
 });

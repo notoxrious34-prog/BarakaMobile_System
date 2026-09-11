@@ -135,6 +135,13 @@ export function SalesReturnModal({ open, onClose }: { open: boolean; onClose: ()
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['transactions'] });
       qc.invalidateQueries({ queryKey: ['sales-returns'] });
+      // DIRECTIVE-004: a return restores stock, reverses contact balance and
+      // moves cash — refresh every consumer.
+      qc.invalidateQueries({ queryKey: ['items'] });
+      qc.invalidateQueries({ queryKey: ['contacts'] });
+      qc.invalidateQueries({ queryKey: ['accounts'] });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
+      qc.invalidateQueries({ queryKey: ['cash-balance'] });
       setCreatedReturn(data);
     },
   });

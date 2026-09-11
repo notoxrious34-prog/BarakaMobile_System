@@ -125,6 +125,13 @@ function invalidateRepair(id?: string) {
     qc.invalidateQueries({ queryKey: ['repairs'] });
     if (id) qc.invalidateQueries({ queryKey: ['repair', id] });
     else qc.invalidateQueries({ queryKey: ['repair'] });
+    // DIRECTIVE-004: part/financial/status writes move stock, cash and
+    // dashboard counters — refresh every consumer (['repairs'] prefix
+    // already covers ['repairs','metrics'] and ['repairs','summary']).
+    qc.invalidateQueries({ queryKey: ['items'] });
+    qc.invalidateQueries({ queryKey: ['dashboard'] });
+    qc.invalidateQueries({ queryKey: ['cash-balance'] });
+    qc.invalidateQueries({ queryKey: ['transactions'] });
   };
 }
 
@@ -166,8 +173,9 @@ export function useCreateRepairMutation() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: CreateRepairTicketDto) => api.post<RepairTicket>('/repair', body),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['repairs'] });
+    onSuccess: (created) => {
+      // DIRECTIVE-004: new tickets move dashboard workshop counters.
+      invalidateRepair(created?.id)(qc);
     },
   });
 }
@@ -179,6 +187,12 @@ export function useUpdateStatusMutation() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['repairs'] });
       qc.invalidateQueries({ queryKey: ['repair'] });
+      // DIRECTIVE-004: status moves cash (deposits on deliver) and dashboard
+      // workshop counters — refresh consumers.
+      qc.invalidateQueries({ queryKey: ['items'] });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
+      qc.invalidateQueries({ queryKey: ['cash-balance'] });
+      qc.invalidateQueries({ queryKey: ['transactions'] });
     },
   });
 }
@@ -191,6 +205,11 @@ export function useRecordExternalCostMutation() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['repairs'] });
       qc.invalidateQueries({ queryKey: ['repair'] });
+      // DIRECTIVE-004: external spend moves cash — refresh consumers.
+      qc.invalidateQueries({ queryKey: ['items'] });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
+      qc.invalidateQueries({ queryKey: ['cash-balance'] });
+      qc.invalidateQueries({ queryKey: ['transactions'] });
     },
   });
 }

@@ -132,6 +132,9 @@ export function useCreateSaleMutation() {
       qc.invalidateQueries({ queryKey: ['contacts'] });
       qc.invalidateQueries({ queryKey: ['items'] });
       qc.invalidateQueries({ queryKey: ['accounts'] });
+      // DIRECTIVE-004: sales move dashboard KPIs + cash pill.
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
+      qc.invalidateQueries({ queryKey: ['cash-balance'] });
     },
   });
 }
@@ -154,6 +157,9 @@ export function useCreatePurchaseMutation() {
       qc.invalidateQueries({ queryKey: ['contacts'] });
       qc.invalidateQueries({ queryKey: ['items'] });
       qc.invalidateQueries({ queryKey: ['accounts'] });
+      // DIRECTIVE-004: purchases move dashboard KPIs + cash pill.
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
+      qc.invalidateQueries({ queryKey: ['cash-balance'] });
     },
   });
 }
@@ -174,6 +180,9 @@ export function useCreatePaymentMutation() {
       qc.invalidateQueries({ queryKey: ['transactions'] });
       qc.invalidateQueries({ queryKey: ['contacts'] });
       qc.invalidateQueries({ queryKey: ['accounts'] });
+      // DIRECTIVE-004: payments move dashboard KPIs + cash pill.
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
+      qc.invalidateQueries({ queryKey: ['cash-balance'] });
     },
   });
 }
@@ -193,6 +202,9 @@ export function useCreateOffsetMutation() {
       qc.invalidateQueries({ queryKey: ['transactions'] });
       qc.invalidateQueries({ queryKey: ['contacts'] });
       qc.invalidateQueries({ queryKey: ['accounts'] });
+      // DIRECTIVE-004: offsets move dashboard KPIs + cash pill.
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
+      qc.invalidateQueries({ queryKey: ['cash-balance'] });
     },
   });
 }

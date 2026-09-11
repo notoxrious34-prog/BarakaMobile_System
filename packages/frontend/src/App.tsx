@@ -20,6 +20,7 @@ import { UsersPage } from '@/pages/admin/UsersPage';
 import { SerialsPage } from '@/pages/SerialsPage';
 import { AlertsPage } from '@/pages/AlertsPage';
 import { AuthGate } from '@/features/auth/UserWidget';
+import { RequireCapability } from '@/components/RequireCapability';
 import { ImeiLookupHost } from '@/features/serials/ImeiLookupHost';
 
 function SerialsRoute() {
@@ -58,15 +59,16 @@ export default function App() {
           <Route path="contacts" element={<ContactsPage />} />
           <Route path="catalog" element={<CatalogPage />} />
           <Route path="stock-count" element={<StockCountPage />} />
-          <Route path="finance" element={<FinancePage />} />
+          <Route path="finance" element={<RequireCapability capability="canViewProfits"><FinancePage /></RequireCapability>} />
           <Route path="transactions" element={<TransactionsPage />} />
-          <Route path="reports" element={<ReportsPage />} />
-          <Route path="users" element={<UsersPage />} />
+          <Route path="reports" element={<RequireCapability capability="canViewProfits"><ReportsPage /></RequireCapability>} />
+          <Route path="users" element={<RequireCapability capability="canManageUsers"><UsersPage /></RequireCapability>} />
           <Route path="serials" element={<SerialsRoute />} />
         </Route>
 
-        {/* Standalone settings — renders directly in AppShell, never under AdminLayout (TB-139) */}
-        <Route path="settings" element={<SettingsPage />} />
+        {/* Standalone settings — renders directly in AppShell, never under AdminLayout (TB-139).
+            DIRECTIVE-004: hosts backup schedules — admin-only. */}
+        <Route path="settings" element={<RequireCapability capability="canAccessBackups"><SettingsPage /></RequireCapability>} />
 
         {/* Legacy redirects — backwards compatibility */}
         <Route path="transactions" element={<Navigate to="/admin/transactions" replace />} />
