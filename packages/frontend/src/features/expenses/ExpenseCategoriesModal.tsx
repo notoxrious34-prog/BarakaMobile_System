@@ -18,7 +18,9 @@ export function ExpenseCategoriesModal({ open, onClose }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
 
-  const categoriesQ = useQuery({ queryKey: ['cash', 'expense-categories'], queryFn: fetchExpenseCategories, enabled: open });
+  const categoriesQ = useQuery({ queryKey: ['cash', 'expense-categories'], queryFn: fetchExpenseCategories, enabled: open,
+    // TASK-BRIEF-001: near-static reference data — 10min stale, 15min gc (category mutations invalidate on change).
+    staleTime: 600000, gcTime: 900000 });
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ['cash', 'expense-categories'] });

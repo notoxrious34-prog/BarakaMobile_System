@@ -18,6 +18,7 @@ import { RecordExpenseModal } from '@/features/expenses/RecordExpenseModal';
 import { ExpenseCategoriesModal } from '@/features/expenses/ExpenseCategoriesModal';
 import { ExpenseVoucher } from '@/features/expenses/ExpenseVoucher';
 import type { ExpenseItem } from '@/features/cash/types';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 
 const SOURCE_LABEL: Record<string, string> = {
   REGISTER_CASH: 'الصندوق',
@@ -50,6 +51,9 @@ export function ExpensesPage() {
   const [filterEnd, setFilterEnd] = useState('');
   const [filterSource, setFilterSource] = useState('');
   const [search, setSearch] = useState('');
+  // TASK-BRIEF-001: debounce server search — the input stays instant,
+  // only the query keyed below waits for a typing pause.
+  const debouncedSearch = useDebouncedValue(search, 300);
   const [newCatName, setNewCatName] = useState('');
   const [apiError, setApiError] = useState<string | null>(null);
   const [recordOpen, setRecordOpen] = useState(false);
@@ -59,16 +63,19 @@ export function ExpensesPage() {
   const categoriesQ = useQuery({
     queryKey: ['cash', 'expense-categories'],
     queryFn: fetchExpenseCategories,
+    // TASK-BRIEF-001: near-static reference data — 10min stale, 15min gc (category mutations invalidate on change).
+    staleTime: 600000,
+    gcTime: 900000,
   });
   const expensesQ = useQuery({
-    queryKey: ['cash', 'expenses', filterCategory, filterStart, filterEnd, filterSource, search],
+    queryKey: ['cash', 'expenses', filterCategory, filterStart, filterEnd, filterSource, debouncedSearch],
     queryFn: () =>
       fetchExpenses({
         categoryId: filterCategory || undefined,
         startDate: filterStart || undefined,
         endDate: filterEnd || undefined,
         paymentSource: filterSource || undefined,
-        search: search.trim() || undefined,
+        search: debouncedSearch.trim() || undefined,
       }),
   });
   const metricsQ = useQuery({

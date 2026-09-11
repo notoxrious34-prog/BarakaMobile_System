@@ -39,7 +39,9 @@ export function RecordExpenseModal({ open, onClose, cashierName }: Props) {
   const [printNow, setPrintNow] = useState(true);
   const [created, setCreated] = useState<ExpenseItem | null>(null);
 
-  const categoriesQ = useQuery({ queryKey: ['cash', 'expense-categories'], queryFn: fetchExpenseCategories, enabled: open });
+  const categoriesQ = useQuery({ queryKey: ['cash', 'expense-categories'], queryFn: fetchExpenseCategories, enabled: open,
+    // TASK-BRIEF-001: near-static reference data — 10min stale, 15min gc (category mutations invalidate on change).
+    staleTime: 600000, gcTime: 900000 });
   const balanceQ = useQuery({ queryKey: ['cash', 'balance'], queryFn: fetchCashBalance, enabled: open && source === 'REGISTER_CASH' });
   const drawerBalance = balanceQ.data?.currentBalance ?? '0.00';
 

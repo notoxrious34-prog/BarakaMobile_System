@@ -30,6 +30,10 @@ export function useBackupSettings() {
   return useQuery<BakSettings>({
     queryKey: KEYS.settings,
     queryFn: () => api.get<BakSettings>('/backup/settings'),
+    // TASK-BRIEF-001: near-static config — 10min stale, 15min gc
+    // (settings mutations invalidate ['backup'] on save).
+    staleTime: 600000,
+    gcTime: 900000,
   });
 }
 

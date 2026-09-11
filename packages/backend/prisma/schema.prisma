@@ -89,6 +89,9 @@ model StockMovement {
   reference String?
   createdAt DateTime     @default(now())
   item      Item         @relation(fields: [itemId], references: [id])
+
+  // TASK-BRIEF-001 Phase 1: per-item movement history (recency order).
+  @@index([itemId, createdAt])
 }
 
 enum PricingType {
@@ -168,6 +171,10 @@ model Transaction {
   debtLedgerEntries CustomerDebtLedgerEntry[]
   supplierDebtEntries SupplierDebtLedgerEntry[]
   salesReturns    SalesReturn[]
+
+  // TASK-BRIEF-001 Phase 1: hot-path indexes (findAll filters + recency order).
+  @@index([accountId, createdAt])
+  @@index([type, createdAt])
 }
 
 model LedgerEntry {
@@ -178,9 +185,13 @@ model LedgerEntry {
   amount        String
   balanceBefore String
   balanceAfter  String
-  createdAt     DateTime        @default(now())
+  createdAt DateTime        @default(now())
   transaction   Transaction     @relation(fields: [transactionId], references: [id])
   account       Account         @relation(fields: [accountId], references: [id])
+
+  // TASK-BRIEF-001 Phase 1: account statements + transaction includes.
+  @@index([accountId, createdAt])
+  @@index([transactionId])
 }
 
 model TransactionItem {
@@ -239,6 +250,10 @@ model CashMovement {
   relatedExpenseId     String?
   createdAt            DateTime             @default(now())
   cashAccount          CashAccount          @relation(fields: [cashAccountId], references: [id])
+
+  // TASK-BRIEF-001 Phase 1: drawer history (account recency + category/date filters).
+  @@index([cashAccountId, createdAt])
+  @@index([category, createdAt])
 }
 
 model ExpenseCategory {
@@ -273,6 +288,9 @@ model Expense {
   createdAt        DateTime             @default(now())
   updatedAt        DateTime             @updatedAt
   category         ExpenseCategory      @relation(fields: [categoryId], references: [id])
+
+  // TASK-BRIEF-001 Phase 1: expense list (category + date-range filters, date order).
+  @@index([categoryId, expenseDate])
 }
 
 enum DeviceType {
@@ -337,6 +355,10 @@ model RepairTicket {
   repairFaultTypeId    String?
   repairFaultType      RepairFaultTypeSLA? @relation(fields: [repairFaultTypeId], references: [id])
   estimatedCompletionDate DateTime?
+
+  // TASK-BRIEF-001 Phase 1: workshop lists (status/contact filters + recency order).
+  @@index([status, createdAt])
+  @@index([contactId, createdAt])
 }
 
 model RepairFaultTypeSLA {
@@ -567,7 +589,7 @@ model CustomerDebtLedgerEntry {
   relatedTransaction      Transaction?            @relation(fields: [relatedTransactionId], references: [id], onDelete: SetNull)
   relatedRepairTicket     RepairTicket?           @relation(fields: [relatedRepairTicketId], references: [id], onDelete: SetNull)
 
-  @@index([customerId])
+  @@index([customerId, createdAt])
   @@index([relatedTransactionId])
   @@index([relatedRepairTicketId])
 }
@@ -595,7 +617,7 @@ model SupplierDebtLedgerEntry {
   contact              Contact               @relation(fields: [contactId], references: [id], onDelete: Cascade)
   relatedTransaction   Transaction?          @relation(fields: [relatedTransactionId], references: [id], onDelete: SetNull)
 
-  @@index([contactId])
+  @@index([contactId, createdAt])
   @@index([relatedTransactionId])
 }
 

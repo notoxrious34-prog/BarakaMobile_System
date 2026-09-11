@@ -29,6 +29,9 @@ export function useInvoiceSettings() {
   return useQuery<InvoiceSettings>({
     queryKey: ['settings', 'invoice'],
     queryFn: () => api.get<InvoiceSettings>(`/settings/bulk?keys=${KEYS.join(',')}`),
-    staleTime: 300000,
+    // TASK-BRIEF-001: near-static reference data — 10min stale, 15min gc
+    // (useUpdateSettings invalidates on save, so edits stay instant).
+    staleTime: 600000,
+    gcTime: 900000,
   });
 }

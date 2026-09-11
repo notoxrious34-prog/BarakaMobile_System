@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Search, LayoutDashboard, ShoppingCart, Wrench, Users, Package, Wallet, BarChart3, Settings, Plus, FilePlus, CreditCard, Loader2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { PRICING_LABEL } from '@/lib/labels';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 
 type SearchResponse = {
   query: string;
@@ -29,10 +30,13 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const trimmed = query.trim();
+  // TASK-BRIEF-001: debounce server search — local filtering below stays
+  // instant on `trimmed`, only the network query waits for a typing pause.
+  const debouncedTrimmed = useDebouncedValue(trimmed, 250);
 
   const searchQ = useQuery<SearchResponse>({
-    queryKey: ['search', 'palette', trimmed],
-    queryFn: () => api.get<SearchResponse>(`/search?q=${encodeURIComponent(trimmed)}&limit=6`),
+    queryKey: ['search', 'palette', debouncedTrimmed],
+    queryFn: () => api.get<SearchResponse>(`/search?q=${encodeURIComponent(debouncedTrimmed)}&limit=6`),
     enabled: trimmed.length >= 1 && open,
     staleTime: 10000,
   });

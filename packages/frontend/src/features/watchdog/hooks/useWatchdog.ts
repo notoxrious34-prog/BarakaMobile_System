@@ -46,6 +46,10 @@ export function useWatchdogSettings() {
   return useQuery<WatchdogSettings>({
     queryKey: KEYS.settings,
     queryFn: () => api.get<WatchdogSettings>('/watchdog/settings'),
+    // TASK-BRIEF-001: near-static config — 10min stale, 15min gc
+    // (useUpdateWatchdogSettings invalidates ['watchdog'] on save).
+    staleTime: 600000,
+    gcTime: 900000,
   });
 }
 
@@ -64,5 +68,8 @@ export function useRepairFaultTypes() {
   return useQuery<RepairFaultType[]>({
     queryKey: KEYS.faultTypes,
     queryFn: () => api.get<RepairFaultType[]>('/repair/fault-types'),
+    // TASK-BRIEF-001: seeded reference data, changes only via deploys.
+    staleTime: 600000,
+    gcTime: 900000,
   });
 }

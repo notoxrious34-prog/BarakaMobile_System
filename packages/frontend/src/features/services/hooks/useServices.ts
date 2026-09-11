@@ -63,6 +63,10 @@ export function useServicesQuery() {
   return useQuery<Service[]>({
     queryKey: ['services'],
     queryFn: () => api.get<Service[]>('/services'),
+    // TASK-BRIEF-001: near-static catalog data — 10min stale, 15min gc
+    // (create/update/delete mutations invalidate ['services'] on change).
+    staleTime: 600000,
+    gcTime: 900000,
   });
 }
 
