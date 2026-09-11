@@ -130,6 +130,9 @@ export function ContactFormModal({ open, onClose, contact }: Props) {
     await qc.invalidateQueries({ queryKey: ['debt-ledger'] });
     await qc.invalidateQueries({ queryKey: ['supplier-ledger'] });
     await qc.invalidateQueries({ queryKey: ['cash-balance'] });
+    // Dashboard summary embeds debts + cash (30s staleTime) — refresh it so
+    // KPIs never linger stale after opening-balance or settlement writes.
+    await qc.invalidateQueries({ queryKey: ['dashboard'] });
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -194,11 +197,24 @@ export function ContactFormModal({ open, onClose, contact }: Props) {
           phone: phone.trim(),
           role,
         });
-        if (customerOpening.amount.trim()) {
-          await postCustomerOpeningBalance(created.id, toPayload(customerOpening));
-        }
-        if (supplierOpening.amount.trim()) {
-          await postSupplierOpeningBalance(created.id, toPayload(supplierOpening));
+        // Sequentially persist opening balances. A failure here keeps the
+        // modal open with an explicit error — the contact exists, the opening
+        // does not — and refreshes caches so no stale list lingers.
+        try {
+          if (customerOpening.amount.trim()) {
+            await postCustomerOpeningBalance(created.id, toPayload(customerOpening));
+          }
+          if (supplierOpening.amount.trim()) {
+            await postSupplierOpeningBalance(created.id, toPayload(supplierOpening));
+          }
+        } catch (err) {
+          const msg =
+            err instanceof ApiError
+              ? `تم إنشاء الجهة، لكن فشل حفظ الرصيد الافتتاحي: ${err.message}`
+              : 'تم إنشاء الجهة، لكن فشل حفظ الرصيد الافتتاحي';
+          setApiError(msg);
+          await refreshLedgerCaches();
+          return;
         }
         await refreshLedgerCaches();
       }

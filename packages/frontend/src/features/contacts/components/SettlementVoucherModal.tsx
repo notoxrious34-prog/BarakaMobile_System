@@ -95,6 +95,9 @@ export function SettlementVoucherModal({ open, onClose, contactId, contactName, 
       qc.invalidateQueries({ queryKey: ['debt-ledger'] });
       qc.invalidateQueries({ queryKey: ['supplier-ledger'] });
       qc.invalidateQueries({ queryKey: ['cash-balance'] });
+      // Dashboard summary embeds debts + cash (30s staleTime) — refresh it so
+      // KPIs never linger stale after a settlement voucher posts.
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
       onSettled?.();
     },
   });
