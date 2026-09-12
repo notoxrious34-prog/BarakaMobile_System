@@ -385,6 +385,8 @@ model RepairPartItem {
   totalCost        String       @default("0.00")
   totalPrice       String       @default("0.00")
   stockMovementId  String?
+  reversalMovementId String?
+  isActive         Boolean      @default(true)
   createdAt        DateTime     @default(now())
 
   @@index([ticketId])
@@ -592,6 +594,11 @@ model CustomerDebtLedgerEntry {
   @@index([customerId, createdAt])
   @@index([relatedTransactionId])
   @@index([relatedRepairTicketId])
+  // TASK-BRIEF-002 Stream 4 (DEF-BE-003): a partial UNIQUE INDEX on
+  // (customerId) WHERE type = 'OPENING_BALANCE' exists at the DB level
+  // (migration 20260911193000_opening_balance_partial_unique). Prisma's
+  // schema DSL has no filtered-@@unique syntax, so it cannot be declared
+  // here — this comment is the single source of truth pointing to it.
 }
 
 enum SupplierDebtEntryType {
@@ -619,6 +626,11 @@ model SupplierDebtLedgerEntry {
 
   @@index([contactId, createdAt])
   @@index([relatedTransactionId])
+  // TASK-BRIEF-002 Stream 4 (DEF-BE-003): a partial UNIQUE INDEX on
+  // (contactId) WHERE type = 'OPENING_BALANCE' exists at the DB level
+  // (migration 20260911193000_opening_balance_partial_unique). Prisma's
+  // schema DSL has no filtered-@@unique syntax, so it cannot be declared
+  // here — this comment is the single source of truth pointing to it.
 }
 
 enum ReturnCondition {

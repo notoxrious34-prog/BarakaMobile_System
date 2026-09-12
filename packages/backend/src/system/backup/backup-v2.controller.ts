@@ -16,13 +16,19 @@ export class BackupV2Controller {
   ) {}
 
   @Post('create')
-  create(@Body() body?: { kind?: string }) {
+  async create(@Body() body: { kind?: string } | undefined, @Headers() headers: Record<string, string | string[] | undefined>) {
+    await this.authService.requireCapability(sessionTokenOf(headers), 'canAccessBackups');
     const kind = body?.kind === 'pre-update' ? 'pre-update' : body?.kind === 'auto' ? 'auto' : 'manual';
     return this.backupService.createBakBackup(kind);
   }
 
   @Get('download/:filename')
-  async download(@Param('filename') filename: string, @Res({ passthrough: true }) res: any) {
+  async download(
+    @Param('filename') filename: string,
+    @Res({ passthrough: true }) res: any,
+    @Headers() headers: Record<string, string | string[] | undefined>,
+  ) {
+    await this.authService.requireCapability(sessionTokenOf(headers), 'canAccessBackups');
     const destDir = await this.backupService.backupDestinationDir();
     const full = path.join(destDir, path.basename(filename));
     if (!fs.existsSync(full)) {
@@ -34,12 +40,14 @@ export class BackupV2Controller {
   }
 
   @Get('status')
-  status() {
+  async status(@Headers() headers: Record<string, string | string[] | undefined>) {
+    await this.authService.requireCapability(sessionTokenOf(headers), 'canAccessBackups');
     return this.backupService.backupStatus();
   }
 
   @Get('list')
-  list() {
+  async list(@Headers() headers: Record<string, string | string[] | undefined>) {
+    await this.authService.requireCapability(sessionTokenOf(headers), 'canAccessBackups');
     return this.backupService.listBakBackups();
   }
 
@@ -103,7 +111,8 @@ export class BackupV2Controller {
   }
 
   @Get('settings')
-  settings() {
+  async settings(@Headers() headers: Record<string, string | string[] | undefined>) {
+    await this.authService.requireCapability(sessionTokenOf(headers), 'canAccessBackups');
     return this.backupService.getBackupSettings();
   }
 

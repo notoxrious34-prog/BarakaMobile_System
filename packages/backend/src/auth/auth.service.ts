@@ -131,6 +131,21 @@ export class AuthService {
     return user;
   }
 
+  /**
+   * TASK-BRIEF-002 Stream 2 (AD-80 backend mirror): capability-keyed guard
+   * matching the frontend's `useCapability`/`RequireCapability` model.
+   * No session/token → 401. Valid session but capability false → 403.
+   * The capability set is derived from the SAME `capabilitiesFor()` used
+   * by the frontend's /auth/current-user and /auth/pin-login responses —
+   * zero independent reinvention, zero drift (Ruling 2).
+   */
+  async requireCapability(token: string | undefined, key: string): Promise<SanitizedUser> {
+    const user = await this.userForToken(token);
+    if (!user) throw new UnauthorizedException('جلسة غير صالحة — سجّل الدخول');
+    if (!capabilitiesFor(user)[key]) throw new ForbiddenException('لا تملك صلاحية الوصول لهذا المورد');
+    return user;
+  }
+
   async listUsers(): Promise<SanitizedUser[]> {
     const users = await this.prisma.user.findMany({ orderBy: { createdAt: 'asc' } });
     return users.map(sanitize);

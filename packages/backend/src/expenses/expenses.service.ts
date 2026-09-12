@@ -234,12 +234,19 @@ export class ExpensesService {
     return this.prisma.expenseCategory.update({ where: { id }, data });
   }
 
+  /**
+   * TASK-BRIEF-002 Stream 3.A: soft-delete only (Rule ④). The `isActive`
+   * column already exists on ExpenseCategory (20260908164817 migration);
+   * findAllCategories()/pickers already filter isActive:true, and
+   * findAllExpenses()/getExpenseBreakdown() are already unfiltered by
+   * category.isActive — historical amounts stay intact automatically.
+   * The `linked > 0` block is removed: it existed only to protect the old
+   * hard-delete path and is unnecessary once deletion never removes the row.
+   */
   async deleteCategory(id: string): Promise<void> {
     const cat = await this.prisma.expenseCategory.findUnique({ where: { id } });
     if (!cat) throw new NotFoundException('الفئة غير موجودة');
     if (cat.isSystem) throw new BadRequestException('فئات النظام محمية ولا يمكن حذفها');
-    const linked = await this.prisma.expense.count({ where: { categoryId: id } });
-    if (linked > 0) throw new ConflictException('لا يمكن حذف فئة مرتبطة بسندات مصروفات');
-    await this.prisma.expenseCategory.delete({ where: { id } });
+    await this.prisma.expenseCategory.update({ where: { id }, data: { isActive: false } });
   }
 }

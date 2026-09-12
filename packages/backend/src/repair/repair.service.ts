@@ -64,7 +64,7 @@ export class RepairService {
   }
 
   private async recalcTicket(tx: PrismaTx, ticketId: string) {
-    const ticket = await tx.repairTicket.findUnique({ where: { id: ticketId }, include: { parts: true } });
+    const ticket = await tx.repairTicket.findUnique({ where: { id: ticketId }, include: { parts: { where: { isActive: true } } } });
     if (!ticket) throw new NotFoundException(`RepairTicket with id ${ticketId} not found`);
     const t = this.ticketTotals(ticket.parts, ticket.laborCost ?? '0.00', ticket.discountAmount ?? '0.00');
     return tx.repairTicket.update({ where: { id: ticketId }, data: t });
@@ -170,7 +170,29 @@ export class RepairService {
         });
       }
 
-      return tx.repairTicket.findUnique({ where: { id: ticket.id }, include: { contact: true, parts: true } });
+      return tx.repairTicket.findUnique({ where: { id: ticket.id }, include: { contact: true, parts: { where: { isActive: true } } } });
+    });
+  }
+
+  /**
+   * TASK-BRIEF-002 Ruling 3: SOLE posting path for every RepairPartItem
+   * stock movement (consumption on add, reversal on remove/cancel/soft-
+   * delete). Consolidates 3 pre-existing inline `tx.stockMovement.create`
+   * call sites (addPart/removePart/cancel) that were themselves a DRY
+   * violation before this change — zero behavioral change to any of them.
+   */
+  private async postRepairPartStockMovement(
+    tx: PrismaTx,
+    params: { itemId: string; type: 'IN' | 'OUT'; quantity: number; note: string; reference: string },
+  ) {
+    return tx.stockMovement.create({
+      data: {
+        itemId: params.itemId,
+        type: params.type,
+        quantity: params.quantity,
+        note: params.note,
+        reference: params.reference,
+      },
     });
   }
 
@@ -201,14 +223,12 @@ export class RepairService {
       const totalCost = this.to2dp(new Decimal(qty).mul(new Decimal(unitCostPrice)));
       const totalPrice = this.to2dp(new Decimal(qty).mul(new Decimal(unitPrice)));
 
-      const movement = await tx.stockMovement.create({
-        data: {
-          itemId: item.id,
-          type: 'OUT',
-          quantity: qty,
-          note: `REPAIR_CONSUMPTION: استهلاك صيانة للتذكرة ${ticket.ticketNumber}`,
-          reference: ticket.ticketNumber,
-        },
+      const movement = await this.postRepairPartStockMovement(tx, {
+        itemId: item.id,
+        type: 'OUT',
+        quantity: qty,
+        note: `REPAIR_CONSUMPTION: استهلاك صيانة للتذكرة ${ticket.ticketNumber}`,
+        reference: ticket.ticketNumber,
       });
 
       await tx.repairPartItem.create({
@@ -231,7 +251,7 @@ export class RepairService {
       }
       return tx.repairTicket.findUnique({
         where: { id: ticket.id },
-        include: { contact: true, parts: { include: { inventoryItem: { select: { id: true, name: true, sku: true } } } } },
+        include: { contact: true, parts: { where: { isActive: true }, include: { inventoryItem: { select: { id: true, name: true, sku: true } } } } },
       });
     });
   }
@@ -241,23 +261,24 @@ export class RepairService {
       const ticket = await tx.repairTicket.findFirst({ where: { id: ticketId, isActive: true } });
       if (!ticket) throw new NotFoundException(`RepairTicket with id ${ticketId} not found`);
       this.ensurePartsEditable(ticket.status);
-      const part = await tx.repairPartItem.findFirst({ where: { id: partId, ticketId: ticket.id } });
+      // TASK-BRIEF-002 Stream 3.B idempotency: filtering isActive:true means
+      // a retried/duplicate delete call for an already-removed part finds
+      // nothing here and 404s instead of posting a second reversal.
+      const part = await tx.repairPartItem.findFirst({ where: { id: partId, ticketId: ticket.id, isActive: true } });
       if (!part) throw new NotFoundException('بند القطعة غير موجود في هذه التذكرة');
 
-      await tx.stockMovement.create({
-        data: {
-          itemId: part.inventoryItemId,
-          type: 'IN',
-          quantity: part.quantity,
-          note: `REPAIR_RETURN: إلغاء استهلاك قطعة غيار للتذكرة ${ticket.ticketNumber}`,
-          reference: ticket.ticketNumber,
-        },
+      const reversal = await this.postRepairPartStockMovement(tx, {
+        itemId: part.inventoryItemId,
+        type: 'IN',
+        quantity: part.quantity,
+        note: `REPAIR_RETURN: إلغاء استهلاك قطعة غيار للتذكرة ${ticket.ticketNumber}`,
+        reference: ticket.ticketNumber,
       });
-      await tx.repairPartItem.delete({ where: { id: part.id } });
+      await tx.repairPartItem.update({ where: { id: part.id }, data: { isActive: false, reversalMovementId: reversal.id } });
       await this.recalcTicket(tx, ticket.id);
       return tx.repairTicket.findUnique({
         where: { id: ticket.id },
-        include: { contact: true, parts: { include: { inventoryItem: { select: { id: true, name: true, sku: true } } } } },
+        include: { contact: true, parts: { where: { isActive: true }, include: { inventoryItem: { select: { id: true, name: true, sku: true } } } } },
       });
     });
   }
@@ -271,13 +292,13 @@ export class RepairService {
       if (dto.laborCost !== undefined) data.laborCost = this.normalizeAmount(dto.laborCost);
       if (dto.discountAmount !== undefined) data.discountAmount = this.normalizeAmount(dto.discountAmount);
       // Validate through the totals calculator before persisting.
-      const parts = await tx.repairPartItem.findMany({ where: { ticketId: ticket.id } });
+      const parts = await tx.repairPartItem.findMany({ where: { ticketId: ticket.id, isActive: true } });
       this.ticketTotals(parts, data.laborCost ?? ticket.laborCost ?? '0.00', data.discountAmount ?? ticket.discountAmount ?? '0.00');
       await tx.repairTicket.update({ where: { id: ticket.id }, data });
       await this.recalcTicket(tx, ticket.id);
       return tx.repairTicket.findUnique({
         where: { id: ticket.id },
-        include: { contact: true, parts: { include: { inventoryItem: { select: { id: true, name: true, sku: true } } } } },
+        include: { contact: true, parts: { where: { isActive: true }, include: { inventoryItem: { select: { id: true, name: true, sku: true } } } } },
       });
     });
   }
@@ -403,18 +424,19 @@ export class RepairService {
 
       if (newStatus === 'CANCELLED') {
         // Return every consumed part to stock before the deposit refund.
-        const parts = await tx.repairPartItem.findMany({ where: { ticketId: ticket.id } });
+        // TASK-BRIEF-002 Stream 3.B: isActive:true filter is the idempotency
+        // guard here too — already-removed parts (via removePart) are
+        // skipped, never double-reversed.
+        const parts = await tx.repairPartItem.findMany({ where: { ticketId: ticket.id, isActive: true } });
         for (const part of parts) {
-          await tx.stockMovement.create({
-            data: {
-              itemId: part.inventoryItemId,
-              type: 'IN',
-              quantity: part.quantity,
-              note: `REPAIR_RETURN: إرجاع قطع التذكرة الملغاة ${ticket.ticketNumber}`,
-              reference: ticket.ticketNumber,
-            },
+          const reversal = await this.postRepairPartStockMovement(tx, {
+            itemId: part.inventoryItemId,
+            type: 'IN',
+            quantity: part.quantity,
+            note: `REPAIR_RETURN: إرجاع قطع التذكرة الملغاة ${ticket.ticketNumber}`,
+            reference: ticket.ticketNumber,
           });
-          await tx.repairPartItem.delete({ where: { id: part.id } });
+          await tx.repairPartItem.update({ where: { id: part.id }, data: { isActive: false, reversalMovementId: reversal.id } });
         }
         await this.recalcTicket(tx, ticket.id);
         const depositDec = new Decimal(ticket.depositAmount ?? '0.00');
@@ -510,7 +532,7 @@ export class RepairService {
     }
     return this.prisma.repairTicket.findMany({
       where,
-      include: { contact: true, parts: { include: { inventoryItem: { select: { id: true, name: true, sku: true } } } } },
+      include: { contact: true, parts: { where: { isActive: true }, include: { inventoryItem: { select: { id: true, name: true, sku: true } } } } },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -518,7 +540,7 @@ export class RepairService {
   async findOne(id: string) {
     const ticket = await this.prisma.repairTicket.findUnique({
       where: { id },
-      include: { contact: true, parts: { include: { inventoryItem: { select: { id: true, name: true, sku: true } } } } },
+      include: { contact: true, parts: { where: { isActive: true }, include: { inventoryItem: { select: { id: true, name: true, sku: true } } } } },
     });
     if (!ticket) throw new NotFoundException(`RepairTicket with id ${id} not found`);
     return ticket;
@@ -545,7 +567,7 @@ export class RepairService {
         monthPartsCost = monthPartsCost.plus(new Decimal(t.partsCost ?? '0.00'));
       }
     }
-    const consumed = await this.prisma.repairPartItem.aggregate({ _sum: { quantity: true } });
+    const consumed = await this.prisma.repairPartItem.aggregate({ where: { isActive: true }, _sum: { quantity: true } });
     const consumedQty = consumed._sum.quantity ?? 0;
     return {
       active,

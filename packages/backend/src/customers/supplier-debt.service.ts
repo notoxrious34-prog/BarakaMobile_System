@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CashService } from '../cash/cash.service';
 import { Prisma } from '@prisma/client';
 import Decimal from 'decimal.js';
+import { isOpeningBalanceUniqueViolation } from './opening-balance-errors';
 
 type PrismaTx = Prisma.TransactionClient;
 
@@ -218,6 +219,11 @@ export class SupplierDebtService {
           createdById: dto.createdById ?? null,
           ...(createdAt ? { createdAt } : {}),
         },
+      }).catch((e: unknown) => {
+        if (isOpeningBalanceUniqueViolation(e)) {
+          throw new ConflictException('تم تسجيل رصيد افتتاحي لهذا المورد مسبقاً');
+        }
+        throw e;
       });
       return opening;
     };

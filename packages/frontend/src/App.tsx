@@ -1,24 +1,29 @@
+import { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { AppShell } from '@/components/layout/AppShell';
 import { Dashboard } from '@/pages/Dashboard';
-import { ContactsPage } from '@/pages/ContactsPage';
-import { TransactionsPage } from '@/pages/TransactionsPage';
 import { PosPage } from '@/pages/PosPage';
-import { RepairsPage } from '@/pages/RepairsPage';
-import { FlexyCockpitPage } from '@/pages/FlexyCockpitPage';
-import { ExpensesPage } from '@/pages/ExpensesPage';
-import { ReportsPage } from '@/pages/ReportsPage';
-import { SettingsPage } from '@/pages/SettingsPage';
 import { NotFound } from '@/pages/NotFound';
-import { CatalogPage } from '@/pages/admin/CatalogPage';
-import { StockCountPage } from '@/pages/StockCountPage';
-import { FinancePage } from '@/pages/admin/FinancePage';
-import { UsersPage } from '@/pages/admin/UsersPage';
-import { SerialsPage } from '@/pages/SerialsPage';
-import { AlertsPage } from '@/pages/AlertsPage';
 import { AuthGate } from '@/features/auth/UserWidget';
 import { RequireCapability } from '@/components/RequireCapability';
 import { ImeiLookupHost } from '@/features/serials/ImeiLookupHost';
+import { Loading } from '@/components/feedback/Loading';
+
+// TASK-BRIEF-002 Stream 1: non-critical routed pages are lazy-loaded to
+// reduce the initial bundle. AppShell/Dashboard/PosPage/AuthGate/guards/
+// NotFound stay eager (shell + landing + auth infra per the brief).
+const ContactsPage = lazy(() => import('@/pages/ContactsPage').then((m) => ({ default: m.ContactsPage })));
+const TransactionsPage = lazy(() => import('@/pages/TransactionsPage').then((m) => ({ default: m.TransactionsPage })));
+const RepairsPage = lazy(() => import('@/pages/RepairsPage').then((m) => ({ default: m.RepairsPage })));
+const FlexyCockpitPage = lazy(() => import('@/pages/FlexyCockpitPage').then((m) => ({ default: m.FlexyCockpitPage })));
+const ReportsPage = lazy(() => import('@/pages/ReportsPage').then((m) => ({ default: m.ReportsPage })));
+const SettingsPage = lazy(() => import('@/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
+const CatalogPage = lazy(() => import('@/pages/admin/CatalogPage').then((m) => ({ default: m.CatalogPage })));
+const StockCountPage = lazy(() => import('@/pages/StockCountPage').then((m) => ({ default: m.StockCountPage })));
+const FinancePage = lazy(() => import('@/pages/admin/FinancePage').then((m) => ({ default: m.FinancePage })));
+const UsersPage = lazy(() => import('@/pages/admin/UsersPage').then((m) => ({ default: m.UsersPage })));
+const SerialsPage = lazy(() => import('@/pages/SerialsPage').then((m) => ({ default: m.SerialsPage })));
+const AlertsPage = lazy(() => import('@/pages/AlertsPage').then((m) => ({ default: m.AlertsPage })));
 
 function SerialsRoute() {
   const navigate = useNavigate();
@@ -40,6 +45,7 @@ export default function App() {
   return (
     <AuthGate>
     <ImeiLookupHost />
+    <Suspense fallback={<Loading />}>
     <Routes>
       <Route element={<AppShell />}>
         {/* 4-Pillar primary routes */}
@@ -80,6 +86,7 @@ export default function App() {
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
+    </Suspense>
     </AuthGate>
   );
 }
