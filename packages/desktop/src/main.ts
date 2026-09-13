@@ -111,15 +111,50 @@ function spawnBackend(): Promise<void> {
     });
 
     backendProcess = child;
+    // DEF-DESK-BOOT-MIGRATE: fail fast on early backend exit. The backend
+    // runs atomic boot-migrations BEFORE binding its port and exits non-zero
+    // when they fail — without this guard the shell would poll /api/health
+    // for the full 30s and report only a generic timeout, hiding the exact
+    // migration error. The log tail below carries the [BootMigration] cause.
+    let settled = false;
+    const settleResolve = () => {
+      settled = true;
+      resolve();
+    };
+    const settleReject = (err: Error) => {
+      if (settled) return;
+      settled = true;
+      reject(err);
+    };
 
     child.on('error', (err) => {
       console.error('[Desktop] Backend spawn error:', err);
-      reject(err);
+      settleReject(err);
     });
 
     child.on('exit', (code, signal) => {
       console.log(`[Desktop] Backend exited with code ${code}, signal ${signal}`);
       backendProcess = null;
+      if (!settled && code !== 0) {
+        let hint = '';
+        try {
+          if (logPath && fs.existsSync(logPath)) {
+            const lines = fs.readFileSync(logPath, 'utf8').split(String.fromCharCode(10)).filter((l) => l.trim().length > 0);
+            const tail = lines.slice(-12).join(String.fromCharCode(10));
+            if (tail) hint = String.fromCharCode(10)+ '--- backend.log (tail) ---'+String.fromCharCode(10)+tail;
+          }
+        } catch {
+          /* best effort — message below already names the log file */
+        }
+        settleReject(
+          new Error(
+            `Backend exited during startup (code ${code}, signal ${signal ?? 'none'}). ` +
+              `The database migration may have failed and the boot was halted to protect your data.` +
+              (logPath ? ` Details in: ${logPath}` : '') +
+              hint,
+          ),
+        );
+      }
     });
 
     const startTime = Date.now();
@@ -127,11 +162,12 @@ function spawnBackend(): Promise<void> {
     const pollIntervalMs = 500;
 
     const checkHealth = async () => {
+      if (settled) return;
       try {
         const response = await fetch('http://localhost:3001/api/health');
         if (response.ok) {
           console.log('[Desktop] Backend health check passed');
-          resolve();
+          settleResolve();
           return;
         }
       } catch {
@@ -140,7 +176,7 @@ function spawnBackend(): Promise<void> {
 
       if (Date.now() - startTime > timeoutMs) {
         const suffix = logPath ? `. Check the log file at: ${logPath} for details.` : '';
-        reject(new Error(`Backend failed to start within 30 seconds${suffix}`));
+        settleReject(new Error(`Backend failed to start within 30 seconds${suffix}`));
         return;
       }
 
