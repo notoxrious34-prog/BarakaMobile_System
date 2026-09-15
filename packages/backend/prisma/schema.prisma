@@ -844,3 +844,72 @@ model JournalEntryLine {
   @@index([partyId])
 }
 
+// TASK BRIEF-011 Stage 3.1 — v3.0 inventory & serialized-item domain.
+// Purely additive: no existing model, column, or index is altered.
+// Monetary fields are String 2dp (Rule ②); movements are insert-only.
+
+model CatalogItem {
+  id           String              @id @default(cuid())
+  sku          String              @unique
+  name         String
+  category     String
+  unit         String              @default("piece")
+  costPrice    String              @default("0.00")
+  sellingPrice String              @default("0.00")
+  minStockLevel Int                @default(0)
+  isSerialized Boolean             @default(false)
+  isActive     Boolean             @default(true)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  movements    InventoryMovement[]
+  serials      SerializedItem[]
+}
+
+model InventoryMovement {
+  id              String      @id @default(cuid())
+  itemId          String
+  movementType    String
+  quantity        Int
+  unitCost        String
+  totalCost       String
+  balanceAfterQty Int
+  referenceType   String
+  referenceId     String
+  createdAt       DateTime    @default(now())
+  item            CatalogItem @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  @@index([itemId, createdAt])
+  @@index([referenceType, referenceId])
+}
+
+model SerializedItem {
+  id              String                     @id @default(cuid())
+  imei1           String                     @unique
+  imei2           String?
+  itemId          String
+  acquisitionCost String
+  currentStatus   String                     @default("IN_STOCK")
+  warrantyMonths  Int                        @default(12)
+  warrantyEndsAt  DateTime?
+  createdAt       DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
+  item            CatalogItem                @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  lifecycleEvents SerializedLifecycleEvent[]
+
+  @@index([currentStatus])
+  @@index([itemId])
+}
+
+model SerializedLifecycleEvent {
+  id            String         @id @default(cuid())
+  serialId      String
+  eventType     String
+  referenceType String
+  referenceId   String
+  description   String
+  createdAt     DateTime       @default(now())
+  serial        SerializedItem @relation(fields: [serialId], references: [id], onDelete: Cascade)
+
+  @@index([serialId, createdAt])
+}
+
