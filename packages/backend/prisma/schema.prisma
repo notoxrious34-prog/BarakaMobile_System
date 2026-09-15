@@ -838,6 +838,7 @@ model JournalEntryLine {
   partyId        String?
   journalEntry   JournalEntry    @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
   account        ChartOfAccount  @relation(fields: [accountCode], references: [accountCode], onDelete: Restrict)
+  subledgerEntry PartySubledgerEntry?
 
   @@index([accountCode])
   @@index([journalEntryId])
@@ -911,5 +912,40 @@ model SerializedLifecycleEvent {
   serial        SerializedItem @relation(fields: [serialId], references: [id], onDelete: Cascade)
 
   @@index([serialId, createdAt])
+}
+
+// TASK BRIEF-013 Stage 4 — v3.0 parties & subledgers.
+// Purely additive: no existing model, column, or index is altered
+// (the JournalEntryLine.subledgerEntry back-relation adds no column).
+// Monetary fields are String 2dp (Rule ②); subledger rows are insert-only.
+
+model Party {
+  id          String                @id @default(cuid())
+  name        String
+  phone       String?
+  address     String?
+  type        String
+  creditLimit String                @default("0.00")
+  isActive    Boolean               @default(true)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  subledgerEntries PartySubledgerEntry[]
+
+  @@index([type, isActive])
+}
+
+model PartySubledgerEntry {
+  id            String           @id @default(cuid())
+  partyId       String
+  journalLineId String           @unique
+  entryType     String
+  amount        String
+  balanceBefore String
+  balanceAfter  String
+  createdAt     DateTime         @default(now())
+  party         Party            @relation(fields: [partyId], references: [id], onDelete: Restrict)
+  journalLine   JournalEntryLine @relation(fields: [journalLineId], references: [id], onDelete: Restrict)
+
+  @@index([partyId, createdAt])
 }
 
