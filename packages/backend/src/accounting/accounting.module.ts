@@ -1,9 +1,14 @@
 import { Global, Module, OnModuleInit } from '@nestjs/common';
 import { ChartOfAccountsService } from './chart-of-accounts.service';
 import { FiscalPeriodService } from './fiscal-period.service';
+import { PostingService } from './posting.service';
+import { ReversalService } from './reversal.service';
+import { ReconciliationService } from './reconciliation.service';
 
 /**
  * TASK BRIEF-009 Stage 2.1 — v3.0 accounting module.
+ * TASK BRIEF-010 Stage 2.2 — adds the operational ledger: PostingService,
+ * ReversalService, ReconciliationService.
  *
  * @Global so COA / fiscal services are injectable in every domain module.
  * `PrismaService` resolves via the already-@Global() PrismaModule.
@@ -13,8 +18,8 @@ import { FiscalPeriodService } from './fiscal-period.service';
  */
 @Global()
 @Module({
-  providers: [ChartOfAccountsService, FiscalPeriodService],
-  exports: [ChartOfAccountsService, FiscalPeriodService],
+  providers: [ChartOfAccountsService, FiscalPeriodService, PostingService, ReversalService, ReconciliationService],
+  exports: [ChartOfAccountsService, FiscalPeriodService, PostingService, ReversalService, ReconciliationService],
 })
 export class AccountingModule implements OnModuleInit {
   constructor(private readonly chartOfAccounts: ChartOfAccountsService) {}
