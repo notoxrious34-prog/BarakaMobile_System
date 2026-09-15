@@ -411,6 +411,8 @@ model User {
   lastLoginAt  DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+  sessions     UserSession[]
+  auditLogs    AuditLog[]
 
   @@index([isActive])
 }
@@ -735,5 +737,46 @@ model StockCountItem {
 
   @@unique([sessionId, inventoryItemId])
   @@index([sessionId])
+}
+
+// TASK BRIEF-008 Stage 1.2 — v3.0 identity / audit / sequence tables.
+// Purely additive: no existing model, column, or index is altered.
+
+model UserSession {
+  id         String    @id @default(cuid())
+  userId     String
+  tokenHash  String    @unique
+  deviceId   String?
+  createdAt  DateTime  @default(now())
+  lastSeenAt DateTime  @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+}
+
+model AuditLog {
+  id            String   @id @default(cuid())
+  actorUserId   String?
+  action        String
+  entityType    String
+  entityId      String
+  correlationId String?
+  beforeJson    String?
+  afterJson     String?
+  reason        String?
+  ipAddress     String?
+  createdAt     DateTime @default(now())
+  actor         User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+model DocumentSequence {
+  prefix     String   @id
+  lastNumber Int      @default(0)
+  updatedAt  DateTime @updatedAt
 }
 
