@@ -413,6 +413,7 @@ model User {
   updatedAt    DateTime  @updatedAt
   sessions     UserSession[]
   auditLogs    AuditLog[]
+  journalEntries JournalEntry[]
 
   @@index([isActive])
 }
@@ -778,5 +779,68 @@ model DocumentSequence {
   prefix     String   @id
   lastNumber Int      @default(0)
   updatedAt  DateTime @updatedAt
+}
+
+// TASK BRIEF-009 Stage 2.1 — v3.0 double-entry accounting core.
+// Purely additive: no existing model, column, or index is altered.
+// Monetary legs are String 2dp (Rule ②); journal rows are insert-only.
+
+model ChartOfAccount {
+  accountCode   String             @id
+  name          String
+  type          String
+  normalBalance String
+  isControl     Boolean            @default(false)
+  isActive      Boolean            @default(true)
+  journalLines  JournalEntryLine[]
+}
+
+model FiscalPeriod {
+  id             String         @id @default(cuid())
+  periodName     String         @unique
+  startDate      DateTime
+  endDate        DateTime
+  status         String         @default("OPEN")
+  closedAt       DateTime?
+  journalEntries JournalEntry[]
+}
+
+model JournalEntry {
+  id              String            @id @default(cuid())
+  entryNumber     String            @unique
+  postingDate     DateTime          @default(now())
+  documentType    String
+  documentId      String?
+  description     String
+  status          String            @default("POSTED")
+  reversalOfId    String?           @unique
+  fiscalPeriodId  String
+  createdByUserId String?
+  createdAt       DateTime          @default(now())
+  lines           JournalEntryLine[]
+  reversalOf      JournalEntry?     @relation("JournalReversal", fields: [reversalOfId], references: [id], onDelete: Restrict)
+  reversedBy      JournalEntry?     @relation("JournalReversal")
+  fiscalPeriod    FiscalPeriod      @relation(fields: [fiscalPeriodId], references: [id], onDelete: Restrict)
+  createdByUser   User?             @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([postingDate])
+  @@index([documentType, documentId])
+  @@index([fiscalPeriodId])
+}
+
+model JournalEntryLine {
+  id             String          @id @default(cuid())
+  journalEntryId String
+  accountCode    String
+  debit          String          @default("0.00")
+  credit         String          @default("0.00")
+  memo           String?
+  partyId        String?
+  journalEntry   JournalEntry    @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  account        ChartOfAccount  @relation(fields: [accountCode], references: [accountCode], onDelete: Restrict)
+
+  @@index([accountCode])
+  @@index([journalEntryId])
+  @@index([partyId])
 }
 
