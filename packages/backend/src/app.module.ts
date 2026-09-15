@@ -23,9 +23,10 @@ import { WatchdogModule } from './watchdog/watchdog.module';
 import { CoreModule } from './core/core.module';
 import { AccountingModule } from './accounting/accounting.module';
 import { PartiesModule } from './parties/parties.module';
+import { SalesModule } from './sales/sales.module';
 
 @Module({
-  imports: [CoreModule, AccountingModule, PartiesModule, PrismaModule, ContactsModule, AccountsModule, InventoryModule, ServicesModule, TransactionsModule, ReportsModule, SettingsModule, SearchModule, CashModule, ExpensesModule, RepairModule, WalletsModule, BackupModule, CustomersModule, SalesReturnsModule, AuthModule, SerialsModule, WatchdogModule],
+  imports: [CoreModule, AccountingModule, PartiesModule, SalesModule, PrismaModule, ContactsModule, AccountsModule, InventoryModule, ServicesModule, TransactionsModule, ReportsModule, SettingsModule, SearchModule, CashModule, ExpensesModule, RepairModule, WalletsModule, BackupModule, CustomersModule, SalesReturnsModule, AuthModule, SerialsModule, WatchdogModule],
   controllers: [AppController],
   providers: [AppService],
 })

@@ -864,6 +864,7 @@ model CatalogItem {
   updatedAt    DateTime            @updatedAt
   movements    InventoryMovement[]
   serials      SerializedItem[]
+  documentLines DocumentLine[]
 }
 
 model InventoryMovement {
@@ -896,6 +897,7 @@ model SerializedItem {
   updatedAt       DateTime                   @updatedAt
   item            CatalogItem                @relation(fields: [itemId], references: [id], onDelete: Restrict)
   lifecycleEvents SerializedLifecycleEvent[]
+  documentLines   DocumentLine[]
 
   @@index([currentStatus])
   @@index([itemId])
@@ -930,6 +932,7 @@ model Party {
   createdAt   DateTime              @default(now())
   updatedAt   DateTime              @updatedAt
   subledgerEntries PartySubledgerEntry[]
+  documents        BusinessDocument[]
 
   @@index([type, isActive])
 }
@@ -947,5 +950,66 @@ model PartySubledgerEntry {
   journalLine   JournalEntryLine @relation(fields: [journalLineId], references: [id], onDelete: Restrict)
 
   @@index([partyId, createdAt])
+}
+
+// TASK BRIEF-014 Stage 5.1 — v3.0 unified business documents.
+// Purely additive: no existing model, column, or index is altered.
+// Monetary fields are String 2dp (Rule ②); documents are never hard-deleted
+// (VOIDED/REVERSED statuses) and lines/payments cascade with their document.
+
+model BusinessDocument {
+  id                 String             @id @default(cuid())
+  documentNumber     String             @unique
+  type               String
+  partyId            String?
+  status             String             @default("POSTED")
+  subtotalAmount     String             @default("0.00")
+  discountAmount     String             @default("0.00")
+  totalAmount        String             @default("0.00")
+  paidAmount         String             @default("0.00")
+  outstandingAmount  String             @default("0.00")
+  reversalDocumentId String?            @unique
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  party              Party?             @relation(fields: [partyId], references: [id], onDelete: Restrict)
+  lines              DocumentLine[]
+  payments           PaymentAllocation[]
+  reversalDocument   BusinessDocument?  @relation("DocumentReversal", fields: [reversalDocumentId], references: [id], onDelete: Restrict)
+  reversedBy         BusinessDocument?  @relation("DocumentReversal")
+
+  @@index([type, createdAt])
+  @@index([partyId])
+}
+
+model DocumentLine {
+  id         String          @id @default(cuid())
+  documentId String
+  itemId     String
+  serialId   String?
+  quantity   Int
+  unitCost   String
+  unitPrice  String
+  lineTotal  String
+  document   BusinessDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  item       CatalogItem      @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  serial     SerializedItem?  @relation(fields: [serialId], references: [id], onDelete: Restrict)
+
+  @@index([documentId])
+  @@index([itemId])
+  @@index([serialId])
+}
+
+model PaymentAllocation {
+  id            String            @id @default(cuid())
+  documentId    String?
+  repairOrderId String?
+  paymentMethod String
+  amount        String
+  walletId      String?
+  createdAt     DateTime          @default(now())
+  document      BusinessDocument? @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([repairOrderId])
 }
 
