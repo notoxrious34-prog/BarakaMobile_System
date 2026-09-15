@@ -5,11 +5,12 @@ import { StockCountService } from './stock-count/stock-count.service';
 import { StockCountController } from './stock-count/stock-count.controller';
 import { AuthModule } from '../auth/auth.module';
 import { InventoryDomainService } from './inventory-domain.service';
+import { SerializedInventoryService } from './serialized-inventory.service';
 
 @Module({
   imports: [AuthModule],
   controllers: [InventoryController, StockCountController],
-  providers: [InventoryService, StockCountService, InventoryDomainService],
-  exports: [InventoryDomainService],
+  providers: [InventoryService, StockCountService, InventoryDomainService, SerializedInventoryService],
+  exports: [InventoryDomainService, SerializedInventoryService],
 })
 export class InventoryModule {}
