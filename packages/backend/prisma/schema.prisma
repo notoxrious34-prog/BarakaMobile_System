@@ -865,6 +865,7 @@ model CatalogItem {
   movements    InventoryMovement[]
   serials      SerializedItem[]
   documentLines DocumentLine[]
+  repairParts  RepairOrderPart[]
 }
 
 model InventoryMovement {
@@ -933,6 +934,7 @@ model Party {
   updatedAt   DateTime              @updatedAt
   subledgerEntries PartySubledgerEntry[]
   documents        BusinessDocument[]
+  repairOrders     RepairOrder[]
 
   @@index([type, isActive])
 }
@@ -976,6 +978,7 @@ model BusinessDocument {
   payments           PaymentAllocation[]
   reversalDocument   BusinessDocument?  @relation("DocumentReversal", fields: [reversalDocumentId], references: [id], onDelete: Restrict)
   reversedBy         BusinessDocument?  @relation("DocumentReversal")
+  repairOrder        RepairOrder?
 
   @@index([type, createdAt])
   @@index([partyId])
@@ -1008,8 +1011,72 @@ model PaymentAllocation {
   walletId      String?
   createdAt     DateTime          @default(now())
   document      BusinessDocument? @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  repairOrder   RepairOrder?      @relation(fields: [repairOrderId], references: [id], onDelete: SetNull)
 
   @@index([documentId])
   @@index([repairOrderId])
+}
+
+// TASK DIRECTIVE-013 Stage 6.1 — v3.0 repair work orders.
+// Purely additive: no existing model, column, or index is altered
+// (the four back-relations above add no columns).
+// Monetary fields are String 2dp (Rule ②); orders are never hard-deleted
+// (CANCELLED/DELIVERED are terminal statuses) and parts cascade with
+// their order. IDs use uuid() per the stage directive (older v3 tables
+// use cuid() — both are client-generated strings on SQLite).
+
+model RepairOrder {
+  id                 String             @id @default(uuid())
+  orderNumber        String             @unique
+  partyId            String
+  party              Party              @relation(fields: [partyId], references: [id], onDelete: Restrict)
+  deviceType         String
+  brand              String
+  model              String
+  serialOrImei       String?
+  reportedIssue      String
+  diagnosisNotes     String?
+  technicianNotes    String?
+  status             String             @default("RECEIVED")
+  assignedTechnicianId String?
+  estimatedCost      String             @default("0.00")
+  laborPrice         String             @default("0.00")
+  partsPriceTotal    String             @default("0.00")
+  discountAmount     String             @default("0.00")
+  totalAmount        String             @default("0.00")
+  paidAmount         String             @default("0.00")
+  outstandingAmount  String             @default("0.00")
+  businessDocumentId String?            @unique
+  businessDocument   BusinessDocument?  @relation(fields: [businessDocumentId], references: [id], onDelete: Restrict)
+  receivedAt         DateTime           @default(now())
+  readyAt            DateTime?
+  deliveredAt        DateTime?
+  cancelledAt        DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  parts              RepairOrderPart[]
+  allocations        PaymentAllocation[]
+
+  @@index([status, createdAt])
+  @@index([partyId])
+}
+
+model RepairOrderPart {
+  id            String      @id @default(uuid())
+  repairOrderId String
+  repairOrder   RepairOrder @relation(fields: [repairOrderId], references: [id], onDelete: Cascade)
+  itemId        String
+  item          CatalogItem @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  quantity      Int
+  unitCost      String
+  totalCost     String
+  unitPrice     String
+  totalPrice    String
+  status        String      @default("CONSUMED")
+  consumedAt    DateTime    @default(now())
+  returnedAt    DateTime?
+
+  @@index([repairOrderId])
+  @@index([itemId])
 }
 

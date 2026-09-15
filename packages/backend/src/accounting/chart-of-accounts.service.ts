@@ -19,6 +19,11 @@ import { NotFoundError, ValidationError } from '../core/result';
  * Control-account convention: 11000 (AR) and 20000 (AP) mirror the
  * customer/supplier subledgers. Stage 2.2 journal posting must reject
  * MANUAL lines against control accounts.
+ *
+ * Stage 6.2 adds 12300 (Repair Work in Progress): the IAS 2 WIP clearing
+ * account for workshop part consumption (Dr on consume, Cr on delivery
+ * into COGS or on cancellation back into spares). It is a plain posting
+ * account, never a control.
  */
 
 export type AccountType = 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE';
@@ -69,7 +74,7 @@ const X = (accountCode: string, name: string): StandardAccountDef => ({
 });
 
 export const STANDARD_ACCOUNTS: readonly StandardAccountDef[] = [
-  // Assets (8)
+  // Assets (9: the Stage 2.1 eight plus 12300 Repair WIP from Stage 6.2)
   A('10000', 'Cash on Hand — Register Drawer'),
   A('10100', 'Digital Wallets Float'),
   A('10200', 'Bank & External Accounts'),
@@ -78,6 +83,7 @@ export const STANDARD_ACCOUNTS: readonly StandardAccountDef[] = [
   A('12000', 'Inventory on Hand'),
   A('12100', 'Serialized Devices in Stock'),
   A('12200', 'Spare Parts Stock'),
+  A('12300', 'Repair Work in Progress'),
   // Liabilities (3)
   L('20000', 'Accounts Payable — Suppliers', true),
   L('21000', 'Customer Deposits & Store Credit'),
@@ -108,7 +114,7 @@ export class ChartOfAccountsService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Idempotent seed: upserts all 25 standard accounts (names/flags refresh
+   * Idempotent seed: upserts all standard accounts (names/flags refresh
    * on re-run; ledger history untouched). Returns the ensured total.
    */
   async seedStandardAccounts(tx?: Prisma.TransactionClient): Promise<number> {

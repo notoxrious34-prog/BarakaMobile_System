@@ -60,29 +60,29 @@ function makeFiscalPrisma() {
 
 describe('stage 2.1 COA and fiscal periods (TASK BRIEF-009)', () => {
   describe('ChartOfAccountsService', () => {
-    it('seeds exactly the 25 standard accounts, idempotently', async () => {
+    it('seeds exactly the 26 standard accounts, idempotently', async () => {
       const prisma = makeCoaPrisma();
       const svc = new ChartOfAccountsService(prisma);
-      expect(await svc.seedStandardAccounts()).toBe(25);
+      expect(await svc.seedStandardAccounts()).toBe(26);
       const first = await svc.listAccounts();
-      expect(first).toHaveLength(25);
-      expect(await svc.seedStandardAccounts()).toBe(25);
+      expect(first).toHaveLength(26);
+      expect(await svc.seedStandardAccounts()).toBe(26);
       const second = await svc.listAccounts();
-      expect(second).toHaveLength(25);
+      expect(second).toHaveLength(26);
       expect(second).toEqual(first);
-      expect(new Set(second.map((a) => a.accountCode)).size).toBe(25);
+      expect(new Set(second.map((a) => a.accountCode)).size).toBe(26);
     });
 
     it('classifies the mandated code skeleton per class', async () => {
       const svc = new ChartOfAccountsService(makeCoaPrisma());
       await svc.seedStandardAccounts();
       const codes = async (type: string) => (await svc.listAccounts(type)).map((a) => a.accountCode);
-      expect(await codes('ASSET')).toEqual(['10000', '10100', '10200', '10300', '11000', '12000', '12100', '12200']);
+      expect(await codes('ASSET')).toEqual(['10000', '10100', '10200', '10300', '11000', '12000', '12100', '12200', '12300']);
       expect(await codes('LIABILITY')).toEqual(['20000', '21000', '22000']);
       expect(await codes('EQUITY')).toEqual(['30000', '30100', '30200', '30300']);
       expect(await codes('REVENUE')).toEqual(['40000', '40100', '40200', '40300', '40400']);
       expect(await codes('EXPENSE')).toEqual(['50000', '50100', '50200', '50300', '50400']);
-      expect(STANDARD_ACCOUNTS).toHaveLength(25);
+      expect(STANDARD_ACCOUNTS).toHaveLength(26);
     });
 
     it('applies normal-balance rules and control flags', async () => {
