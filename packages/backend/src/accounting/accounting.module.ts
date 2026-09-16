@@ -4,6 +4,8 @@ import { FiscalPeriodService } from './fiscal-period.service';
 import { PostingService } from './posting.service';
 import { ReversalService } from './reversal.service';
 import { ReconciliationService } from './reconciliation.service';
+import { FinancialStatementsService } from './financial-statements.service';
+import { PeriodClosingService } from './period-closing.service';
 
 /**
  * TASK BRIEF-009 Stage 2.1 — v3.0 accounting module.
@@ -18,8 +20,8 @@ import { ReconciliationService } from './reconciliation.service';
  */
 @Global()
 @Module({
-  providers: [ChartOfAccountsService, FiscalPeriodService, PostingService, ReversalService, ReconciliationService],
-  exports: [ChartOfAccountsService, FiscalPeriodService, PostingService, ReversalService, ReconciliationService],
+  providers: [ChartOfAccountsService, FiscalPeriodService, PostingService, ReversalService, ReconciliationService, FinancialStatementsService, PeriodClosingService],
+  exports: [ChartOfAccountsService, FiscalPeriodService, PostingService, ReversalService, ReconciliationService, FinancialStatementsService, PeriodClosingService],
 })
 export class AccountingModule implements OnModuleInit {
   constructor(private readonly chartOfAccounts: ChartOfAccountsService) {}
