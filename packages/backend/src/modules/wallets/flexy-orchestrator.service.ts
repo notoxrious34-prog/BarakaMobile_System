@@ -448,4 +448,15 @@ export class FlexyOrchestratorService {
     if (outerTx) return run(outerTx);
     return this.orchestrator.run((otx) => run(otx), { operationName: 'wallet-transfer' });
   }
+
+  /**
+   * DIRECTIVE-019 Stage 9.2 — wallet directory for `GET /api/v3/flexy/wallets`.
+   *
+   * All float wallets with operator, phone, live balance and active flag,
+   * ordered by name. Read-only: joins the caller tx or reads directly.
+   */
+  async listWallets(outerTx?: Prisma.TransactionClient): Promise<TopUpWallet[]> {
+    const db = outerTx ?? (this.prisma as unknown as Prisma.TransactionClient);
+    return db.topUpWallet.findMany({ orderBy: { name: 'asc' } });
+  }
 }

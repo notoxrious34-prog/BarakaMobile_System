@@ -46,6 +46,21 @@ import type { RecordMovementDto } from './dto/record-movement.dto';
  * integration, and `expectedCash` already includes the leg.
  */
 
+export interface ShiftDetailsResult {
+  shift: CashShift;
+  register: CashRegister;
+  movements: ShiftCashMovement[];
+  totals: {
+    openingCash: string;
+    totalCashIn: string;
+    totalCashOut: string;
+    totalSalesCash: string;
+    expectedCash: string;
+    actualCash: string | null;
+    differenceAmount: string;
+  };
+}
+
 const CASH_ON_HAND = '10000';
 const EXPENSE_GENERAL = '50400';
 const OVERAGE_REVENUE = '40400';
@@ -341,5 +356,44 @@ export class CashShiftOrchestratorService {
 
     if (outerTx) return run(outerTx);
     return this.orchestrator.run((otx) => run(otx), { operationName: `shift-close:${dto.shiftId}` });
+  }
+
+  /**
+   * DIRECTIVE-019 Stage 9.2 — shift read models.
+   *
+   * `getActiveShift` resolves the register's `currentShiftId` pointer
+   * (null when no shift is open); `getShiftDetails` returns the shift
+   * with its register, ordered movements and drawer totals snapshot.
+   * Read-only: joins the caller tx or reads directly.
+   */
+  async getActiveShift(registerId: string, tx?: Prisma.TransactionClient): Promise<ShiftDetailsResult | null> {
+    const db = tx ?? (this.prisma as unknown as Prisma.TransactionClient);
+    const register = await this.requireRegister(registerId, db);
+    if (!register.currentShiftId) return null;
+    return this.getShiftDetails(register.currentShiftId, db);
+  }
+
+  async getShiftDetails(shiftId: string, tx?: Prisma.TransactionClient): Promise<ShiftDetailsResult> {
+    const db = tx ?? (this.prisma as unknown as Prisma.TransactionClient);
+    const shift = await this.requireShift(shiftId, db);
+    const register = await this.requireRegister(shift.registerId, db);
+    const movements = await db.shiftCashMovement.findMany({
+      where: { shiftId: shift.id },
+      orderBy: { createdAt: 'asc' },
+    });
+    return {
+      shift,
+      register,
+      movements,
+      totals: {
+        openingCash: shift.openingCash,
+        totalCashIn: shift.totalCashIn,
+        totalCashOut: shift.totalCashOut,
+        totalSalesCash: shift.totalSalesCash,
+        expectedCash: shift.expectedCash,
+        actualCash: shift.actualCash,
+        differenceAmount: shift.differenceAmount,
+      },
+    };
   }
 }
