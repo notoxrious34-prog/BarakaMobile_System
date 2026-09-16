@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import type { BusinessDocument, DocumentLine } from '@prisma/client';
+import type { BusinessDocument, DocumentLine, JournalEntry, JournalEntryLine, SerializedItem } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { Money } from '../core/money';
 import { ConflictError, NotFoundError, ValidationError } from '../core/result';
@@ -54,6 +54,12 @@ export interface ReturnExecutionResult {
   lines: DocumentLine[];
   journalEntryId: string;
   journalNumber: string;
+}
+
+export interface ReturnDetailsResult {
+  document: BusinessDocument;
+  lines: Array<DocumentLine & { serial: SerializedItem | null }>;
+  journalEntry: (JournalEntry & { lines: JournalEntryLine[] }) | null;
 }
 
 const REFUND_ACCOUNT: Record<string, string> = {
@@ -378,5 +384,31 @@ export class ReturnsOrchestratorService {
       }
       throw error;
     }
+  }
+
+  /**
+   * DIRECTIVE-018 Stage 9.1 — return read model for `GET /api/v3/returns/:id`.
+   *
+   * Return document with lines (each carrying its serial, if any) and the
+   * POSTED journal entry linked via `documentId`. Read-only: joins the
+   * caller tx or reads directly.
+   */
+  async getReturnDetails(documentId: string, tx?: Prisma.TransactionClient): Promise<ReturnDetailsResult> {
+    if (!documentId || documentId.trim().length === 0) {
+      throw new ValidationError('ReturnsOrchestratorService.getReturnDetails: documentId must be a non-empty string.');
+    }
+    const db = tx ?? (this.prisma as unknown as Prisma.TransactionClient);
+    const document = await db.businessDocument.findUnique({
+      where: { id: documentId },
+      include: { lines: { include: { serial: true } } },
+    });
+    if (!document || document.type !== 'SALES_RETURN') {
+      throw new NotFoundError(`Return document "${documentId}" not found.`, { documentId });
+    }
+    const journalEntry = await db.journalEntry.findFirst({
+      where: { documentId: document.id, status: 'POSTED' },
+      include: { lines: true },
+    });
+    return { document, lines: document.lines, journalEntry };
   }
 }

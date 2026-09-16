@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import type { BusinessDocument, CatalogItem, DocumentLine, PaymentAllocation } from '@prisma/client';
+import type { BusinessDocument, CatalogItem, DocumentLine, JournalEntry, JournalEntryLine, PaymentAllocation, SerializedItem } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { Money } from '../core/money';
 import { NotFoundError, ValidationError } from '../core/result';
@@ -62,6 +62,13 @@ export interface PurchaseExecutionResult {
   payments: PaymentAllocation[];
   journalEntryId: string;
   journalNumber: string;
+}
+
+export interface PurchaseDetailsResult {
+  document: BusinessDocument;
+  lines: Array<DocumentLine & { serial: SerializedItem | null }>;
+  payments: PaymentAllocation[];
+  journalEntry: (JournalEntry & { lines: JournalEntryLine[] }) | null;
 }
 
 const PAYMENT_ACCOUNT: Record<string, string> = {
@@ -414,5 +421,31 @@ export class PurchasesOrchestratorService {
       }
       throw error;
     }
+  }
+
+  /**
+   * DIRECTIVE-018 Stage 9.1 — purchase read model for `GET /api/v3/purchases/:id`.
+   *
+   * Document with lines (each carrying its registered serial, if any),
+   * payment allocations, and the POSTED journal entry linked via
+   * `documentId`. Read-only: joins the caller tx or reads directly.
+   */
+  async getPurchaseDetails(documentId: string, tx?: Prisma.TransactionClient): Promise<PurchaseDetailsResult> {
+    if (!documentId || documentId.trim().length === 0) {
+      throw new ValidationError('PurchasesOrchestratorService.getPurchaseDetails: documentId must be a non-empty string.');
+    }
+    const db = tx ?? (this.prisma as unknown as Prisma.TransactionClient);
+    const document = await db.businessDocument.findUnique({
+      where: { id: documentId },
+      include: { lines: { include: { serial: true } }, payments: true },
+    });
+    if (!document || document.type !== 'PURCHASE_INVOICE') {
+      throw new NotFoundError(`Purchase document "${documentId}" not found.`, { documentId });
+    }
+    const journalEntry = await db.journalEntry.findFirst({
+      where: { documentId: document.id, status: 'POSTED' },
+      include: { lines: true },
+    });
+    return { document, lines: document.lines, payments: document.payments, journalEntry };
   }
 }

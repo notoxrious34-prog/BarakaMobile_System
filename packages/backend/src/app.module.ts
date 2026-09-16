@@ -27,11 +27,12 @@ import { SalesModule } from './sales/sales.module';
 import { PurchasingModule } from './purchasing/purchasing.module';
 import { ReturnsModule } from './returns/returns.module';
 import { RepairsModule } from './modules/repairs/repairs.module';
+import { V3Module } from './v3/v3.module';
 import { ShiftsModule } from './modules/shifts/shifts.module';
 import { FlexyWalletsModule } from './modules/wallets/wallets.module';
 
 @Module({
-  imports: [CoreModule, AccountingModule, PartiesModule, SalesModule, PurchasingModule, ReturnsModule, RepairsModule, ShiftsModule, FlexyWalletsModule, PrismaModule, ContactsModule, AccountsModule, InventoryModule, ServicesModule, TransactionsModule, ReportsModule, SettingsModule, SearchModule, CashModule, ExpensesModule, RepairModule, WalletsModule, BackupModule, CustomersModule, SalesReturnsModule, AuthModule, SerialsModule, WatchdogModule],
+  imports: [CoreModule, AccountingModule, PartiesModule, SalesModule, PurchasingModule, ReturnsModule, RepairsModule, V3Module, ShiftsModule, FlexyWalletsModule, PrismaModule, ContactsModule, AccountsModule, InventoryModule, ServicesModule, TransactionsModule, ReportsModule, SettingsModule, SearchModule, CashModule, ExpensesModule, RepairModule, WalletsModule, BackupModule, CustomersModule, SalesReturnsModule, AuthModule, SerialsModule, WatchdogModule],
   controllers: [AppController],
   providers: [AppService],
 })
