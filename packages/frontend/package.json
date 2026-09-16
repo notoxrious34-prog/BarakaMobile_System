@@ -6,7 +6,7 @@
     "dev": "vite",
     "build": "tsc -p tsconfig.json && vite build",
     "preview": "vite preview",
-    "test": "tsx src/api/v3/__tests__/v3-client.test.ts && tsx src/features/shifts/__tests__/v3-shift-pos.test.ts && tsx src/features/repairs/__tests__/v3-repair-workbench.test.ts"
+    "test": "tsx src/api/v3/__tests__/v3-client.test.ts && tsx src/features/shifts/__tests__/v3-shift-pos.test.ts && tsx src/features/repairs/__tests__/v3-repair-workbench.test.ts && tsx src/features/flexy/__tests__/v3-flexy-accounting.test.ts"
   },
   "dependencies": {
     "@fontsource/jetbrains-mono": "^5.3.0",
