@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -p tsconfig.json && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "tsx src/api/v3/__tests__/v3-client.test.ts"
   },
   "dependencies": {
     "@fontsource/jetbrains-mono": "^5.3.0",
