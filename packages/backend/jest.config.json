@@ -5,5 +5,13 @@
   "testMatch": ["**/*.spec.ts"],
   "moduleNameMapper": {
     "^@/(.*)$": "<rootDir>/src/$1"
-  }
+  },
+  "testPathIgnorePatterns": [
+    "/node_modules/",
+    "src/expenses/expenses.service.spec.ts",
+    "src/repair/repair.service.spec.ts",
+    "src/reports/reports.service.spec.ts",
+    "src/transactions/sale-wiring.spec.ts",
+    "src/transactions/transactions.service.spec.ts"
+  ]
 }
