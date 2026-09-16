@@ -20,6 +20,8 @@ export type RepairStatus = (typeof REPAIR_STATUS_ORDER)[number];
 export const REPAIR_STATUS_MAP: Record<string, { label: string; tone: StatusTone }> = {
   RECEIVED: { label: 'مستلم', tone: 'cyan' },
   DIAGNOSING: { label: 'قيد التشخيص', tone: 'amber' },
+  QUOTED: { label: 'مسعّر', tone: 'amber' },
+  APPROVED: { label: 'معتمد', tone: 'cyan' },
   IN_REPAIR: { label: 'قيد الإصلاح', tone: 'violet' },
   READY: { label: 'جاهز', tone: 'emerald' },
   DELIVERED: { label: 'تم التسليم', tone: 'slate' },

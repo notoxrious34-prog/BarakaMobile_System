@@ -45,6 +45,12 @@ export function to2dpString(value: string): string {
   return new Decimal(value).toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2);
 }
 
+/** Maps a UI payment method to its backend leg; ON_ACCOUNT has no leg (outstanding). */
+export function mapUiPaymentToBackend(method: UiPaymentMethod): 'CASH' | 'BANK_TRANSFER' | 'DIGITAL_WALLET' | null {
+  if (method === 'ON_ACCOUNT') return null;
+  return BACKEND_METHOD[method];
+}
+
 export function buildV3SalePayload(input: CheckoutInput): SalePayload {
   if (input.lines.length === 0) {
     throw new Error('لا يمكن إتمام البيع بسلة فارغة');
