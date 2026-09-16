@@ -1080,3 +1080,126 @@ model RepairOrderPart {
   @@index([itemId])
 }
 
+// DIRECTIVE-015 Stage 7.1 — POS cash registers and shift drawer ledger.
+// NOTE: the v2 treasury world already owns the `CashMovement` model name
+// (treasury movements under CashAccount), so the shift-scoped movement
+// model is `ShiftCashMovement`. `currentShiftId` is a plain unique pointer
+// (no FK): the orchestrator sets it on open and clears it on close, and
+// shifts are append-only (never deleted), so no orphan path exists.
+model CashRegister {
+  id             String      @id @default(uuid())
+  name           String      @unique
+  isActive       Boolean     @default(true)
+  currentShiftId String?     @unique
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  shifts         CashShift[]
+}
+
+model CashShift {
+  id                   String               @id @default(uuid())
+  shiftNumber          String               @unique
+  registerId           String
+  register             CashRegister         @relation(fields: [registerId], references: [id], onDelete: Restrict)
+  cashierUserId        String
+  status               String               @default("OPEN")
+  openedAt             DateTime             @default(now())
+  closedAt             DateTime?
+  openingCash          String               @default("0.00")
+  totalCashIn          String               @default("0.00")
+  totalCashOut         String               @default("0.00")
+  totalSalesCash       String               @default("0.00")
+  expectedCash         String               @default("0.00")
+  actualCash           String?
+  differenceAmount     String               @default("0.00")
+  discrepancyJournalId String?              @unique
+  notes                String?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  movements            ShiftCashMovement[]
+
+  @@index([registerId])
+  @@index([status])
+}
+
+model ShiftCashMovement {
+  id             String    @id @default(uuid())
+  shiftId        String
+  shift          CashShift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  movementType   String
+  amount         String
+  reason         String
+  actorUserId    String
+  journalEntryId String?
+  createdAt      DateTime  @default(now())
+
+  @@index([shiftId])
+}
+
+// DIRECTIVE-016 Stage 7.2 — digital float wallets and Flexy engine.
+// COLLISION NOTE: the v2 treasury world already owns `DigitalWallet`
+// (service-catalog semantics: type/currency/supplier, cuid ids, relations
+// to Contact/WalletService/WalletLedgerEntry) and the `WalletsModule`
+// Nest class. The v3 double-entry float wallet is therefore `TopUpWallet`
+// (operator SIM float tracked against GL 10100) and the Nest module class
+// is `FlexyWalletsModule`. `DigitalServiceTransaction.partyId` is a plain
+// pointer (brief lists no relation): the enforced AR link lives on the
+// subledger entry, mirroring the shift `cashierUserId` convention.
+model TopUpWallet {
+  id                String                      @id @default(uuid())
+  name              String
+  operator          String
+  phoneNumber       String?
+  balance           String                      @default("0.00")
+  minBalanceAlert   String                      @default("0.00")
+  isActive          Boolean                     @default(true)
+  createdAt         DateTime                    @default(now())
+  updatedAt         DateTime                    @updatedAt
+  transactions      DigitalServiceTransaction[]
+  outgoingTransfers FloatTransferRecord[]       @relation("SourceWallet")
+  incomingTransfers FloatTransferRecord[]       @relation("TargetWallet")
+
+  @@index([operator, isActive])
+}
+
+model DigitalServiceTransaction {
+  id                String      @id @default(uuid())
+  transactionNumber String      @unique
+  walletId          String
+  wallet            TopUpWallet @relation(fields: [walletId], references: [id], onDelete: Restrict)
+  serviceType       String      @default("FLEXY")
+  targetPhoneNumber String
+  faceAmount        String
+  costAmount        String
+  feeAmount         String      @default("0.00")
+  collectedAmount   String
+  marginAmount      String
+  paymentMethod     String
+  partyId           String?
+  journalEntryId    String?     @unique
+  actorUserId       String
+  createdAt         DateTime    @default(now())
+
+  @@index([walletId])
+  @@index([partyId])
+}
+
+model FloatTransferRecord {
+  id                String        @id @default(uuid())
+  transferNumber    String        @unique
+  sourceAccountType String
+  sourceWalletId    String?
+  sourceWallet      TopUpWallet?  @relation("SourceWallet", fields: [sourceWalletId], references: [id], onDelete: Restrict)
+  targetAccountType String
+  targetWalletId    String?
+  targetWallet      TopUpWallet?  @relation("TargetWallet", fields: [targetWalletId], references: [id], onDelete: Restrict)
+  amount            String
+  journalEntryId    String?       @unique
+  reason            String
+  actorUserId       String
+  createdAt         DateTime      @default(now())
+
+  @@index([sourceWalletId])
+  @@index([targetWalletId])
+}
+
